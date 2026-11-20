@@ -230,10 +230,10 @@ export const DEFAULT_LAUNCHER_STATE: LauncherPersistedState = {
 };
 
 export const HILM_NODES = [
-  { letter: "H", name: "Hagalel", tone: "#EA580C", role: "Órbita Ígnea Superior" },
-  { letter: "I", name: "Íris", tone: "#8B5CF6", role: "Órbita Violeta Lateral" },
-  { letter: "L", name: "Luna", tone: "#22D3EE", role: "Autoria Conceitual & Núcleo" },
-  { letter: "M", name: "Maya", tone: "#F59E0B", role: "Órbita Dourada Inferior" },
+  { letter: "H", name: "Hagalel", tone: "#334155", role: "Núcleo Central Fixo" },
+  { letter: "I", name: "Íris", tone: "#EA580C", role: "Órbita Laranja Cobre" },
+  { letter: "L", name: "Luna", tone: "#8B5CF6", role: "Órbita Violeta Elétrico" },
+  { letter: "M", name: "Maya", tone: "#F59E0B", role: "Órbita Âmbar Dourado Mel" },
 ];
 
 export const ACCEPTANCE_CRITERIA = [

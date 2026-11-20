@@ -42,24 +42,3 @@
 .hud-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(34, 211, 238, 0.45);
 }
-
-@keyframes hilmOrbitBreathe {
-  0%, 100% {
-    transform: scale(1) rotate(0deg);
-    filter: brightness(1) drop-shadow(0 0 18px rgba(139, 92, 246, 0.25));
-  }
-  50% {
-    transform: scale(1.018) rotate(1.5deg);
-    filter: brightness(1.08) drop-shadow(0 0 26px rgba(245, 158, 11, 0.28));
-  }
-}
-
-.hilm-core-animate {
-  animation: hilmOrbitBreathe 7s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hilm-core-animate {
-    animation: none;
-  }
-}
