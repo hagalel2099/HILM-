@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nosso Universo</string>
+    <string name="settings_title">Configurações do Nosso Universo</string>
+    <string name="slot_empty">Adicionar</string>
+    <string name="drawer_search_hint">Buscar aplicativo instalado…</string>
+    <string name="edit_mode_banner">Modo de Edição · Toque para escolher ou arraste para reorganizar</string>
+    <string name="set_default_launcher">Definir como Launcher Padrão</string>
+    <string name="default_launcher_active">Nosso Universo já é o launcher padrão</string>
+    <string name="icon_pack_section">Conjunto de Ícones</string>
+    <string name="hud_transparency_section">Transparência dos Painéis HUD</string>
+    <string name="reset_shortcuts">Restaurar Atalhos</string>
+</resources>

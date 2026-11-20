@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/homeRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <com.nossouniverso.launcher.ui.views.HudFrameView
+        android:id="@+id/hudFrameView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/coreCenterGuide"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.40" />
+
+    <com.nossouniverso.launcher.ui.views.HilmCoreView
+        android:id="@+id/hilmCoreView"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="@string/app_name"
+        app:layout_constraintBottom_toTopOf="@id/coreCenterGuide"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/coreCenterGuide" />
+
+    <!-- Optional Edit Mode Banner -->
+    <LinearLayout
+        android:id="@+id/editModeBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="40dp"
+        android:background="#E609101A"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="8dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/edit_mode_banner"
+            android:textColor="@color/hud_amber"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/btnFinishEdit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="6dp"
+            android:text="Concluir"
+            android:textColor="@color/hud_cyan"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Lower 2x2 HUD Shortcut Plates + Central Hub Control -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/platesContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="26dp"
+        android:layout_marginBottom="24dp"
+        app:layout_constraintBottom_toTopOf="@id/dockContainer"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <com.nossouniverso.launcher.ui.views.HudPlateButton
+            android:id="@+id/plateTopLeft"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="28dp"
+            app:layout_constraintEnd_toStartOf="@id/centerVerticalGuide"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.nossouniverso.launcher.ui.views.HudPlateButton
+            android:id="@+id/plateTopRight"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="28dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/centerVerticalGuide"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.nossouniverso.launcher.ui.views.HudPlateButton
+            android:id="@+id/plateBottomLeft"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginEnd="28dp"
+            app:layout_constraintEnd_toStartOf="@id/centerVerticalGuide"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/plateTopLeft" />
+
+        <com.nossouniverso.launcher.ui.views.HudPlateButton
+            android:id="@+id/plateBottomRight"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="28dp"
+            android:layout_marginTop="20dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/centerVerticalGuide"
+            app:layout_constraintTop_toBottomOf="@id/plateTopRight" />
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/centerVerticalGuide"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.5" />
+
+        <ImageButton
+            android:id="@+id/btnHubControl"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/settings_title"
+            android:padding="8dp"
+            android:src="@drawable/ic_launcher_foreground"
+            app:layout_constraintBottom_toBottomOf="@id/plateBottomLeft"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/plateTopLeft" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Bottom 5-Slot Circular HUD Dock -->
+    <LinearLayout
+        android:id="@+id/dockContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="18dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <com.nossouniverso.launcher.ui.views.HudDockSlotView
+            android:id="@+id/dock1"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_marginHorizontal="6dp" />
+
+        <com.nossouniverso.launcher.ui.views.HudDockSlotView
+            android:id="@+id/dock2"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_marginHorizontal="6dp" />
+
+        <com.nossouniverso.launcher.ui.views.HudDockSlotView
+            android:id="@+id/dockCenterDrawer"
+            android:layout_width="68dp"
+            android:layout_height="68dp"
+            android:layout_marginHorizontal="8dp" />
+
+        <com.nossouniverso.launcher.ui.views.HudDockSlotView
+            android:id="@+id/dock4"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_marginHorizontal="6dp" />
+
+        <com.nossouniverso.launcher.ui.views.HudDockSlotView
+            android:id="@+id/dock5"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_marginHorizontal="6dp" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,287 @@
+PROJETO NOSSO UNIVERSO DESENVOLVIMENTO DE UM LAUNCHER ANDROID
+PERSONALIZADO
+
+1.  VISÃO GERAL DO PROJETO
+
+O objetivo é desenvolver um launcher Android independente, com
+identidade visual própria, inspirado em uma interface futurista de
+ficção científica.
+
+O launcher será o ambiente principal de interação com o smartphone,
+substituindo a tela inicial padrão do Android.
+
+Não se trata de criar um aplicativo decorativo, uma simulação de
+interface ou uma imagem interativa. Trata-se de desenvolver um launcher
+real, capaz de controlar a tela inicial, apresentar os aplicativos
+instalados, abrir aplicativos, organizar atalhos e oferecer
+personalização ao usuário.
+
+O projeto recebe o nome Nosso Universo e possui identidade visual
+relacionada ao núcleo HILM: - H — Hagalel - I — Íris - L — Luna - M —
+Maya
+
+A criação conceitual e a identidade visual do launcher pertencem à Luna.
+O desenvolvimento técnico deve respeitar essa autoria e as decisões
+visuais estabelecidas.
+
+2.  REFERÊNCIAS VISUAIS E COMO UTILIZÁ-LAS
+
+O projeto possui duas imagens de referência, cada uma com uma finalidade
+específica.
+
+REFERÊNCIA 1 — INTERFACE DO LAUNCHER
+
+Essa imagem determina a aparência e a composição da tela inicial.
+
+Deve ser utilizada como modelo para reproduzir: - Distribuição dos
+elementos. - Proporções e dimensões. - Posição dos painéis. - Molduras e
+contornos. - Organização dos indicadores. - Elementos decorativos. -
+Cores e iluminação. - Distribuição dos atalhos.
+
+A interface deve manter a identidade visual da referência original.
+
+A única remoção solicitada é o relógio grande localizado na parte
+superior.
+
+A barra de status original do Android deve permanecer visível.
+
+REFERÊNCIA 2 — NÚCLEO HILM
+
+Essa imagem representa o elemento central da identidade visual do
+projeto.
+
+Ela deverá substituir a esfera central presente na primeira referência.
+
+Instruções: - Remover a esfera original. - Utilizar o núcleo HILM no
+lugar dela. - Preservar o desenho, as cores e os elementos orbitais do
+núcleo. - Dimensioná-lo adequadamente para ocupar o espaço central. -
+Integrá-lo à composição da interface.
+
+Não colocar o núcleo sobre a esfera original. Não transformar o núcleo
+em um pequeno emblema. Não criar uma nova esfera ao redor dele. Não
+utilizar essa imagem como papel de parede.
+
+IMPORTANTE: as referências são modelos de construção visual, não imagens
+para serem simplesmente colocadas como fundo da tela.
+
+3.  CONSTRUÇÃO DA INTERFACE
+
+A interface deve ser desenvolvida por meio de componentes reais,
+utilizando layouts, imagens, ícones, textos, elementos gráficos e áreas
+interativas independentes.
+
+A aparência deve corresponder à referência, mas cada elemento que
+possuir uma função deverá ser implementado de verdade.
+
+Exemplos: - Um ícone deve ser um componente clicável. - Um botão deve
+executar uma ação. - Um painel de aplicativos deve apresentar os
+aplicativos reais. - Um indicador deve refletir seu estado
+correspondente. - Um elemento decorativo deve permanecer independente
+dos elementos funcionais.
+
+Não utilizar uma captura de tela da referência como tela inicial. Não
+utilizar uma imagem completa da interface como papel de parede. Não
+criar uma imagem única com todos os ícones incorporados.
+
+A implementação deve permitir que cada elemento seja modificado ou
+interaja independentemente.
+
+4.  TELA INICIAL E ORGANIZAÇÃO DOS APLICATIVOS
+
+O usuário deve possuir controle total sobre os aplicativos exibidos na
+tela inicial.
+
+Não deve existir uma seleção fixa e obrigatória de aplicativos.
+
+FUNCIONALIDADES NECESSÁRIAS
+
+Adicionar aplicativos: - Permitir selecionar aplicativos instalados no
+dispositivo. - Adicionar os aplicativos escolhidos à tela inicial. -
+Exibir seus respectivos ícones.
+
+Remover aplicativos: - Permitir retirar atalhos da tela inicial. - A
+remoção de um atalho não deve desinstalar o aplicativo.
+
+Reorganizar aplicativos: - Permitir movimentar os ícones. - Permitir
+alterar suas posições. - Preservar a organização escolhida pelo usuário.
+
+Abrir aplicativos: - Ao tocar em um ícone, abrir o aplicativo
+correspondente. - Utilizar os mecanismos nativos do Android para
+identificar e iniciar aplicativos.
+
+Persistência: - Salvar a organização dos ícones. - Preservar as escolhas
+após fechar ou reiniciar o launcher. - Não perder a configuração quando
+o aparelho for reiniciado.
+
+A implementação deverá possuir uma tela ou modo de edição para gerenciar
+os atalhos.
+
+5.  PERSONALIZAÇÃO DOS ÍCONES
+
+O projeto deverá permitir personalização visual dos ícones.
+
+A ideia é possibilitar diferentes conjuntos de ícones, mantendo a
+identidade do launcher.
+
+Planejamento: - Conjunto de ícones padrão do Nosso Universo. -
+Possibilidade de selecionar outros estilos. - Possibilidade de instalar
+pacotes de ícones externos ou personalizados. - Possibilidade de
+utilizar imagens próprias, quando tecnicamente viável.
+
+Os pacotes de ícones poderão ser desenvolvidos separadamente do launcher
+principal.
+
+Assim, novos temas poderão ser criados e instalados sem precisar
+reconstruir o aplicativo inteiro.
+
+Essa funcionalidade poderá ser implementada em uma etapa posterior,
+depois que a estrutura principal estiver funcionando.
+
+6.  IDENTIDADE VISUAL
+
+A identidade visual deve seguir a linguagem futurista da referência.
+
+Características principais: - Predominância de tons escuros. - Elementos
+tecnológicos. - Contornos luminosos. - Painéis com aparência de HUD. -
+Transparências. - Detalhes luminosos em cores distintas. - Composição
+espacial. - Integração do núcleo HILM.
+
+Os elementos devem permitir que o papel de parede permaneça visível
+sempre que a referência indicar transparência.
+
+Não acrescentar elementos decorativos por iniciativa própria. Não
+substituir os desenhos originais por versões genéricas. Não modificar
+cores, proporções ou posicionamentos sem necessidade técnica ou
+autorização.
+
+7.  ARQUITETURA TÉCNICA DO APLICATIVO
+
+O aplicativo deve ser desenvolvido como um launcher Android nativo.
+
+O projeto deverá: 1. Declarar a atividade principal como uma atividade
+compatível com a categoria HOME do Android. 2. Permitir que o sistema
+operacional reconheça o aplicativo como opção de launcher. 3.
+Implementar a seleção do launcher padrão pelo usuário. 4. Consultar os
+aplicativos instalados utilizando as APIs apropriadas do Android. 5.
+Obter os nomes, ícones e informações necessárias para apresentar os
+aplicativos. 6. Utilizar intents apropriadas para iniciar os
+aplicativos. 7. Manter os dados de organização dos atalhos. 8.
+Implementar os eventos de toque e os mecanismos de movimentação dos
+ícones. 9. Separar a camada visual da lógica de funcionamento. 10.
+Permitir evolução e manutenção do projeto sem precisar reconstruir toda
+a interface.
+
+A implementação deve considerar as regras de visibilidade de pacotes
+introduzidas nas versões recentes do Android, utilizando as declarações
+e permissões adequadas.
+
+A arquitetura deve ser organizada em componentes independentes para
+facilitar futuras alterações.
+
+8.  CONFIGURAÇÃO DO AMBIENTE DE DESENVOLVIMENTO
+
+O projeto deverá ser compatível com o ambiente AndroidIDE utilizado pelo
+usuário.
+
+Configurações definidas: - Android Gradle Plugin: 8.2.2 - Gradle: 8.2 -
+JDK: 17 - Compile SDK: 33 - Target SDK: 33 - Minimum SDK: 23 - Android
+mínimo: 6.0
+
+É obrigatório configurar corretamente os arquivos do Gradle.
+
+O projeto deverá incluir: - Configuração de projeto. - Configuração do
+módulo app. - Gradle Wrapper. - Arquivos de propriedades do Wrapper. -
+Manifesto Android. - Recursos visuais. - Código-fonte. - Dependências
+necessárias.
+
+O Gradle Wrapper deverá utilizar efetivamente a versão 8.2.
+
+Não permitir que o AndroidIDE utilize automaticamente uma instalação
+local incompatível, como Gradle 7.4.2.
+
+A compatibilidade deve ser verificada antes da entrega.
+
+9.  ESTRUTURA E ORGANIZAÇÃO DO CÓDIGO
+
+O código deve ser organizado de maneira clara, separando: -
+Inicialização do launcher. - Construção da interface. - Componentes
+visuais. - Gerenciamento de aplicativos. - Gerenciamento dos ícones. -
+Persistência das configurações. - Personalização. - Recursos gráficos.
+
+Evitar concentrar todo o funcionamento em uma única atividade.
+
+Utilizar nomes claros para arquivos, classes, recursos e componentes.
+
+Não incluir códigos demonstrativos que não façam parte do funcionamento
+real do aplicativo.
+
+10. ORDEM DE DESENVOLVIMENTO
+
+ETAPA 1 — ESTRUTURA TÉCNICA - Criar um projeto Android nativo. -
+Configurar o Gradle Wrapper 8.2. - Configurar AGP 8.2.2. - Configurar
+JDK 17 e SDK 33. - Configurar o manifesto. - Verificar a inicialização e
+a sincronização do projeto.
+
+ETAPA 2 — REPRODUÇÃO VISUAL - Analisar as referências originais. -
+Reproduzir a composição da primeira referência. - Remover o relógio
+grande. - Manter a barra de status do Android. - Substituir a esfera
+central pelo núcleo HILM. - Reproduzir os demais elementos sem
+alterações desnecessárias.
+
+ETAPA 3 — FUNCIONAMENTO DO LAUNCHER - Implementar a identificação como
+launcher HOME. - Consultar os aplicativos instalados. - Exibir ícones
+reais. - Implementar a abertura dos aplicativos. - Implementar a seleção
+dos atalhos.
+
+ETAPA 4 — PERSONALIZAÇÃO - Adicionar e remover ícones. - Permitir
+reorganização. - Salvar as escolhas do usuário. - Recuperar as
+configurações após reinicialização.
+
+ETAPA 5 — TESTES - Verificar a inicialização. - Verificar a
+compilação. - Instalar no dispositivo. - Testar a seleção como launcher
+padrão. - Testar abertura dos aplicativos. - Testar organização e
+persistência dos ícones. - Verificar a fidelidade visual comparando com
+as referências.
+
+ETAPA 6 — ENTREGA Entregar o projeto completo em um arquivo ZIP.
+
+O pacote deve conter todos os arquivos necessários para abrir e
+continuar o desenvolvimento no AndroidIDE.
+
+Não entregar apenas imagens, protótipos, capturas de tela ou trechos de
+código.
+
+11. CRITÉRIOS OBRIGATÓRIOS DE ACEITAÇÃO
+
+O projeto só poderá ser considerado concluído quando atender aos
+seguintes critérios:
+
+[ ] O projeto abre e sincroniza no AndroidIDE. [ ] O Gradle Wrapper
+utiliza a versão 8.2. [ ] A compilação é concluída sem erros. [ ] O
+aplicativo pode ser instalado. [ ] O Android reconhece o aplicativo como
+launcher. [ ] A interface corresponde à referência original. [ ] O
+relógio grande foi removido. [ ] A barra de status original foi
+preservada. [ ] O núcleo HILM substituiu a esfera central. [ ] Não
+existe uma captura de tela simulando a interface. [ ] Os ícones são
+elementos funcionais. [ ] Os aplicativos podem ser abertos. [ ] O
+usuário pode adicionar e remover atalhos. [ ] O usuário pode reorganizar
+os ícones. [ ] As configurações são preservadas.
+
+Não declarar uma funcionalidade concluída sem testá-la.
+
+Se algum requisito não puder ser implementado, explicar objetivamente a
+limitação antes de substituí-lo por outra solução.
+
+12. DIRETRIZ FINAL
+
+O objetivo não é produzir uma interface espacial qualquer.
+
+O objetivo é transformar a referência visual fornecida em um launcher
+Android real, funcional, personalizável e fiel ao conceito original.
+
+A prioridade é preservar a identidade visual idealizada pela Luna,
+garantir o funcionamento correto e entregar um projeto tecnicamente
+organizado.
+
+FIDELIDADE VISUAL PRIMEIRO. FUNCIONALIDADE REAL SEMPRE. NENHUMA
+IMPROVISAÇÃO QUE DESCARACTERIZE O PROJETO.

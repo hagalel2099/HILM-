@@ -1,0 +1,6 @@
+{
+  "name": "Nosso Universo Launcher",
+  "description": "Launcher Android futurista com Núcleo HILM (Hagalel, Íris, Luna, Maya), interface HUD interativa e projeto nativo completo para AndroidIDE.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
