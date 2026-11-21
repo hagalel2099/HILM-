@@ -37,8 +37,14 @@ class HudDockSlotView @JvmOverloads constructor(
             invalidate()
         }
 
+    var panelOpacityPercent: Int = 78
+        set(value) {
+            field = value.coerceIn(25, 95)
+            invalidate()
+        }
+
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#CC080E17")
+        color = Color.rgb(8, 14, 23)
         style = Paint.Style.FILL
     }
 
@@ -91,6 +97,12 @@ class HudDockSlotView @JvmOverloads constructor(
         val r = min(width, height) / 2f - 3f * density
         if (r <= 0f) return
 
+        val bgAlphaRatio = if (isCenterDrawerButton) {
+            0.90f
+        } else {
+            (panelOpacityPercent / 100f).coerceAtLeast(0.55f)
+        }
+        bgPaint.alpha = (bgAlphaRatio * 255f).toInt().coerceIn(0, 255)
         canvas.drawCircle(cx, cy, r, bgPaint)
 
         val outerRect = RectF(cx - r, cy - r, cx + r, cy + r)

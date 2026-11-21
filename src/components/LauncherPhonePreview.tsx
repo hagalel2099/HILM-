@@ -108,6 +108,7 @@ export function LauncherPhonePreview({
         backgroundImage: `url(${state.customWallpaperUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
       };
     }
     switch (state.wallpaperId) {
@@ -551,11 +552,11 @@ export function LauncherPhonePreview({
         className="relative w-full h-full rounded-[26px] overflow-hidden flex flex-col justify-between"
         style={wallpaperStyle}
       >
-        {/* Reference 1 Vector HUD Frame (Clock removed, transparency preserved) */}
-        <HudSvgFrame panelOpacity={state.panelOpacity} />
+        {/* Reference 1 Vector HUD Frame (Clock removed, wallpaper 100% unaltered) */}
+        <HudSvgFrame />
 
         {/* 1. Native Android Status Bar (Preserved!) */}
-        <div className="relative z-20 flex items-center justify-between px-4 pt-2 pb-1 text-[11px] font-medium text-slate-100">
+        <div className="relative z-20 flex items-center justify-between px-4 pt-2 pb-1 text-[11px] font-medium text-slate-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
           <div className="flex items-center gap-1.5 font-mono-tabular">
             <span>{clockText}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/90" aria-hidden="true" />

@@ -57,20 +57,11 @@ class HudFrameView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
 
-    private val scrimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
-
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val w = width.toFloat()
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
-
-        // Subtle atmospheric scrim preserving wallpaper visibility
-        val scrimAlpha = (panelOpacityPercent * 1.45f).toInt().coerceIn(30, 145)
-        scrimPaint.color = Color.argb(scrimAlpha, 5, 8, 13)
-        canvas.drawRect(0f, 0f, w, h, scrimPaint)
 
         drawTopOrnamentalHeader(canvas, w)
         drawSideRails(canvas, w, h)

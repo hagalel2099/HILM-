@@ -40,8 +40,14 @@ class HudPlateButton @JvmOverloads constructor(
             invalidate()
         }
 
+    var panelOpacityPercent: Int = 78
+        set(value) {
+            field = value.coerceIn(25, 95)
+            invalidate()
+        }
+
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#B80A111B")
+        color = Color.rgb(8, 14, 24)
         style = Paint.Style.FILL
     }
 
@@ -122,6 +128,8 @@ class HudPlateButton @JvmOverloads constructor(
             close()
         }
 
+        val fillAlphaRatio = (panelOpacityPercent / 100f).coerceAtLeast(0.45f)
+        fillPaint.alpha = (fillAlphaRatio * 255f).toInt().coerceIn(0, 255)
         canvas.drawPath(path, fillPaint)
 
         cyanStrokePaint.color = if (isEditModeActive) {

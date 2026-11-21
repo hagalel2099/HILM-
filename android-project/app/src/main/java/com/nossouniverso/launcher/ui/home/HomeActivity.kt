@@ -172,7 +172,10 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        hudFrameView.panelOpacityPercent = app.shortcutStorage.getPanelOpacityPercent()
+        val opacityPercent = app.shortcutStorage.getPanelOpacityPercent()
+        hudFrameView.panelOpacityPercent = opacityPercent
+        plateViews.values.forEach { it.panelOpacityPercent = opacityPercent }
+        dockViews.values.forEach { it.panelOpacityPercent = opacityPercent }
         reloadAppsAndRender()
     }
 

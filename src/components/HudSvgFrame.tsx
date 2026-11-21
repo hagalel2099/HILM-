@@ -1,17 +1,13 @@
 import { useMemo } from "react";
 
-interface HudSvgFrameProps {
-  panelOpacity: number;
-}
-
 /**
  * Reproduz a arquitetura HUD da Referência 1 em SVG vetorial transparente:
  * - Moldura ornamental superior (sem o relógio grande)
  * - Trilhos laterais esquerdo e direito
  * - Matriz pontilhada inferior atrás do dock
- * O núcleo central HILM flutua livremente sem moldura ou círculo externo.
+ * O núcleo central HILM e o papel de parede permanecem livres de scrims ou filtros de cor.
  */
-export function HudSvgFrame({ panelOpacity }: HudSvgFrameProps) {
+export function HudSvgFrame() {
   const spectrumCols = useMemo(() => {
     const cols: { x: number; rows: number }[] = [];
     const count = 38;
@@ -24,8 +20,6 @@ export function HudSvgFrame({ panelOpacity }: HudSvgFrameProps) {
     }
     return cols;
   }, []);
-
-  const scrimAlpha = ((panelOpacity / 100) * 0.56).toFixed(2);
 
   return (
     <svg
@@ -43,9 +37,6 @@ export function HudSvgFrame({ panelOpacity }: HudSvgFrameProps) {
           </feMerge>
         </filter>
       </defs>
-
-      {/* Atmospheric HUD scrim letting wallpaper breathe through */}
-      <rect x="0" y="0" width="360" height="760" fill={`rgba(5, 8, 13, ${scrimAlpha})`} />
 
       {/* Top HUD Ornamental Rail (below Android Status Bar, clock removed) */}
       <g opacity="0.92">
