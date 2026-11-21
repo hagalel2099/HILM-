@@ -680,7 +680,7 @@ export function LauncherPhonePreview({
         </div>
 
         {/* 5. Android Bottom Navigation Bar (Functional in Preview) */}
-        <div className="relative z-20 h-10 bg-[#05080D]/85 border-t border-slate-800/70 flex items-center justify-around px-8 text-slate-300">
+        <div className="relative z-20 h-10 flex items-center justify-around px-8 text-slate-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
           <button
             type="button"
             onClick={() => {
