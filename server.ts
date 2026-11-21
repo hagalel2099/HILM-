@@ -90,6 +90,7 @@ function resolveCloudflareWorkerConfig(): {
 } {
   const raw = (
     process.env.CLOUDFLARE_WORKER_URL ||
+    process.env.URL_DO_TRABALHADOR_CLOUDFLARE ||
     process.env.CLOUDFLARE_UPDATER_URL ||
     process.env.NOSSO_UNIVERSO_UPDATE_URL ||
     readGradleUpdateUrl() ||

@@ -30,7 +30,11 @@ jobs:
         env:
           NOSSO_UNIVERSO_UPDATE_URL: ${{ vars.NOSSO_UNIVERSO_UPDATE_URL }}
         run: |
-          gradle assembleDebug -PNOSSO_UNIVERSO_UPDATE_URL="${NOSSO_UNIVERSO_UPDATE_URL}"
+          if [ -n "${NOSSO_UNIVERSO_UPDATE_URL}" ]; then
+            gradle assembleDebug -PNOSSO_UNIVERSO_UPDATE_URL="${NOSSO_UNIVERSO_UPDATE_URL}"
+          else
+            gradle assembleDebug
+          fi
 
       - name: Publish APK to GitHub Release
         uses: softprops/action-gh-release@v2
