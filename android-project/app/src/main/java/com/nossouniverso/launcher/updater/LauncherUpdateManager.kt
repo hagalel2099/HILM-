@@ -1,7 +1,9 @@
 package com.nossouniverso.launcher.updater
 
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -382,6 +384,7 @@ class LauncherUpdateManager(private val context: Context) {
     }
 
     fun createInstallApkIntent(apkFile: File): Intent {
+        UpdateInstallReceiver.markPendingUpdateRelaunch(appContext, true)
         val apkUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             FileProvider.getUriForFile(
                 appContext,
@@ -396,6 +399,81 @@ class LauncherUpdateManager(private val context: Context) {
             setDataAndType(apkUri, "application/vnd.android.package-archive")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             putExtra(Intent.EXTRA_RETURN_RESULT, true)
+        }
+    }
+
+    fun installApkWithPackageInstaller(
+        apkFile: File,
+        onFallbackLegacyIntent: (Intent) -> Unit,
+        onSessionError: (String) -> Unit
+    ) {
+        if (!apkFile.exists() || !isValidApkFile(apkFile)) {
+            onSessionError("Arquivo APK inválido ou não encontrado para instalação.")
+            return
+        }
+
+        UpdateInstallReceiver.markPendingUpdateRelaunch(appContext, true)
+
+        executor.execute {
+            var session: PackageInstaller.Session? = null
+            try {
+                val packageInstaller = appContext.packageManager.packageInstaller
+                val params = PackageInstaller.SessionParams(
+                    PackageInstaller.SessionParams.MODE_FULL_INSTALL
+                ).apply {
+                    setAppPackageName(appContext.packageName)
+                    setSize(apkFile.length())
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_UNSPECIFIED)
+                    }
+                }
+
+                val sessionId = packageInstaller.createSession(params)
+                session = packageInstaller.openSession(sessionId)
+
+                FileInputStream(apkFile).use { input ->
+                    session.openWrite("nosso_universo_update.apk", 0L, apkFile.length()).use { output ->
+                        val buffer = ByteArray(16 * 1024)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read == -1) break
+                            output.write(buffer, 0, read)
+                        }
+                        session.fsync(output)
+                    }
+                }
+
+                val commitIntent = Intent(appContext, UpdateInstallReceiver::class.java).apply {
+                    action = UpdateInstallReceiver.ACTION_PACKAGE_INSTALL_STATUS
+                }
+                val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+                val callbackIntent = PendingIntent.getBroadcast(
+                    appContext,
+                    sessionId,
+                    commitIntent,
+                    flags
+                )
+
+                session.commit(callbackIntent.intentSender)
+                session.close()
+                session = null
+            } catch (_: Exception) {
+                try {
+                    session?.abandon()
+                } catch (_: Exception) {
+                    // Ignore abandon failure
+                }
+                try {
+                    session?.close()
+                } catch (_: Exception) {
+                    // Ignore close failure
+                }
+                val legacyIntent = createInstallApkIntent(apkFile)
+                mainHandler.post {
+                    onFallbackLegacyIntent(legacyIntent)
+                }
+            }
         }
     }
 

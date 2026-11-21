@@ -57,6 +57,10 @@ class HudFrameView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
 
+    init {
+        setBackgroundColor(Color.TRANSPARENT)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val w = width.toFloat()
