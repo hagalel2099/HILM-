@@ -13,6 +13,12 @@ android {
         targetSdk = 33
         versionCode = 1
         versionName = "1.0.0"
+
+        val updateApiUrl = ((project.findProperty("NOSSO_UNIVERSO_UPDATE_URL") as? String) ?: "")
+            .trim()
+            .trimEnd('/')
+            .replace("\"", "\\\"")
+        buildConfigField("String", "UPDATE_API_BASE_URL", "\"$updateApiUrl\"")
     }
 
     buildTypes {
@@ -36,6 +42,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 

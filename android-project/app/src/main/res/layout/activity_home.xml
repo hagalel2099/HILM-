@@ -34,6 +34,84 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/coreCenterGuide" />
 
+    <!-- Compact Update Popover (exclusively triggered by tapping the central HILM nucleus) -->
+    <LinearLayout
+        android:id="@+id/coreUpdatePopover"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="34dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_hud_popover"
+        android:clickable="true"
+        android:elevation="12dp"
+        android:focusable="true"
+        android:orientation="vertical"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="10dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/hilmCoreView">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvUpdateTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/update_title"
+                android:textColor="@color/hud_cyan"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btnCloseUpdatePopover"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:gravity="center"
+                android:text="✕"
+                android:textColor="@color/hud_text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvUpdateMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/hud_text_primary"
+            android:textSize="12sp" />
+
+        <ProgressBar
+            android:id="@+id/progressUpdateDownload"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            android:layout_marginTop="8dp"
+            android:max="100"
+            android:progressTint="@color/hud_cyan"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnUpdateAction"
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#164E63"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="@string/update_action_check"
+            android:textAllCaps="false"
+            android:textColor="@color/hud_text_primary"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
     <!-- Optional Edit Mode Banner -->
     <LinearLayout
         android:id="@+id/editModeBar"

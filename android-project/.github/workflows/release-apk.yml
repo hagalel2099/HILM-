@@ -1,0 +1,40 @@
+name: Release APK Nosso Universo
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.2"
+
+      - name: Build Debug APK (or signed Release APK)
+        env:
+          NOSSO_UNIVERSO_UPDATE_URL: ${{ vars.NOSSO_UNIVERSO_UPDATE_URL }}
+        run: |
+          gradle assembleDebug -PNOSSO_UNIVERSO_UPDATE_URL="${NOSSO_UNIVERSO_UPDATE_URL}"
+
+      - name: Publish APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

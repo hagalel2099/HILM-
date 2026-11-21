@@ -1,25 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertCircle,
   Battery,
   Check,
+  CheckCircle2,
+  Circle,
+  Download,
   GripVertical,
   ImagePlus,
+  Loader2,
   Pencil,
   Plus,
+  RefreshCw,
   Signal,
   Square,
   Triangle,
   Wifi,
   X,
-  Circle,
 } from "lucide-react";
 import type {
   InstalledAppItem,
   LauncherPersistedState,
+  LauncherUpdateCheckResponse,
   SlotId,
 } from "../types/launcher";
 import {
-  HILM_NODES,
   INSTALLED_APPS_CATALOG,
   SLOT_LABELS,
 } from "../data/launcherCatalog";
@@ -65,10 +70,19 @@ export function LauncherPhonePreview({
   const [selectedSwapSource, setSelectedSwapSource] = useState<SlotId | null>(null);
   const [draggedSlot, setDraggedSlot] = useState<SlotId | null>(null);
   const [activeAppWindow, setActiveAppWindow] = useState<InstalledAppItem | null>(null);
-  const [showHilmSheet, setShowHilmSheet] = useState(false);
+  const [showCoreUpdatePopover, setShowCoreUpdatePopover] = useState(false);
+  const [updatePhase, setUpdatePhase] = useState<
+    "idle" | "checking" | "up_to_date" | "available" | "downloading" | "downloaded" | "error"
+  >("idle");
+  const [updateInfo, setUpdateInfo] = useState<LauncherUpdateCheckResponse | null>(null);
+  const [updateMessage, setUpdateMessage] = useState("Versão instalada: v1.0.0");
+  const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
   const [showRecents, setShowRecents] = useState(false);
   const customIconInputRef = useRef<HTMLInputElement>(null);
   const [customIconSlotTarget, setCustomIconSlotTarget] = useState<SlotId | null>(null);
+
+  const INSTALLED_VERSION = "1.0.0";
+  const INSTALLED_VERSION_CODE = 1;
 
   useEffect(() => {
     const updateClock = () => {
@@ -154,7 +168,159 @@ export function LauncherPhonePreview({
     setDrawerTargetSlot(slotId);
     setDrawerOpen(true);
     setShowRecents(false);
-    setShowHilmSheet(false);
+    setShowCoreUpdatePopover(false);
+  };
+
+  const handleToggleCoreUpdatePopover = () => {
+    setShowRecents(false);
+    if (showCoreUpdatePopover) {
+      if (updatePhase !== "checking" && updatePhase !== "downloading") {
+        setShowCoreUpdatePopover(false);
+      }
+      return;
+    }
+    if (updatePhase === "up_to_date" || updatePhase === "error" || updatePhase === "downloaded") {
+      setUpdatePhase("idle");
+      setUpdateMessage(`Versão instalada: v${INSTALLED_VERSION}`);
+      setDownloadPercent(null);
+    }
+    setShowCoreUpdatePopover(true);
+  };
+
+  const handleCheckForUpdates = async () => {
+    setUpdatePhase("checking");
+    setUpdateInfo(null);
+    setDownloadPercent(null);
+    setUpdateMessage("Consultando atualizações…");
+
+    try {
+      const res = await fetch(
+        `/api/launcher/updates/check?currentVersion=${encodeURIComponent(INSTALLED_VERSION)}&versionCode=${INSTALLED_VERSION_CODE}`
+      );
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data) {
+        setUpdatePhase("error");
+        setUpdateMessage(
+          data?.error || `Falha ao consultar atualizações (HTTP ${res.status}).`
+        );
+        return;
+      }
+
+      const payload = data as LauncherUpdateCheckResponse;
+      setUpdateInfo(payload);
+
+      if (payload.status === "up_to_date") {
+        setUpdatePhase("up_to_date");
+        setUpdateMessage(`O aplicativo já está atualizado (v${payload.installedVersion}).`);
+      } else if (payload.status === "no_apk_asset") {
+        setUpdatePhase("error");
+        setUpdateMessage(
+          `Nova versão v${payload.latestVersion} encontrada, mas sem pacote .apk anexado à release.`
+        );
+      } else if (payload.status === "update_available") {
+        setUpdatePhase("available");
+        setUpdateMessage(
+          `Nova versão disponível para instalação.`
+        );
+      } else {
+        setUpdatePhase("error");
+        setUpdateMessage("Resposta inesperada ao verificar atualizações.");
+      }
+    } catch {
+      setUpdatePhase("error");
+      setUpdateMessage("Erro de conexão ao consultar o servidor de atualizações.");
+    }
+  };
+
+  const handleDownloadApk = async () => {
+    if (!updateInfo?.downloadPath) return;
+    setUpdatePhase("downloading");
+    setDownloadPercent(0);
+    setUpdateMessage(`Baixando pacote v${updateInfo.latestVersion}…`);
+
+    try {
+      const res = await fetch(updateInfo.downloadPath);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        setUpdatePhase("error");
+        setDownloadPercent(null);
+        setUpdateMessage(
+          errData?.error || `Falha ao baixar pacote APK (HTTP ${res.status}).`
+        );
+        return;
+      }
+
+      const contentLengthHeader = res.headers.get("Content-Length");
+      const totalBytes =
+        contentLengthHeader && Number.parseInt(contentLengthHeader, 10) > 0
+          ? Number.parseInt(contentLengthHeader, 10)
+          : updateInfo.assetSizeBytes || 0;
+
+      const chunks: BlobPart[] = [];
+      let received = 0;
+
+      if (res.body) {
+        const reader = res.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            chunks.push(value);
+            received += value.byteLength;
+            if (totalBytes > 0) {
+              setDownloadPercent(Math.min(100, Math.round((received * 100) / totalBytes)));
+            }
+          }
+        }
+      } else {
+        const buf = new Uint8Array(await res.arrayBuffer());
+        chunks.push(buf);
+        received = buf.byteLength;
+      }
+
+      const blob = new Blob(chunks, {
+        type: "application/vnd.android.package-archive",
+      });
+      if (blob.size < 128) {
+        setUpdatePhase("error");
+        setDownloadPercent(null);
+        setUpdateMessage("O pacote baixado é inválido ou está vazio.");
+        return;
+      }
+
+      const headerBytes = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+      if (headerBytes[0] !== 0x50 || headerBytes[1] !== 0x4b) {
+        setUpdatePhase("error");
+        setDownloadPercent(null);
+        setUpdateMessage("O arquivo recebido não corresponde a um pacote .apk válido.");
+        return;
+      }
+
+      const filename =
+        updateInfo.assetName && updateInfo.assetName.toLowerCase().endsWith(".apk")
+          ? updateInfo.assetName
+          : `NossoUniverso-v${updateInfo.latestVersion}.apk`;
+
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+
+      setUpdatePhase("downloaded");
+      setDownloadPercent(100);
+      setUpdateMessage(
+        `Pacote ${filename} baixado. No dispositivo Android, o instalador do sistema solicitará autorização e confirmação para concluir a instalação.`
+      );
+    } catch {
+      setUpdatePhase("error");
+      setDownloadPercent(null);
+      setUpdateMessage("Erro de rede durante o download do pacote .apk.");
+    }
   };
 
   const handleCustomIconPick = (slotId: SlotId) => {
@@ -425,7 +591,7 @@ export function LauncherPhonePreview({
 
         {/* 2. Central Núcleo HILM (Replaces original sphere cleanly) */}
         <div className="relative z-10 flex-1 flex items-center justify-center pt-5">
-          <HilmCore onClick={() => setShowHilmSheet((prev) => !prev)} />
+          <HilmCore onClick={handleToggleCoreUpdatePopover} />
         </div>
 
         {/* 3. Lower 2x2 HUD Shortcut Plates + Central Hub Edit Toggle */}
@@ -520,8 +686,9 @@ export function LauncherPhonePreview({
               if (activeAppWindow) setActiveAppWindow(null);
               else if (drawerOpen) setDrawerOpen(false);
               else if (showRecents) setShowRecents(false);
-              else if (showHilmSheet) setShowHilmSheet(false);
-              else if (isEditMode) onToggleEditMode(false);
+              else if (showCoreUpdatePopover && updatePhase !== "checking" && updatePhase !== "downloading") {
+                setShowCoreUpdatePopover(false);
+              } else if (isEditMode) onToggleEditMode(false);
             }}
             aria-label="Voltar"
             className="min-w-[44px] min-h-[36px] flex items-center justify-center hover:text-cyan-300 transition-colors cursor-pointer"
@@ -534,7 +701,9 @@ export function LauncherPhonePreview({
               setActiveAppWindow(null);
               setDrawerOpen(false);
               setShowRecents(false);
-              setShowHilmSheet(false);
+              if (updatePhase !== "checking" && updatePhase !== "downloading") {
+                setShowCoreUpdatePopover(false);
+              }
               setSelectedSwapSource(null);
               onToggleEditMode(false);
             }}
@@ -548,7 +717,9 @@ export function LauncherPhonePreview({
             onClick={() => {
               setActiveAppWindow(null);
               setDrawerOpen(false);
-              setShowHilmSheet(false);
+              if (updatePhase !== "checking" && updatePhase !== "downloading") {
+                setShowCoreUpdatePopover(false);
+              }
               setShowRecents((prev) => !prev);
             }}
             aria-label="Aplicativos recentes"
@@ -598,57 +769,112 @@ export function LauncherPhonePreview({
             }}
           />
         )}
-
-        {/* Núcleo HILM Identity Sheet */}
-        {showHilmSheet && (
-          <div className="absolute inset-x-4 top-20 z-30 rounded-2xl bg-[#070C15]/95 border border-cyan-500/40 p-4 backdrop-blur-md shadow-2xl">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div>
-                <h4 className="font-display text-sm font-semibold text-slate-100">
-                  Núcleo HILM
-                </h4>
-                <p className="text-[11px] text-slate-400">
-                  Identidade conceitual idealizada por Luna
-                </p>
-              </div>
+        {/* Compact Update Popover (exclusively triggered by tapping the central HILM nucleus) */}
+        {showCoreUpdatePopover && (
+          <div className="absolute inset-x-6 top-[382px] z-30 rounded-xl bg-[#070C15]/95 border border-cyan-400/50 px-3.5 py-2.5 backdrop-blur-md shadow-2xl shadow-black/80">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-display text-[11px] font-semibold tracking-wider text-cyan-300 uppercase">
+                Central Nosso Universo
+              </span>
               <button
                 type="button"
-                onClick={() => setShowHilmSheet(false)}
-                aria-label="Fechar painel HILM"
-                className="min-w-[36px] min-h-[36px] flex items-center justify-center text-slate-400 hover:text-cyan-300"
+                onClick={() => {
+                  if (updatePhase !== "checking" && updatePhase !== "downloading") {
+                    setShowCoreUpdatePopover(false);
+                  }
+                }}
+                aria-label="Fechar painel de atualização"
+                className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-cyan-300 cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="mt-3 space-y-2">
-              {HILM_NODES.map((node) => (
-                <div
-                  key={node.letter}
-                  className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-slate-900/80 border border-slate-800"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-6 h-6 rounded-md font-display text-xs font-bold flex items-center justify-center text-slate-950"
-                      style={{ backgroundColor: node.tone }}
-                    >
-                      {node.letter}
-                    </span>
-                    <span className="text-xs font-medium text-slate-100">{node.name}</span>
-                  </div>
-                  <span className="text-[11px] text-slate-400">{node.role}</span>
+
+            {updatePhase === "available" && updateInfo ? (
+              <div className="mt-1.5 text-[11px] text-slate-200 space-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Versão instalada:</span>
+                  <span className="font-mono-tabular text-slate-100">
+                    v{updateInfo.installedVersion}
+                  </span>
                 </div>
-              ))}
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Versão disponível:</span>
+                  <span className="font-mono-tabular font-semibold text-cyan-300">
+                    v{updateInfo.latestVersion}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-slate-200">
+                {updatePhase === "up_to_date" || updatePhase === "downloaded" ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                ) : updatePhase === "error" ? (
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                ) : null}
+                <span>{updateMessage}</span>
+              </div>
+            )}
+
+            {updatePhase === "downloading" && (
+              <div className="mt-2 w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full bg-cyan-400 transition-all duration-150"
+                  style={{ width: `${downloadPercent ?? 25}%` }}
+                />
+              </div>
+            )}
+
+            <div className="mt-2.5">
+              {updatePhase === "available" ? (
+                <button
+                  type="button"
+                  onClick={handleDownloadApk}
+                  className="w-full h-8 rounded-lg bg-cyan-500/20 border border-cyan-400/60 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/30 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Atualizar agora</span>
+                </button>
+              ) : updatePhase === "checking" || updatePhase === "downloading" ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full h-8 rounded-lg bg-slate-800/80 border border-slate-700 text-xs font-medium text-slate-300 flex items-center justify-center gap-1.5 opacity-80"
+                >
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
+                  <span>
+                    {updatePhase === "checking"
+                      ? "Buscando atualizações…"
+                      : downloadPercent !== null
+                        ? `Baixando ${downloadPercent}%…`
+                        : "Baixando pacote…"}
+                  </span>
+                </button>
+              ) : updatePhase === "downloaded" ? (
+                <button
+                  type="button"
+                  onClick={() => setShowCoreUpdatePopover(false)}
+                  className="w-full h-8 rounded-lg bg-emerald-500/20 border border-emerald-400/50 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/30 transition-colors cursor-pointer"
+                >
+                  Concluído
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCheckForUpdates}
+                  className="w-full h-8 rounded-lg bg-cyan-500/15 border border-cyan-400/50 text-xs font-semibold text-cyan-200 hover:bg-cyan-500/25 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>
+                    {updatePhase === "idle"
+                      ? "Buscar atualizações"
+                      : "Buscar atualizações novamente"}
+                  </span>
+                </button>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => handleOpenDrawerForSlot(null)}
-              className="mt-3 w-full h-10 rounded-lg bg-cyan-500/15 border border-cyan-400/50 text-xs font-medium text-cyan-200 hover:bg-cyan-500/25 transition-colors"
-            >
-              Abrir Gaveta de Aplicativos
-            </button>
           </div>
         )}
-
         {/* Recent Apps Overlay */}
         {showRecents && (
           <div className="absolute inset-0 bottom-10 z-30 bg-[#05080F]/92 backdrop-blur-md p-4 flex flex-col">

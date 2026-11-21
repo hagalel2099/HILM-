@@ -5,20 +5,15 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
-import kotlin.math.cos
-import kotlin.math.min
-import kotlin.math.sin
 
 /**
  * Draws the futuristic HUD structural frame from Reference 1:
  * - Top ornamental cyan/amber rail (large upper clock removed as specified)
  * - Left & right vertical HUD side rails
- * - Concentric outer segmented rings, 4 corner brackets, radial ticks & 3-dot indicators
  * - Bottom vertical dotted matrix behind the 5-slot dock
- * Transparent areas allow the Android wallpaper to show through.
+ * The central HILM nucleus floats freely over the wallpaper without any enclosing ring or border.
  */
 class HudFrameView @JvmOverloads constructor(
     context: Context,
@@ -29,12 +24,6 @@ class HudFrameView @JvmOverloads constructor(
     var panelOpacityPercent: Int = 78
         set(value) {
             field = value.coerceIn(25, 95)
-            invalidate()
-        }
-
-    var ringCenterYRatio: Float = 0.40f
-        set(value) {
-            field = value
             invalidate()
         }
 
@@ -63,11 +52,6 @@ class HudFrameView @JvmOverloads constructor(
         strokeCap = Paint.Cap.SQUARE
     }
 
-    private val darkTrackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#B0060B12")
-        style = Paint.Style.STROKE
-    }
-
     private val dotMatrixPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#4D64748B")
         style = Paint.Style.FILL
@@ -90,7 +74,6 @@ class HudFrameView @JvmOverloads constructor(
 
         drawTopOrnamentalHeader(canvas, w)
         drawSideRails(canvas, w, h)
-        drawCentralHudRing(canvas, w, h)
         drawBottomSpectrumMatrix(canvas, w, h)
     }
 
@@ -171,113 +154,6 @@ class HudFrameView @JvmOverloads constructor(
         canvas.drawPath(rightPath, silverPaint)
         canvas.drawLine(w - edgeInset - 6f * density, mid - 34f * density, w - edgeInset - 6f * density, mid - 12f * density, amberPaint)
         canvas.drawLine(w - edgeInset - 6f * density, mid + 12f * density, w - edgeInset - 6f * density, mid + 34f * density, cyanPaint)
-    }
-
-    private fun drawCentralHudRing(canvas: Canvas, w: Float, h: Float) {
-        val cx = w / 2f
-        val cy = h * ringCenterYRatio
-        val outerR = min(w * 0.40f, h * 0.22f)
-        val midR = outerR * 0.87f
-        val innerR = outerR * 0.72f
-
-        // Dark outer structural ring track
-        darkTrackPaint.strokeWidth = outerR * 0.16f
-        canvas.drawCircle(cx, cy, (outerR + innerR) / 2f, darkTrackPaint)
-
-        // Radial tick marks around the outer circumference
-        silverPaint.strokeWidth = 1.2f * density
-        silverPaint.alpha = 140
-        for (deg in 0 until 360 step 6) {
-            val rad = Math.toRadians(deg.toDouble())
-            val innerTick = if (deg % 30 == 0) outerR * 0.90f else outerR * 0.94f
-            val outerTick = outerR * 0.99f
-            canvas.drawLine(
-                cx + (cos(rad) * innerTick).toFloat(),
-                cy + (sin(rad) * innerTick).toFloat(),
-                cx + (cos(rad) * outerTick).toFloat(),
-                cy + (sin(rad) * outerTick).toFloat(),
-                silverPaint
-            )
-        }
-
-        // Cyan segmented arcs (matching Ref 1)
-        val outerRect = RectF(cx - outerR, cy - outerR, cx + outerR, cy + outerR)
-        cyanPaint.strokeWidth = 2.4f * density
-        cyanPaint.alpha = 230
-        canvas.drawArc(outerRect, 200f, 52f, false, cyanPaint)
-        canvas.drawArc(outerRect, 290f, 65f, false, cyanPaint)
-        canvas.drawArc(outerRect, 22f, 58f, false, cyanPaint)
-        canvas.drawArc(outerRect, 112f, 52f, false, cyanPaint)
-
-        // Amber segmented outer arcs
-        val midRect = RectF(cx - midR, cy - midR, cx + midR, cy + midR)
-        amberPaint.strokeWidth = 2.2f * density
-        amberPaint.alpha = 225
-        canvas.drawArc(midRect, 258f, 24f, false, amberPaint)
-        canvas.drawArc(midRect, 82f, 24f, false, amberPaint)
-        canvas.drawArc(midRect, 168f, 20f, false, amberPaint)
-        canvas.drawArc(midRect, 350f, 20f, false, amberPaint)
-
-        // Inner circular HUD border around HILM core aperture
-        val innerRect = RectF(cx - innerR, cy - innerR, cx + innerR, cy + innerR)
-        cyanPaint.strokeWidth = 1.8f * density
-        cyanPaint.alpha = 195
-        canvas.drawArc(innerRect, 15f, 130f, false, cyanPaint)
-        canvas.drawArc(innerRect, 195f, 130f, false, cyanPaint)
-
-        // Left & right outer caliper brackets
-        val caliperR = outerR * 1.11f
-        val caliperRect = RectF(cx - caliperR, cy - caliperR, cx + caliperR, cy + caliperR)
-        silverPaint.strokeWidth = 2.5f * density
-        silverPaint.alpha = 215
-        canvas.drawArc(caliperRect, 162f, 36f, false, silverPaint)
-        canvas.drawArc(caliperRect, 342f, 36f, false, silverPaint)
-
-        // Four corner brackets around the circular HUD
-        drawCornerBrackets(canvas, cx, cy, outerR * 1.15f)
-
-        // Subtle amber calibration hairlines crossing at ~78 deg & ~258 deg
-        amberPaint.strokeWidth = 1f * density
-        amberPaint.alpha = 150
-        for (angle in listOf(-76.0, 104.0)) {
-            val rad = Math.toRadians(angle)
-            canvas.drawLine(
-                cx + (cos(rad) * innerR * 0.96f).toFloat(),
-                cy + (sin(rad) * innerR * 0.96f).toFloat(),
-                cx + (cos(rad) * outerR * 1.07f).toFloat(),
-                cy + (sin(rad) * outerR * 1.07f).toFloat(),
-                amberPaint
-            )
-        }
-
-        // Top & bottom 3-dot indicators
-        drawThreeDots(canvas, cx, cy - outerR * 1.12f)
-        drawThreeDots(canvas, cx, cy + outerR * 1.12f)
-    }
-
-    private fun drawCornerBrackets(canvas: Canvas, cx: Float, cy: Float, r: Float) {
-        val len = 18f * density
-        silverPaint.strokeWidth = 2f * density
-        silverPaint.alpha = 200
-        cyanPaint.strokeWidth = 1.4f * density
-        cyanPaint.alpha = 180
-
-        val corners = listOf(
-            Pair(-1f, -1f),
-            Pair(1f, -1f),
-            Pair(-1f, 1f),
-            Pair(1f, 1f)
-        )
-        corners.forEach { (sx, sy) ->
-            val x = cx + sx * r * 0.78f
-            val y = cy + sy * r * 0.78f
-            val path = Path().apply {
-                moveTo(x - sx * len, y)
-                lineTo(x, y)
-                lineTo(x, y - sy * len)
-            }
-            canvas.drawPath(path, silverPaint)
-        }
     }
 
     private fun drawBottomSpectrumMatrix(canvas: Canvas, w: Float, h: Float) {

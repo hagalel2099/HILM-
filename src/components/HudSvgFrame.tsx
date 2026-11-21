@@ -4,50 +4,14 @@ interface HudSvgFrameProps {
   panelOpacity: number;
 }
 
-function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
-  const rad = (angleDeg * Math.PI) / 180;
-  return {
-    x: cx + r * Math.cos(rad),
-    y: cy + r * Math.sin(rad),
-  };
-}
-
-function describeArc(
-  cx: number,
-  cy: number,
-  r: number,
-  startAngle: number,
-  endAngle: number
-) {
-  const start = polarToCartesian(cx, cy, r, endAngle);
-  const end = polarToCartesian(cx, cy, r, startAngle);
-  const largeArc = endAngle - startAngle <= 180 ? "0" : "1";
-  return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 0 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
-}
-
 /**
  * Reproduz a arquitetura HUD da Referência 1 em SVG vetorial transparente:
  * - Moldura ornamental superior (sem o relógio grande)
  * - Trilhos laterais esquerdo e direito
- * - Anéis concêntricos segmentados, ticks radiais, suportes de canto e eixos de calibração
  * - Matriz pontilhada inferior atrás do dock
+ * O núcleo central HILM flutua livremente sem moldura ou círculo externo.
  */
 export function HudSvgFrame({ panelOpacity }: HudSvgFrameProps) {
-  const ticks = useMemo(() => {
-    const items: { x1: number; y1: number; x2: number; y2: number; major: boolean }[] = [];
-    const cx = 180;
-    const cy = 274;
-    const outerR = 132;
-    for (let deg = 0; deg < 360; deg += 6) {
-      const major = deg % 30 === 0;
-      const r1 = major ? outerR - 11 : outerR - 6;
-      const p1 = polarToCartesian(cx, cy, r1, deg);
-      const p2 = polarToCartesian(cx, cy, outerR, deg);
-      items.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, major });
-    }
-    return items;
-  }, []);
-
   const spectrumCols = useMemo(() => {
     const cols: { x: number; rows: number }[] = [];
     const count = 38;
@@ -133,74 +97,6 @@ export function HudSvgFrame({ panelOpacity }: HudSvgFrameProps) {
         <line x1="349" y1="290" x2="349" y2="314" stroke="#22D3EE" strokeWidth="2.2" />
         <line x1="352" y1="168" x2="352" y2="210" stroke="#22D3EE" strokeWidth="1.4" opacity="0.7" />
         <line x1="352" y1="338" x2="352" y2="380" stroke="#22D3EE" strokeWidth="1.4" opacity="0.7" />
-      </g>
-
-      {/* Central Concentric HUD Ring Composition around Núcleo HILM (cx=180, cy=274) */}
-      <g>
-        {/* Outer translucent structural ring track */}
-        <circle
-          cx="180"
-          cy="274"
-          r="116"
-          fill="none"
-          stroke="rgba(7, 11, 18, 0.72)"
-          strokeWidth="22"
-        />
-
-        {/* Radial Calibration Ticks */}
-        {ticks.map((t, idx) => (
-          <line
-            key={idx}
-            x1={t.x1}
-            y1={t.y1}
-            x2={t.x2}
-            y2={t.y2}
-            stroke={t.major ? "#CBD5E1" : "#64748B"}
-            strokeWidth={t.major ? "1.3" : "0.9"}
-            opacity={t.major ? "0.75" : "0.45"}
-          />
-        ))}
-
-        {/* Outer Cyan Segmented Arcs */}
-        <g filter="url(#cyanGlow)">
-          <path d={describeArc(180, 274, 134, 200, 252)} fill="none" stroke="#22D3EE" strokeWidth="2.4" />
-          <path d={describeArc(180, 274, 134, 290, 355)} fill="none" stroke="#22D3EE" strokeWidth="2.4" />
-          <path d={describeArc(180, 274, 134, 22, 80)} fill="none" stroke="#22D3EE" strokeWidth="2.4" />
-          <path d={describeArc(180, 274, 134, 112, 164)} fill="none" stroke="#22D3EE" strokeWidth="2.4" />
-        </g>
-
-        {/* Amber Accent Arcs */}
-        <path d={describeArc(180, 274, 120, 256, 282)} fill="none" stroke="#F59E0B" strokeWidth="2.2" />
-        <path d={describeArc(180, 274, 120, 80, 106)} fill="none" stroke="#F59E0B" strokeWidth="2.2" />
-        <path d={describeArc(180, 274, 120, 166, 188)} fill="none" stroke="#F59E0B" strokeWidth="2" />
-        <path d={describeArc(180, 274, 120, 348, 370)} fill="none" stroke="#F59E0B" strokeWidth="2" />
-
-        {/* Inner Aperture Border framing the Núcleo HILM */}
-        <path d={describeArc(180, 274, 98, 15, 145)} fill="none" stroke="#22D3EE" strokeWidth="1.6" opacity="0.75" />
-        <path d={describeArc(180, 274, 98, 195, 325)} fill="none" stroke="#22D3EE" strokeWidth="1.6" opacity="0.75" />
-
-        {/* Outer Left & Right Silver Calipers */}
-        <path d={describeArc(180, 274, 147, 160, 200)} fill="none" stroke="#CBD5E1" strokeWidth="2.4" opacity="0.88" />
-        <path d={describeArc(180, 274, 147, -20, 20)} fill="none" stroke="#CBD5E1" strokeWidth="2.4" opacity="0.88" />
-
-        {/* 4 Chamfered Corner Brackets */}
-        <path d="M 60 176 L 60 156 L 80 156" fill="none" stroke="#CBD5E1" strokeWidth="2" opacity="0.82" />
-        <path d="M 300 176 L 300 156 L 280 156" fill="none" stroke="#CBD5E1" strokeWidth="2" opacity="0.82" />
-        <path d="M 60 372 L 60 392 L 80 392" fill="none" stroke="#CBD5E1" strokeWidth="2" opacity="0.82" />
-        <path d="M 300 372 L 300 392 L 280 392" fill="none" stroke="#CBD5E1" strokeWidth="2" opacity="0.82" />
-
-        {/* Thin Amber Radial Calibration Hairlines */}
-        <line x1="205" y1="176" x2="216" y2="132" stroke="#F59E0B" strokeWidth="1" opacity="0.7" />
-        <line x1="155" y1="372" x2="144" y2="416" stroke="#F59E0B" strokeWidth="1" opacity="0.7" />
-
-        {/* Top & Bottom 3-Dot Ring Indicators */}
-        <circle cx="173" cy="122" r="1.8" fill="#22D3EE" opacity="0.85" />
-        <circle cx="180" cy="122" r="1.8" fill="#22D3EE" opacity="0.85" />
-        <circle cx="187" cy="122" r="1.8" fill="#22D3EE" opacity="0.85" />
-
-        <circle cx="173" cy="426" r="1.8" fill="#22D3EE" opacity="0.85" />
-        <circle cx="180" cy="426" r="1.8" fill="#22D3EE" opacity="0.85" />
-        <circle cx="187" cy="426" r="1.8" fill="#22D3EE" opacity="0.85" />
       </g>
 
       {/* Bottom Dotted Equalizer / Spectrum Matrix behind the Dock */}

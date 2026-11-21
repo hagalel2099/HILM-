@@ -11,14 +11,14 @@ import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.os.Build
-import android.os.SystemClock
 import android.provider.Settings
 import android.util.AttributeSet
+import android.view.Choreographer
 import android.view.View
-import android.view.animation.LinearInterpolator
 import com.nossouniverso.launcher.R
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -26,10 +26,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Renders the fixed central HILM nucleus (R.drawable.nucleo_hilm_core) and animates
- * Íris (copper orange), Luna (electric violet), and Maya (golden amber with honey
- * highlights) on three distinct inclined 3D Keplerian elliptical orbits with
- * continuous curved luminous tails, depth-driven scale, and foreground/background occlusion.
+ * Renders the fixed, unaltered central HILM nucleus (R.drawable.nucleo_hilm_core) floating
+ * freely over the wallpaper and animates Íris (copper orange), Luna (electric violet), and
+ * Maya (golden amber with honey highlights) on independent, compact, inclined 3D elliptical
+ * orbits with smooth occasional crossings, perspective depth, and curved luminous trails.
  */
 class HilmCoreView @JvmOverloads constructor(
     context: Context,
@@ -37,14 +37,15 @@ class HilmCoreView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private data class KeplerOrbSpec(
-        val phaseOffset: Float,
+    private data class IndependentOrbSpec(
+        val periodMs: Float,
+        val basePhase: Float,
         val semiMajorRatio: Float,
         val eccentricity: Float,
+        val argPeriapsisRad: Float,
         val inclinationDeg: Float,
         val yawDeg: Float,
         val rollDeg: Float,
-        val periodMs: Float,
         val coreColor: Int,
         val midColor: Int,
         val edgeColor: Int,
@@ -57,6 +58,8 @@ class HilmCoreView @JvmOverloads constructor(
         val trailCoreB: Int
     ) {
         val minorFactor: Float = sqrt(1f - eccentricity * eccentricity)
+        val cosW: Float = cos(argPeriapsisRad)
+        val sinW: Float = sin(argPeriapsisRad)
         val cosI: Float = cos(Math.toRadians(inclinationDeg.toDouble())).toFloat()
         val sinI: Float = sin(Math.toRadians(inclinationDeg.toDouble())).toFloat()
         val cosY: Float = cos(Math.toRadians(yawDeg.toDouble())).toFloat()
@@ -73,19 +76,20 @@ class HilmCoreView @JvmOverloads constructor(
     }
 
     private val orbSpecs = listOf(
-        // Íris: laranja cobre
-        KeplerOrbSpec(
-            phaseOffset = 0.20f,
-            semiMajorRatio = 0.341f,
-            eccentricity = 0.23f,
-            inclinationDeg = 68f,
-            yawDeg = 18f,
-            rollDeg = -34f,
-            periodMs = 9200f,
+        // Íris: cobre luminoso
+        IndependentOrbSpec(
+            periodMs = 4900f,
+            basePhase = 0.45f,
+            semiMajorRatio = 53.5f / 214f,
+            eccentricity = 0.12f,
+            argPeriapsisRad = 1.11f,
+            inclinationDeg = 61.5f,
+            yawDeg = 9.9f,
+            rollDeg = -28.0f,
             coreColor = Color.parseColor("#FFF3E0"),
             midColor = Color.parseColor("#FB923C"),
             edgeColor = Color.parseColor("#C2410C"),
-            haloColor = Color.argb(173, 234, 88, 12),
+            haloColor = Color.argb(178, 234, 88, 12),
             trailR = 234,
             trailG = 88,
             trailB = 12,
@@ -94,18 +98,19 @@ class HilmCoreView @JvmOverloads constructor(
             trailCoreB = 116
         ),
         // Luna: violeta elétrico
-        KeplerOrbSpec(
-            phaseOffset = 2.35f,
-            semiMajorRatio = 0.336f,
-            eccentricity = 0.21f,
-            inclinationDeg = 72f,
-            yawDeg = -22f,
-            rollDeg = 32f,
-            periodMs = 11300f,
+        IndependentOrbSpec(
+            periodMs = 6300f,
+            basePhase = 2.55f,
+            semiMajorRatio = 57.5f / 214f,
+            eccentricity = 0.14f,
+            argPeriapsisRad = 1.66f,
+            inclinationDeg = -63.1f,
+            yawDeg = 3.9f,
+            rollDeg = 26.0f,
             coreColor = Color.parseColor("#F5F3FF"),
             midColor = Color.parseColor("#A855F7"),
             edgeColor = Color.parseColor("#6D28D9"),
-            haloColor = Color.argb(178, 139, 92, 246),
+            haloColor = Color.argb(184, 139, 92, 246),
             trailR = 139,
             trailG = 92,
             trailB = 246,
@@ -113,33 +118,36 @@ class HilmCoreView @JvmOverloads constructor(
             trailCoreG = 214,
             trailCoreB = 254
         ),
-        // Maya: âmbar dourado com reflexos de mel
-        KeplerOrbSpec(
-            phaseOffset = 4.35f,
-            semiMajorRatio = 0.332f,
-            eccentricity = 0.20f,
-            inclinationDeg = 66f,
-            yawDeg = 10f,
-            rollDeg = 5f,
-            periodMs = 13400f,
-            coreColor = Color.parseColor("#FFFBEB"),
+        // Maya: dourado com reflexos de mel
+        IndependentOrbSpec(
+            periodMs = 7900f,
+            basePhase = 4.65f,
+            semiMajorRatio = 61.5f / 214f,
+            eccentricity = 0.12f,
+            argPeriapsisRad = 2.19f,
+            inclinationDeg = 67.0f,
+            yawDeg = -2.5f,
+            rollDeg = 72.0f,
+            coreColor = Color.parseColor("#FFFDF2"),
             midColor = Color.parseColor("#FBBF24"),
-            edgeColor = Color.parseColor("#D97706"),
-            haloColor = Color.argb(168, 245, 158, 11),
-            trailR = 245,
-            trailG = 158,
-            trailB = 11,
-            trailCoreR = 254,
-            trailCoreG = 240,
-            trailCoreB = 138
+            edgeColor = Color.parseColor("#B45309"),
+            haloColor = Color.argb(178, 245, 158, 11),
+            trailR = 217,
+            trailG = 119,
+            trailB = 6,
+            trailCoreR = 253,
+            trailCoreG = 224,
+            trailCoreB = 71
         )
     )
 
     private var coreSourceBitmap: Bitmap? = null
     private var coreScaledBitmap: Bitmap? = null
     private val orbBitmaps = arrayOfNulls<Bitmap>(3)
+    private val trailPuffBitmaps = arrayOfNulls<Bitmap>(3)
     private val coreRect = RectF()
     private val orbDestRect = RectF()
+    private val puffDestRect = RectF()
 
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val trailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -148,23 +156,33 @@ class HilmCoreView @JvmOverloads constructor(
         strokeJoin = Paint.Join.ROUND
     }
 
-    private val trailSegments = 42
-    private val trailArcMeanRad = 1.22f
-    private val trailBuffer = Array(trailSegments + 1) { ProjectedPoint() }
+    private val trailSegments = 126
+    private val trailArcRad = 2.65f
+    private val filamentLimit = (trailSegments * 0.68f).toInt()
+    private val trailBuffers = Array(3) { Array(trailSegments + 1) { ProjectedPoint() } }
+    private val plasmaColorTable = Array(3) { IntArray(trailSegments) }
+    private val filamentColorTable = Array(3) { IntArray(trailSegments) }
+    private val workAdjX = FloatArray(3)
+    private val workAdjY = FloatArray(3)
+    private val workAdjZ = FloatArray(3)
     private val headDepths = FloatArray(3)
     private val sortedIndices = intArrayOf(0, 1, 2)
 
-    private var startTimeMs: Long = SystemClock.uptimeMillis()
-    private var currentElapsedMs: Long = 0L
+    private var lastFrameTimeMs: Double = -1.0
+    private var simulationTimeMs: Double = 0.0
+    private var isLoopRunning: Boolean = false
 
-    private val frameTicker = ValueAnimator.ofFloat(0f, 1f).apply {
-        duration = 60000L
-        repeatCount = ValueAnimator.INFINITE
-        repeatMode = ValueAnimator.RESTART
-        interpolator = LinearInterpolator()
-        addUpdateListener {
-            currentElapsedMs = SystemClock.uptimeMillis() - startTimeMs
+    private val frameCallback = object : Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (!isLoopRunning) return
+            val nowMs = frameTimeNanos / 1_000_000.0
+            if (lastFrameTimeMs >= 0.0) {
+                val deltaMs = (nowMs - lastFrameTimeMs).coerceIn(0.0, 100.0)
+                simulationTimeMs += deltaMs
+            }
+            lastFrameTimeMs = nowMs
             invalidate()
+            Choreographer.getInstance().postFrameCallback(this)
         }
     }
 
@@ -172,16 +190,73 @@ class HilmCoreView @JvmOverloads constructor(
         coreSourceBitmap = BitmapFactory.decodeResource(resources, R.drawable.nucleo_hilm_core)
         orbSpecs.forEachIndexed { index, spec ->
             orbBitmaps[index] = createOrbBitmap(spec)
+            trailPuffBitmaps[index] = createTrailPuffBitmap(spec)
+            precomputeTrailColors(index, spec)
         }
     }
 
-    private fun createOrbBitmap(spec: KeplerOrbSpec): Bitmap {
+    private fun lerpRgbInt(c0: Int, c1: Int, t: Float): Int {
+        val f = t.coerceIn(0f, 1f)
+        val r0 = Color.red(c0)
+        val g0 = Color.green(c0)
+        val b0 = Color.blue(c0)
+        val r1 = Color.red(c1)
+        val g1 = Color.green(c1)
+        val b1 = Color.blue(c1)
+        return Color.rgb(
+            (r0 + (r1 - r0) * f).toInt(),
+            (g0 + (g1 - g0) * f).toInt(),
+            (b0 + (b1 - b0) * f).toInt()
+        )
+    }
+
+    private fun precomputeTrailColors(index: Int, spec: IndependentOrbSpec) {
+        val tailColor = Color.rgb(spec.trailR, spec.trailG, spec.trailB)
+        val plasma = plasmaColorTable[index]
+        val filament = filamentColorTable[index]
+        for (i in 0 until trailSegments) {
+            val frac = (i + 0.5f) / trailSegments
+            plasma[i] = when {
+                frac < 0.24f -> lerpRgbInt(spec.coreColor, spec.midColor, frac / 0.24f)
+                frac < 0.65f -> lerpRgbInt(spec.midColor, tailColor, (frac - 0.24f) / 0.41f)
+                else -> tailColor
+            }
+            val innerFrac = (frac / 0.68f).coerceIn(0f, 1f)
+            filament[i] = lerpRgbInt(spec.coreColor, spec.midColor, innerFrac)
+        }
+    }
+
+    private fun createTrailPuffBitmap(spec: IndependentOrbSpec): Bitmap {
+        val size = 64
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val center = size / 2f
+        val puffPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                center,
+                center,
+                center,
+                intArrayOf(
+                    Color.argb(133, spec.trailCoreR, spec.trailCoreG, spec.trailCoreB),
+                    Color.argb(71, spec.trailR, spec.trailG, spec.trailB),
+                    Color.argb(20, spec.trailR, spec.trailG, spec.trailB),
+                    Color.TRANSPARENT
+                ),
+                floatArrayOf(0f, 0.38f, 0.75f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(center, center, center, puffPaint)
+        return bmp
+    }
+
+    private fun createOrbBitmap(spec: IndependentOrbSpec): Bitmap {
         val size = 96
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val center = size / 2f
         val haloRadius = size * 0.48f
-        val bodyRadius = size * 0.185f
+        val bodyRadius = size * 0.19f
 
         val haloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = RadialGradient(
@@ -227,19 +302,38 @@ class HilmCoreView @JvmOverloads constructor(
         return animScale <= 0f || !sysEnabled
     }
 
+    private fun startOrbitLoop() {
+        if (isLoopRunning || isReducedMotionEnabled()) return
+        isLoopRunning = true
+        lastFrameTimeMs = -1.0
+        Choreographer.getInstance().postFrameCallback(frameCallback)
+    }
+
+    private fun stopOrbitLoop() {
+        if (!isLoopRunning) return
+        isLoopRunning = false
+        lastFrameTimeMs = -1.0
+        Choreographer.getInstance().removeFrameCallback(frameCallback)
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        startTimeMs = SystemClock.uptimeMillis()
-        currentElapsedMs = 0L
-        if (!isReducedMotionEnabled()) {
-            if (!frameTicker.isStarted) {
-                frameTicker.start()
-            }
+        if (windowVisibility == VISIBLE) {
+            startOrbitLoop()
+        }
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        if (visibility == VISIBLE && isAttachedToWindow) {
+            startOrbitLoop()
+        } else {
+            stopOrbitLoop()
         }
     }
 
     override fun onDetachedFromWindow() {
-        frameTicker.cancel()
+        stopOrbitLoop()
         super.onDetachedFromWindow()
     }
 
@@ -249,7 +343,7 @@ class HilmCoreView @JvmOverloads constructor(
         val minDim = min(w, h)
         if (minDim <= 0) return
 
-        val coreDrawSize = (minDim * 0.486f).toInt().coerceAtLeast(1)
+        val coreDrawSize = (minDim * 0.505f).toInt().coerceAtLeast(1)
         coreScaledBitmap = Bitmap.createScaledBitmap(src, coreDrawSize, coreDrawSize, true)
 
         val cx = w / 2f
@@ -258,43 +352,83 @@ class HilmCoreView @JvmOverloads constructor(
         coreRect.set(cx - half, cy - half, cx + half, cy + half)
     }
 
-    private fun projectKeplerOrbit(
-        meanAnomaly: Float,
-        spec: KeplerOrbSpec,
-        cx: Float,
-        cy: Float,
+    private fun computeSingleBaseOrb3D(
+        spec: IndependentOrbSpec,
+        elapsedMs: Float,
         minDim: Float,
-        out: ProjectedPoint
+        idx: Int
     ) {
+        val twoPi = (2.0 * PI).toFloat()
+        val meanAnomaly = (elapsedMs / spec.periodMs) * twoPi + spec.basePhase
         val e = spec.eccentricity
         var eccAnom = meanAnomaly
         for (step in 0 until 4) {
-            val f = eccAnom - e * sin(eccAnom) - meanAnomaly
-            val fp = 1f - e * cos(eccAnom)
-            eccAnom -= f / fp
+            eccAnom -= (eccAnom - e * sin(eccAnom) - meanAnomaly) / (1f - e * cos(eccAnom))
         }
 
         val semiMajor = minDim * spec.semiMajorRatio
         val xOrb = semiMajor * (cos(eccAnom) - e)
         val yOrb = semiMajor * spec.minorFactor * sin(eccAnom)
 
-        val x1 = xOrb
-        val y1 = yOrb * spec.cosI
-        val z1 = yOrb * spec.sinI
+        val xp = xOrb * spec.cosW - yOrb * spec.sinW
+        val yp = xOrb * spec.sinW + yOrb * spec.cosW
+
+        val x1 = xp
+        val y1 = yp * spec.cosI
+        val z1 = yp * spec.sinI
 
         val x2 = x1 * spec.cosY + z1 * spec.sinY
         val y2 = y1
         val z2 = -x1 * spec.sinY + z1 * spec.cosY
 
-        val x3 = x2 * spec.cosR - y2 * spec.sinR
-        val y3 = x2 * spec.sinR + y2 * spec.cosR
+        workAdjX[idx] = x2 * spec.cosR - y2 * spec.sinR
+        workAdjY[idx] = x2 * spec.sinR + y2 * spec.cosR
+        workAdjZ[idx] = z2
+    }
 
-        val cameraDist = minDim * 0.911f
-        val perspective = cameraDist / (cameraDist - z2)
+    private fun sampleOrbAtTime(
+        targetIdx: Int,
+        elapsedMs: Float,
+        cx: Float,
+        cy: Float,
+        minDim: Float,
+        out: ProjectedPoint
+    ) {
+        for (i in 0..2) {
+            computeSingleBaseOrb3D(orbSpecs[i], elapsedMs, minDim, i)
+        }
 
-        out.x = cx + x3 * perspective
-        out.y = cy + y3 * perspective
-        out.z = z2
+        val scaleUnit = minDim / 214f
+        val sigma = 18.0f * scaleUnit
+        val pushAmp = 5.5f * scaleUnit
+
+        for (i in 0..2) {
+            for (j in i + 1..2) {
+                val dx = workAdjX[j] - workAdjX[i]
+                val dy = workAdjY[j] - workAdjY[i]
+                val dz = workAdjZ[j] - workAdjZ[i]
+                val d3 = sqrt(dx * dx + dy * dy + dz * dz + 1e-4f)
+                val ratio = d3 / sigma
+                val w3 = exp(-ratio * ratio)
+                val step3 = pushAmp * w3
+                val ux = dx / d3
+                val uy = dy / d3
+                val uz = dz / d3
+                workAdjX[j] += ux * step3
+                workAdjY[j] += uy * step3
+                workAdjZ[j] += uz * step3
+                workAdjX[i] -= ux * step3
+                workAdjY[i] -= uy * step3
+                workAdjZ[i] -= uz * step3
+            }
+        }
+
+        val cameraDist = minDim * (240f / 214f)
+        val pz = workAdjZ[targetIdx]
+        val perspective = cameraDist / (cameraDist - pz)
+        out.x = cx + workAdjX[targetIdx] * perspective
+        out.y = cy + workAdjY[targetIdx] * perspective
+        out.z = pz
         out.scale = perspective
     }
 
@@ -307,16 +441,22 @@ class HilmCoreView @JvmOverloads constructor(
 
         val cx = w / 2f
         val cy = h / 2f
-        val baseOrbRadius = minDim * 0.0318f
+        val baseOrbRadius = minDim * (6.0f / 214f)
+        val elapsedF = if (isReducedMotionEnabled()) 0f else simulationTimeMs.toFloat()
         val twoPi = (2.0 * PI).toFloat()
 
-        for (i in 0..2) {
-            val spec = orbSpecs[i]
-            val meanAnomaly = (currentElapsedMs / spec.periodMs) * twoPi + spec.phaseOffset
-            projectKeplerOrbit(meanAnomaly, spec, cx, cy, minDim, trailBuffer[0])
-            headDepths[i] = trailBuffer[0].z
-            sortedIndices[i] = i
+        for (idx in 0..2) {
+            val spec = orbSpecs[idx]
+            val trailWindowMs = (trailArcRad / twoPi) * spec.periodMs
+            val buffer = trailBuffers[idx]
+            for (s in 0..trailSegments) {
+                val frac = s.toFloat() / trailSegments
+                sampleOrbAtTime(idx, elapsedF - frac * trailWindowMs, cx, cy, minDim, buffer[s])
+            }
+            headDepths[idx] = buffer[0].z
+            sortedIndices[idx] = idx
         }
+
         for (i in 0 until 2) {
             for (j in i + 1 until 3) {
                 if (headDepths[sortedIndices[j]] < headDepths[sortedIndices[i]]) {
@@ -327,97 +467,127 @@ class HilmCoreView @JvmOverloads constructor(
             }
         }
 
-        // Pass 1: Background hemisphere (z < 0) occluded behind the central sphere
+        // Pass 1: Back hemisphere (z < 0) behind central sphere
         for (slot in 0..2) {
             val idx = sortedIndices[slot]
-            val spec = orbSpecs[idx]
-            val meanAnomaly = (currentElapsedMs / spec.periodMs) * twoPi + spec.phaseOffset
-            drawOrbAndCurvedTrail(canvas, idx, meanAnomaly, cx, cy, minDim, baseOrbRadius, drawFront = false)
+            drawOrbAndCurvedTrail(canvas, idx, minDim, baseOrbRadius, drawFront = false)
         }
 
-        // Pass 2: Fixed & stable central HILM nucleus
+        // Pass 2: Fixed & unaltered central HILM nucleus
         coreScaledBitmap?.let { bmp ->
             bitmapPaint.alpha = 255
             canvas.drawBitmap(bmp, null, coreRect, bitmapPaint)
         }
 
-        // Pass 3: Foreground hemisphere (z >= 0) sweeping in front of the central sphere
+        // Pass 3: Front hemisphere (z >= 0) in front of central sphere
         for (slot in 0..2) {
             val idx = sortedIndices[slot]
-            val spec = orbSpecs[idx]
-            val meanAnomaly = (currentElapsedMs / spec.periodMs) * twoPi + spec.phaseOffset
-            drawOrbAndCurvedTrail(canvas, idx, meanAnomaly, cx, cy, minDim, baseOrbRadius, drawFront = true)
+            drawOrbAndCurvedTrail(canvas, idx, minDim, baseOrbRadius, drawFront = true)
         }
     }
 
     private fun drawOrbAndCurvedTrail(
         canvas: Canvas,
         index: Int,
-        meanAnomaly: Float,
-        cx: Float,
-        cy: Float,
         minDim: Float,
         baseOrbRadius: Float,
         drawFront: Boolean
     ) {
-        val spec = orbSpecs[index]
-        for (i in 0..trailSegments) {
-            val frac = i.toFloat() / trailSegments
-            projectKeplerOrbit(
-                meanAnomaly - frac * trailArcMeanRad,
-                spec,
-                cx,
-                cy,
-                minDim,
-                trailBuffer[i]
-            )
+        val buffer = trailBuffers[index]
+        val depthNormSpan = 45f * (minDim / 214f)
+        val scaleUnit = minDim / 214f
+        val head = buffer[0]
+        val headDepthMix = ((head.z + depthNormSpan) / (2f * depthNormSpan)).coerceIn(0f, 1f)
+        val headDepthDim = 0.38f + 0.62f * headDepthMix
+        val comaSpan = 26f * scaleUnit
+
+        // Camada 1: Névoa luminosa contínua ao longo de toda a cauda elíptica
+        val puffBmp = trailPuffBitmaps[index]
+        if (puffBmp != null) {
+            for (i in trailSegments downTo 1) {
+                val p = buffer[i]
+                val isFront = p.z >= 0f
+                if (isFront != drawFront) continue
+
+                val frac = i.toFloat() / trailSegments
+                val mistFade = (1f - frac).pow(1.28f)
+                val depthMix = ((p.z + depthNormSpan) / (2f * depthNormSpan)).coerceIn(0f, 1f)
+                val depthDim = 0.36f + 0.64f * depthMix
+                val dx = p.x - head.x
+                val dy = p.y - head.y
+                val distFromHead = sqrt(dx * dx + dy * dy)
+                val comaBoost = 0.72f + 0.28f * exp(-distFromHead / comaSpan)
+                val puffAlpha = 0.145f * mistFade * depthDim * comaBoost
+                if (puffAlpha <= 0.003f) continue
+
+                val puffRadius = (10.2f * (1f - 0.54f * frac) + 2.2f) * scaleUnit * p.scale
+                puffDestRect.set(
+                    p.x - puffRadius,
+                    p.y - puffRadius,
+                    p.x + puffRadius,
+                    p.y + puffRadius
+                )
+                bitmapPaint.alpha = (puffAlpha * 255f).toInt().coerceIn(0, 255)
+                canvas.drawBitmap(puffBmp, null, puffDestRect, bitmapPaint)
+            }
         }
 
+        // Camada 2: Cauda principal contínua com dissipação progressiva ao longo do arco
+        val plasmaColors = plasmaColorTable[index]
         for (i in trailSegments - 1 downTo 0) {
-            val p0 = trailBuffer[i]
-            val p1 = trailBuffer[i + 1]
+            val p0 = buffer[i]
+            val p1 = buffer[i + 1]
             val midZ = (p0.z + p1.z) * 0.5f
             val isFront = midZ >= 0f
             if (isFront != drawFront) continue
 
             val frac = (i + 0.5f) / trailSegments
-            val taper = (1f - frac).pow(1.4f)
-            val alphaFade = (1f - frac).pow(2.0f)
-            val depthDim = if (isFront) 1f else 0.52f
+            val taper = (1f - frac).pow(1.15f)
+            val depthMix = ((midZ + depthNormSpan) / (2f * depthNormSpan)).coerceIn(0f, 1f)
+            val segAlpha = 0.35f * (1f - frac).pow(1.24f) * (0.38f + 0.62f * depthMix) * (0.68f + 0.32f * headDepthDim)
+            if (segAlpha <= 0.004f) continue
+
             val avgScale = (p0.scale + p1.scale) * 0.5f
-
-            trailPaint.strokeWidth = max(1f, baseOrbRadius * 1.41f * avgScale * taper)
-            trailPaint.color = Color.argb(
-                (112f * alphaFade * depthDim).toInt().coerceIn(0, 255),
-                spec.trailR,
-                spec.trailG,
-                spec.trailB
-            )
-            canvas.drawLine(p0.x, p0.y, p1.x, p1.y, trailPaint)
-
-            trailPaint.strokeWidth = max(0.8f, baseOrbRadius * 0.56f * avgScale * taper)
-            trailPaint.color = Color.argb(
-                (204f * alphaFade * depthDim).toInt().coerceIn(0, 255),
-                spec.trailCoreR,
-                spec.trailCoreG,
-                spec.trailCoreB
-            )
+            trailPaint.color = plasmaColors[i]
+            trailPaint.strokeWidth = max(0.45f * scaleUnit, baseOrbRadius * 0.833f * avgScale * taper)
+            trailPaint.alpha = (segAlpha * 255f).toInt().coerceIn(0, 255)
             canvas.drawLine(p0.x, p0.y, p1.x, p1.y, trailPaint)
         }
 
-        val head = trailBuffer[0]
+        // Camada 3: Filamento luminoso interno próximo ao ponto (efeito núcleo de cometa)
+        val filamentColors = filamentColorTable[index]
+        for (i in filamentLimit - 1 downTo 0) {
+            val p0 = buffer[i]
+            val p1 = buffer[i + 1]
+            val midZ = (p0.z + p1.z) * 0.5f
+            val isFront = midZ >= 0f
+            if (isFront != drawFront) continue
+
+            val innerFrac = (i + 0.5f) / filamentLimit
+            val depthMix = ((midZ + depthNormSpan) / (2f * depthNormSpan)).coerceIn(0f, 1f)
+            val innerAlpha = 0.44f * (1f - innerFrac).pow(1.38f) * (0.4f + 0.6f * depthMix) * (0.7f + 0.3f * headDepthDim)
+            if (innerAlpha <= 0.005f) continue
+
+            val avgScale = (p0.scale + p1.scale) * 0.5f
+            val innerTaper = (1f - innerFrac).pow(1.25f)
+            trailPaint.color = filamentColors[i]
+            trailPaint.strokeWidth = max(0.35f * scaleUnit, baseOrbRadius * 0.367f * avgScale * innerTaper)
+            trailPaint.alpha = (innerAlpha * 255f).toInt().coerceIn(0, 255)
+            canvas.drawLine(p0.x, p0.y, p1.x, p1.y, trailPaint)
+        }
+
         val isFront = head.z >= 0f
         if (isFront != drawFront) return
 
         val bmp = orbBitmaps[index] ?: return
-        val halfDrawSize = baseOrbRadius * 2.55f * head.scale
+        val halfDrawSize = baseOrbRadius * 2.5f * head.scale
         orbDestRect.set(
             head.x - halfDrawSize,
             head.y - halfDrawSize,
             head.x + halfDrawSize,
             head.y + halfDrawSize
         )
-        bitmapPaint.alpha = if (isFront) 255 else 184
+        bitmapPaint.alpha = ((0.56f + 0.44f * headDepthMix) * 255f).toInt().coerceIn(0, 255)
         canvas.drawBitmap(bmp, null, orbDestRect, bitmapPaint)
     }
 }

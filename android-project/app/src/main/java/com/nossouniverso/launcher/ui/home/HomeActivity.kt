@@ -1,13 +1,16 @@
 package com.nossouniverso.launcher.ui.home
 
+import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.Intent
 import android.os.Bundle
 import android.view.DragEvent
 import android.view.View
+import android.widget.Button
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -25,6 +28,10 @@ import com.nossouniverso.launcher.ui.views.HilmCoreView
 import com.nossouniverso.launcher.ui.views.HudDockSlotView
 import com.nossouniverso.launcher.ui.views.HudFrameView
 import com.nossouniverso.launcher.ui.views.HudPlateButton
+import com.nossouniverso.launcher.updater.ApkDownloadResult
+import com.nossouniverso.launcher.updater.LauncherUpdateManager
+import com.nossouniverso.launcher.updater.UpdateCheckResult
+import java.io.File
 
 class HomeActivity : AppCompatActivity() {
 
@@ -34,6 +41,13 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var editModeBar: LinearLayout
     private lateinit var btnFinishEdit: TextView
     private lateinit var btnHubControl: ImageButton
+
+    private lateinit var coreUpdatePopover: LinearLayout
+    private lateinit var btnCloseUpdatePopover: TextView
+    private lateinit var tvUpdateMessage: TextView
+    private lateinit var progressUpdateDownload: ProgressBar
+    private lateinit var btnUpdateAction: Button
+    private lateinit var updateManager: LauncherUpdateManager
 
     private val plateViews = mutableMapOf<SlotPosition, HudPlateButton>()
     private val dockViews = mutableMapOf<SlotPosition, HudDockSlotView>()
@@ -45,6 +59,71 @@ class HomeActivity : AppCompatActivity() {
     private var pendingSwapSource: SlotPosition? = null
     private var pendingCustomIconTarget: SlotPosition? = null
     private var packageReceiver: BroadcastReceiver? = null
+
+    private var updateState: UpdateUiState = UpdateUiState.IDLE
+    private var availableUpdate: UpdateCheckResult.UpdateAvailable? = null
+    private var downloadedApkFile: File? = null
+
+    private enum class UpdateUiState {
+        IDLE,
+        CHECKING,
+        UP_TO_DATE,
+        UPDATE_AVAILABLE,
+        DOWNLOADING,
+        PERMISSION_REQUIRED,
+        READY_TO_INSTALL,
+        INSTALLED_SUCCESS,
+        ERROR
+    }
+
+    private val requestInstallPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        val apkFile = downloadedApkFile
+        if (apkFile != null && apkFile.exists()) {
+            if (updateManager.canInstallPackages()) {
+                launchApkInstaller(apkFile)
+            } else {
+                updateState = UpdateUiState.PERMISSION_REQUIRED
+                renderUpdatePopover(
+                    message = "Permissão de instalação ainda não autorizada no Android.",
+                    actionLabel = getString(R.string.update_action_authorize),
+                    actionEnabled = true
+                )
+            }
+        }
+    }
+
+    private val installApkLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                updateState = UpdateUiState.INSTALLED_SUCCESS
+                renderUpdatePopover(
+                    message = "Atualização instalada com sucesso.",
+                    actionLabel = "Fechar",
+                    actionEnabled = true
+                )
+            }
+            Activity.RESULT_CANCELED -> {
+                updateState = UpdateUiState.READY_TO_INSTALL
+                renderUpdatePopover(
+                    message = "Instalação cancelada pelo usuário. Você pode tentar novamente.",
+                    actionLabel = "Instalar agora",
+                    actionEnabled = true
+                )
+            }
+            else -> {
+                updateState = UpdateUiState.READY_TO_INSTALL
+                renderUpdatePopover(
+                    message = "Não foi possível concluir a instalação no Android.",
+                    actionLabel = "Tentar instalar novamente",
+                    actionEnabled = true
+                )
+            }
+        }
+    }
 
     private val pickCustomIconLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -79,6 +158,7 @@ class HomeActivity : AppCompatActivity() {
         setContentView(R.layout.activity_home)
 
         app = application as NossoUniversoApp
+        updateManager = LauncherUpdateManager(this)
         bindViews()
         setupListeners()
         preventHomeBackExit()
@@ -97,6 +177,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        updateManager.shutdown()
         packageReceiver?.let { unregisterReceiver(it) }
         super.onDestroy()
     }
@@ -107,6 +188,12 @@ class HomeActivity : AppCompatActivity() {
         editModeBar = findViewById(R.id.editModeBar)
         btnFinishEdit = findViewById(R.id.btnFinishEdit)
         btnHubControl = findViewById(R.id.btnHubControl)
+
+        coreUpdatePopover = findViewById(R.id.coreUpdatePopover)
+        btnCloseUpdatePopover = findViewById(R.id.btnCloseUpdatePopover)
+        tvUpdateMessage = findViewById(R.id.tvUpdateMessage)
+        progressUpdateDownload = findViewById(R.id.progressUpdateDownload)
+        btnUpdateAction = findViewById(R.id.btnUpdateAction)
 
         plateViews[SlotPosition.PLATE_TOP_LEFT] = findViewById(R.id.plateTopLeft)
         plateViews[SlotPosition.PLATE_TOP_RIGHT] = findViewById(R.id.plateTopRight)
@@ -124,6 +211,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         dockCenterDrawer.setOnClickListener {
+            hideUpdatePopover()
             openAppDrawer(targetSlot = null)
         }
 
@@ -133,6 +221,7 @@ class HomeActivity : AppCompatActivity() {
         }
 
         btnHubControl.setOnClickListener {
+            hideUpdatePopover()
             toggleEditMode(!isEditMode)
         }
 
@@ -149,13 +238,21 @@ class HomeActivity : AppCompatActivity() {
             if (isEditMode) {
                 toggleEditMode(false)
             } else {
-                openAppDrawer(targetSlot = null)
+                toggleCoreUpdatePopover()
             }
         }
 
         hilmCoreView.setOnLongClickListener {
             startActivity(Intent(this, LauncherSettingsActivity::class.java))
             true
+        }
+
+        btnCloseUpdatePopover.setOnClickListener {
+            hideUpdatePopover()
+        }
+
+        btnUpdateAction.setOnClickListener {
+            handleUpdateActionTap()
         }
 
         val allSlotViews: Map<SlotPosition, View> = plateViews + dockViews
@@ -354,10 +451,254 @@ class HomeActivity : AppCompatActivity() {
         return byComponent[key] ?: byPackage[slot.packageName]
     }
 
+    private fun toggleCoreUpdatePopover() {
+        if (coreUpdatePopover.visibility == View.VISIBLE) {
+            if (updateState != UpdateUiState.CHECKING && updateState != UpdateUiState.DOWNLOADING) {
+                hideUpdatePopover()
+            }
+            return
+        }
+
+        if (updateState == UpdateUiState.UP_TO_DATE ||
+            updateState == UpdateUiState.ERROR ||
+            updateState == UpdateUiState.INSTALLED_SUCCESS
+        ) {
+            updateState = UpdateUiState.IDLE
+        }
+
+        when (updateState) {
+            UpdateUiState.IDLE -> {
+                val (installedVersion, _) = updateManager.getInstalledVersionInfo()
+                renderUpdatePopover(
+                    message = "Versão instalada: v$installedVersion",
+                    actionLabel = getString(R.string.update_action_check),
+                    actionEnabled = true
+                )
+            }
+            UpdateUiState.UPDATE_AVAILABLE -> {
+                val update = availableUpdate
+                if (update != null) {
+                    renderUpdatePopover(
+                        message = "Instalada: v${update.installedVersion} · Disponível: v${update.latestVersion}",
+                        actionLabel = getString(R.string.update_action_install_now),
+                        actionEnabled = true
+                    )
+                } else {
+                    updateState = UpdateUiState.IDLE
+                    val (installedVersion, _) = updateManager.getInstalledVersionInfo()
+                    renderUpdatePopover(
+                        message = "Versão instalada: v$installedVersion",
+                        actionLabel = getString(R.string.update_action_check),
+                        actionEnabled = true
+                    )
+                }
+            }
+            else -> {
+                // Keep active state visible as-is
+            }
+        }
+
+        coreUpdatePopover.visibility = View.VISIBLE
+    }
+
+    private fun hideUpdatePopover() {
+        coreUpdatePopover.visibility = View.GONE
+    }
+
+    private fun handleUpdateActionTap() {
+        when (updateState) {
+            UpdateUiState.IDLE,
+            UpdateUiState.UP_TO_DATE,
+            UpdateUiState.ERROR -> startUpdateCheck()
+            UpdateUiState.UPDATE_AVAILABLE -> startUpdateDownload()
+            UpdateUiState.PERMISSION_REQUIRED -> {
+                try {
+                    requestInstallPermissionLauncher.launch(updateManager.createInstallPermissionIntent())
+                } catch (_: Exception) {
+                    updateState = UpdateUiState.ERROR
+                    renderUpdatePopover(
+                        message = "Não foi possível abrir as permissões de instalação do Android.",
+                        actionLabel = "Tentar novamente",
+                        actionEnabled = true
+                    )
+                }
+            }
+            UpdateUiState.READY_TO_INSTALL -> {
+                val file = downloadedApkFile
+                if (file != null && file.exists()) {
+                    proceedToInstallApk(file)
+                } else {
+                    updateState = UpdateUiState.IDLE
+                    startUpdateCheck()
+                }
+            }
+            UpdateUiState.INSTALLED_SUCCESS -> hideUpdatePopover()
+            UpdateUiState.CHECKING,
+            UpdateUiState.DOWNLOADING -> Unit
+        }
+    }
+
+    private fun startUpdateCheck() {
+        updateState = UpdateUiState.CHECKING
+        availableUpdate = null
+        downloadedApkFile = null
+        renderUpdatePopover(
+            message = getString(R.string.update_checking),
+            actionLabel = "Verificando…",
+            actionEnabled = false
+        )
+
+        updateManager.checkForUpdates { result ->
+            when (result) {
+                is UpdateCheckResult.UpToDate -> {
+                    updateState = UpdateUiState.UP_TO_DATE
+                    renderUpdatePopover(
+                        message = "O aplicativo já está atualizado (v${result.installedVersion}).",
+                        actionLabel = "Verificar novamente",
+                        actionEnabled = true
+                    )
+                }
+                is UpdateCheckResult.UpdateAvailable -> {
+                    updateState = UpdateUiState.UPDATE_AVAILABLE
+                    availableUpdate = result
+                    renderUpdatePopover(
+                        message = "Versão instalada: v${result.installedVersion}\nVersão disponível: v${result.latestVersion}",
+                        actionLabel = getString(R.string.update_action_install_now),
+                        actionEnabled = true
+                    )
+                }
+                is UpdateCheckResult.NoApkAsset -> {
+                    updateState = UpdateUiState.ERROR
+                    renderUpdatePopover(
+                        message = "Nova versão v${result.latestVersion} encontrada, mas sem pacote .apk anexado.",
+                        actionLabel = "Tentar novamente",
+                        actionEnabled = true
+                    )
+                }
+                is UpdateCheckResult.Failure -> {
+                    updateState = UpdateUiState.ERROR
+                    renderUpdatePopover(
+                        message = result.message,
+                        actionLabel = "Tentar novamente",
+                        actionEnabled = true
+                    )
+                }
+            }
+        }
+    }
+
+    private fun startUpdateDownload() {
+        val update = availableUpdate ?: return
+        updateState = UpdateUiState.DOWNLOADING
+        renderUpdatePopover(
+            message = "Baixando atualização v${update.latestVersion}…",
+            actionLabel = "Baixando…",
+            actionEnabled = false,
+            showProgress = true,
+            progressPercent = 0
+        )
+
+        updateManager.downloadApk(
+            update = update,
+            onProgress = { downloaded, total ->
+                val percent = if (total > 0L) ((downloaded * 100L) / total).toInt().coerceIn(0, 100) else 0
+                val mbDone = String.format(java.util.Locale.US, "%.1f", downloaded / (1024f * 1024f))
+                val msg = if (total > 0L) {
+                    "Baixando pacote v${update.latestVersion}… $percent% ($mbDone MB)"
+                } else {
+                    "Baixando pacote v${update.latestVersion}… ($mbDone MB)"
+                }
+                renderUpdatePopover(
+                    message = msg,
+                    actionLabel = "Baixando…",
+                    actionEnabled = false,
+                    showProgress = true,
+                    progressPercent = percent
+                )
+            },
+            onComplete = { downloadResult ->
+                when (downloadResult) {
+                    is ApkDownloadResult.Success -> {
+                        downloadedApkFile = downloadResult.apkFile
+                        proceedToInstallApk(downloadResult.apkFile)
+                    }
+                    is ApkDownloadResult.Failure -> {
+                        updateState = UpdateUiState.ERROR
+                        renderUpdatePopover(
+                            message = downloadResult.message,
+                            actionLabel = "Tentar novamente",
+                            actionEnabled = true
+                        )
+                    }
+                }
+            }
+        )
+    }
+
+    private fun proceedToInstallApk(apkFile: File) {
+        if (!updateManager.canInstallPackages()) {
+            updateState = UpdateUiState.PERMISSION_REQUIRED
+            renderUpdatePopover(
+                message = "Autorize este aplicativo a instalar pacotes de atualização no Android.",
+                actionLabel = getString(R.string.update_action_authorize),
+                actionEnabled = true
+            )
+            try {
+                requestInstallPermissionLauncher.launch(updateManager.createInstallPermissionIntent())
+            } catch (_: Exception) {
+                // Usuário pode acionar pelo botão do popover
+            }
+            return
+        }
+        launchApkInstaller(apkFile)
+    }
+
+    private fun launchApkInstaller(apkFile: File) {
+        try {
+            updateState = UpdateUiState.READY_TO_INSTALL
+            renderUpdatePopover(
+                message = "Abrindo confirmação de instalação do Android…",
+                actionLabel = "Instalar agora",
+                actionEnabled = true
+            )
+            installApkLauncher.launch(updateManager.createInstallApkIntent(apkFile))
+        } catch (e: Exception) {
+            updateState = UpdateUiState.ERROR
+            renderUpdatePopover(
+                message = "Falha ao abrir o instalador do Android: ${e.localizedMessage ?: "erro desconhecido"}",
+                actionLabel = "Tentar novamente",
+                actionEnabled = true
+            )
+        }
+    }
+
+    private fun renderUpdatePopover(
+        message: String,
+        actionLabel: String,
+        actionEnabled: Boolean,
+        showProgress: Boolean = false,
+        progressPercent: Int = 0
+    ) {
+        tvUpdateMessage.text = message
+        btnUpdateAction.text = actionLabel
+        btnUpdateAction.isEnabled = actionEnabled
+        btnUpdateAction.alpha = if (actionEnabled) 1f else 0.55f
+        progressUpdateDownload.visibility = if (showProgress) View.VISIBLE else View.GONE
+        if (showProgress) {
+            progressUpdateDownload.isIndeterminate = progressPercent <= 0
+            progressUpdateDownload.progress = progressPercent
+        }
+    }
+
     private fun preventHomeBackExit() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (isEditMode) {
+                if (coreUpdatePopover.visibility == View.VISIBLE &&
+                    updateState != UpdateUiState.CHECKING &&
+                    updateState != UpdateUiState.DOWNLOADING
+                ) {
+                    hideUpdatePopover()
+                } else if (isEditMode) {
                     toggleEditMode(false)
                 }
             }

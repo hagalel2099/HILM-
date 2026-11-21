@@ -10,4 +10,10 @@
     <string name="icon_pack_section">Conjunto de Ícones</string>
     <string name="hud_transparency_section">Transparência dos Painéis HUD</string>
     <string name="reset_shortcuts">Restaurar Atalhos</string>
+    <string name="update_title">Central Nosso Universo</string>
+    <string name="update_action_check">Buscar atualizações</string>
+    <string name="update_action_install_now">Atualizar agora</string>
+    <string name="update_action_authorize">Autorizar instalação</string>
+    <string name="update_checking">Consultando atualizações…</string>
+    <string name="update_up_to_date">O aplicativo já está atualizado.</string>
 </resources>

@@ -61,3 +61,16 @@ export interface AndroidProjectTreeResponse {
   jdkVersion: number;
   files: AndroidProjectFile[];
 }
+
+export interface LauncherUpdateCheckResponse {
+  status: "up_to_date" | "update_available" | "no_apk_asset";
+  installedVersion: string;
+  latestVersion: string;
+  releaseName: string;
+  publishedAt: string | null;
+  releaseNotes: string | null;
+  assetId: number | null;
+  assetName: string | null;
+  assetSizeBytes: number | null;
+  downloadPath: string | null;
+}
