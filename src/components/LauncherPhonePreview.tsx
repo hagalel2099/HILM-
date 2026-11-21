@@ -230,7 +230,7 @@ export function LauncherPhonePreview({
       }
     } catch {
       setUpdatePhase("error");
-      setUpdateMessage("Erro de conexão ao consultar o servidor de atualizações.");
+      setUpdateMessage("Erro de conexão ao consultar o serviço de atualizações.");
     }
   };
 
