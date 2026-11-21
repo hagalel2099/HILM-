@@ -1,7 +1,9 @@
+
 {
   "name": "nosso-universo-launcher-updater",
   "private": true,
   "scripts": {
+    "build": "echo Build concluido",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
