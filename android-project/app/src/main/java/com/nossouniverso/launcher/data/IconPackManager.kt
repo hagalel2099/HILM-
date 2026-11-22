@@ -6,16 +6,22 @@ import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
+import android.graphics.PorterDuffXfermode
+import android.graphics.RadialGradient
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
@@ -31,7 +37,10 @@ import org.xmlpull.v1.XmlPullParser
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
+import java.util.ArrayDeque
 import java.util.zip.ZipInputStream
+import kotlin.math.abs
+import kotlin.math.max
 
 class IconPackManager(
     private val context: Context,
@@ -73,7 +82,6 @@ class IconPackManager(
     fun getAvailableIconPacks(): List<IconPackInfo> {
         val packs = mutableListOf<IconPackInfo>()
 
-        // 1. Imported ZIP packs + built-in illustrated asset collections
         loadAllManagedPacks().values
             .sortedWith(
                 compareBy<ParsedPack> { it.info.kind != IconPackKind.IMPORTED_PACK }
@@ -81,7 +89,6 @@ class IconPackManager(
             )
             .forEach { packs.add(it.info) }
 
-        // 2. Built-in HUD styles & native restore option
         packs.add(
             IconPackInfo(
                 id = IconPackInfo.STYLE_NOSSO_UNIVERSO,
@@ -110,7 +117,6 @@ class IconPackManager(
             )
         )
 
-        // 3. External installed ADW / GO / Nova icon packs
         val themeActions = listOf(
             "org.adw.ActivityStarter.THEMES",
             "com.gau.go.launcherex.theme",
@@ -306,9 +312,7 @@ class IconPackManager(
             val iconsDestDir = File(packDir, "icons")
             iconsDestDir.mkdirs()
 
-            // Flatten extracted images safely into icons/ keeping filenames unique
             val copiedFileNames = mutableSetOf<String>()
-            val sourceBaseNameMap = mutableMapOf<String, String>()
             extractedImages.sortedBy { it.name.lowercase() }.forEach { imgFile ->
                 val destName = imgFile.name
                 val finalName = if (copiedFileNames.add(destName)) {
@@ -317,7 +321,6 @@ class IconPackManager(
                     "${imgFile.parentFile?.name ?: "icon"}_$destName"
                 }
                 imgFile.copyTo(File(iconsDestDir, finalName), overwrite = true)
-                sourceBaseNameMap[imgFile.name.lowercase()] = finalName
             }
 
             val finalManifest = if (parsedManifestJson != null && parsedManifestJson.optJSONArray("icons") != null) {
@@ -325,6 +328,9 @@ class IconPackManager(
                     put("id", cleanId)
                     if (!has("title") && has("name")) {
                         put("title", optString("name"))
+                    }
+                    if (!has("fallbackStyle")) {
+                        put("fallbackStyle", "titanium_liquid")
                     }
                 }
             } else {
@@ -381,15 +387,24 @@ class IconPackManager(
 
     fun resolveAppIcon(packageName: String, activityName: String, fallback: Drawable): Drawable {
         val selectedId = storage.getSelectedIconPackId()
+        return resolveForPack(selectedId, packageName, activityName, fallback)
+    }
+
+    fun resolveForPack(
+        packId: String,
+        packageName: String,
+        activityName: String,
+        fallback: Drawable
+    ): Drawable {
         return when {
-            selectedId == IconPackInfo.STYLE_SYSTEM_DEFAULT -> fallback
-            selectedId == IconPackInfo.STYLE_NOSSO_UNIVERSO -> applyHudCyanTint(fallback)
-            selectedId == IconPackInfo.STYLE_MONOCHROME_HUD -> applyMonochromeSilver(fallback)
-            selectedId.startsWith(IconPackInfo.ASSET_PACK_PREFIX) ||
-                selectedId.startsWith(IconPackInfo.IMPORTED_PACK_PREFIX) -> {
-                resolveFromManagedPack(selectedId, packageName, activityName, fallback)
+            packId == IconPackInfo.STYLE_SYSTEM_DEFAULT -> fallback
+            packId == IconPackInfo.STYLE_NOSSO_UNIVERSO -> applyHudCyanTint(fallback)
+            packId == IconPackInfo.STYLE_MONOCHROME_HUD -> applyMonochromeSilver(fallback)
+            packId.startsWith(IconPackInfo.ASSET_PACK_PREFIX) ||
+                packId.startsWith(IconPackInfo.IMPORTED_PACK_PREFIX) -> {
+                resolveFromManagedPack(packId, packageName, activityName, fallback)
             }
-            else -> loadFromExternalPack(selectedId, packageName, activityName) ?: fallback
+            else -> loadFromExternalPack(packId, packageName, activityName) ?: fallback
         }
     }
 
@@ -418,7 +433,478 @@ class IconPackManager(
                 ?.let { return it }
         }
 
-        return applyAdaptiveLiquidEnclosure(fallback)
+        // Automatically sculpt ANY unmapped / future third-party app into unified Titanium Liquid style
+        return when (parsed.info.fallbackStyle.lowercase()) {
+            "none", "original", "system" -> fallback
+            "hud_cyan" -> applyHudCyanTint(fallback)
+            "monochrome" -> applyMonochromeSilver(fallback)
+            else -> renderUnifiedTitaniumLiquidIcon(
+                cacheIdentity = "$packId:$normalizedPkg/$normalizedAct",
+                fallback = fallback
+            )
+        }
+    }
+
+    /**
+     * Converts any third-party or future app icon into the exact Titanium Liquid aesthetic:
+     * glossy obsidian squircle, liquid-titanium chrome bevel, electric cyan/violet rim glow,
+     * and sculpted liquid-silver foreground artwork.
+     */
+    private fun renderUnifiedTitaniumLiquidIcon(
+        cacheIdentity: String,
+        fallback: Drawable
+    ): Drawable {
+        val size = 192
+        val cacheKey = "liquid_auto:$cacheIdentity#$size"
+        bitmapCache.get(cacheKey)?.let { cached ->
+            return BitmapDrawable(context.resources, cached)
+        }
+
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+
+        val margin = size * 0.06f
+        val rect = RectF(margin, margin, size - margin, size - margin)
+        val radius = size * 0.23f
+        val squirclePath = Path().apply {
+            addRoundRect(rect, radius, radius, Path.Direction.CW)
+        }
+
+        // 1. Soft outer cyan & violet rim bloom clipped safely inside canvas margin
+        val cyanBloomPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 5f
+            color = Color.argb(115, 34, 211, 238)
+            maskFilter = BlurMaskFilter(7f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawPath(squirclePath, cyanBloomPaint)
+
+        // 2. Deep glossy obsidian interior gradient
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                intArrayOf(
+                    Color.rgb(20, 27, 42),
+                    Color.rgb(5, 8, 15),
+                    Color.rgb(10, 14, 28)
+                ),
+                floatArrayOf(0f, 0.55f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(squirclePath, bgPaint)
+
+        // 3. Extract & sculpt app foreground symbol into liquid titanium chrome
+        val prepared = prepareForegroundSymbol(fallback, 128)
+        if (prepared.isIsolatedSilhouette) {
+            drawSculptedLiquidSilverSymbol(canvas, prepared.bitmap, size)
+        } else {
+            drawMetallicFramedArtwork(canvas, prepared.bitmap, size)
+        }
+        if (!prepared.bitmap.isRecycled) {
+            prepared.bitmap.recycle()
+        }
+
+        // 4. Glossy glass dome specular reflection overlay inside squircle
+        canvas.save()
+        canvas.clipPath(squirclePath)
+        val domePath = Path().apply {
+            addOval(
+                RectF(
+                    rect.left - size * 0.12f,
+                    rect.top - size * 0.35f,
+                    rect.right + size * 0.12f,
+                    rect.top + rect.height() * 0.52f
+                ),
+                Path.Direction.CW
+            )
+        }
+        val domePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f,
+                rect.top,
+                0f,
+                rect.top + rect.height() * 0.45f,
+                Color.argb(42, 255, 255, 255),
+                Color.argb(0, 255, 255, 255),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(domePath, domePaint)
+        canvas.restore()
+
+        // 5. Molten liquid-titanium chrome bevel border + neon cyan/violet rim
+        val outerChromePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 7f
+            shader = LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                intArrayOf(
+                    Color.parseColor("#F8FAFC"),
+                    Color.parseColor("#64748B"),
+                    Color.parseColor("#22D3EE"),
+                    Color.parseColor("#8B5CF6"),
+                    Color.parseColor("#E2E8F0")
+                ),
+                floatArrayOf(0f, 0.28f, 0.55f, 0.80f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(squirclePath, outerChromePaint)
+
+        // Crisp inner bevel highlight
+        val innerRect = RectF(
+            rect.left + 4.5f,
+            rect.top + 4.5f,
+            rect.right - 4.5f,
+            rect.bottom - 4.5f
+        )
+        val innerRadius = max(4f, radius - 4.5f)
+        val innerRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.2f
+            shader = LinearGradient(
+                innerRect.left,
+                innerRect.top,
+                innerRect.right,
+                innerRect.bottom,
+                intArrayOf(
+                    Color.argb(215, 255, 255, 255),
+                    Color.argb(90, 34, 211, 238),
+                    Color.argb(170, 139, 92, 246),
+                    Color.argb(130, 34, 211, 238)
+                ),
+                null,
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRoundRect(innerRect, innerRadius, innerRadius, innerRimPaint)
+
+        // Bright top-left specular catchlight dot/glow matching Titanium Liquid style
+        val glintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                rect.left + rect.width() * 0.16f,
+                rect.top + rect.height() * 0.15f,
+                size * 0.14f,
+                intArrayOf(Color.argb(195, 255, 255, 255), Color.argb(0, 255, 255, 255)),
+                null,
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(
+            rect.left + rect.width() * 0.16f,
+            rect.top + rect.height() * 0.15f,
+            size * 0.14f,
+            glintPaint
+        )
+
+        bitmapCache.put(cacheKey, out)
+        return BitmapDrawable(context.resources, out)
+    }
+
+    private data class PreparedSymbol(
+        val bitmap: Bitmap,
+        val isIsolatedSilhouette: Boolean
+    )
+
+    private fun prepareForegroundSymbol(drawable: Drawable, targetSize: Int): PreparedSymbol {
+        val raw = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && drawable is AdaptiveIconDrawable) {
+            val fg = drawable.foreground
+            if (fg != null) {
+                // Draw AdaptiveIcon foreground zoomed slightly around the 72dp safe zone
+                val bmp = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
+                val c = Canvas(bmp)
+                val pad = (targetSize * 0.18f).toInt()
+                fg.setBounds(-pad, -pad, targetSize + pad, targetSize + pad)
+                fg.draw(c)
+                bmp
+            } else {
+                drawableToBitmap(drawable, targetSize)
+            }
+        } else {
+            drawableToBitmap(drawable, targetSize)
+        }
+
+        val transparentCount = countTransparentPixels(raw)
+        val total = raw.width * raw.height
+        val transparentRatio = transparentCount.toFloat() / total.toFloat()
+        if (transparentRatio >= 0.14f) {
+            val cropped = trimTransparentToSquare(raw, targetSize)
+            if (cropped !== raw) raw.recycle()
+            return PreparedSymbol(cropped, true)
+        }
+
+        // Legacy square icon with solid background -> strip uniform border color via floodfill
+        val stripped = stripUniformCornerBackground(raw)
+        val postRatio = countTransparentPixels(stripped).toFloat() / (stripped.width * stripped.height).toFloat()
+        if (postRatio >= 0.16f && postRatio <= 0.94f) {
+            if (stripped !== raw) raw.recycle()
+            val cropped = trimTransparentToSquare(stripped, targetSize)
+            if (cropped !== stripped) stripped.recycle()
+            return PreparedSymbol(cropped, true)
+        }
+
+        if (stripped !== raw) stripped.recycle()
+        return PreparedSymbol(raw, false)
+    }
+
+    private fun countTransparentPixels(bmp: Bitmap): Int {
+        val w = bmp.width
+        val h = bmp.height
+        val pixels = IntArray(w * h)
+        bmp.getPixels(pixels, 0, w, 0, 0, w, h)
+        var count = 0
+        for (p in pixels) {
+            if ((p ushr 24) < 40) count++
+        }
+        return count
+    }
+
+    private fun stripUniformCornerBackground(src: Bitmap): Bitmap {
+        val w = src.width
+        val h = src.height
+        val pixels = IntArray(w * h)
+        src.getPixels(pixels, 0, w, 0, 0, w, h)
+
+        val corners = listOf(
+            pixels[2 * w + 2],
+            pixels[2 * w + (w - 3)],
+            pixels[(h - 3) * w + 2],
+            pixels[(h - 3) * w + (w - 3)]
+        )
+        if (corners.any { Color.alpha(it) < 180 }) {
+            return src
+        }
+
+        val ref = corners[0]
+        val uniform = corners.all { colorDistance(ref, it) < 42 }
+        if (!uniform) return src
+
+        val out = pixels.clone()
+        val visited = BooleanArray(w * h)
+        val queue = ArrayDeque<Int>()
+
+        fun tryEnqueue(idx: Int) {
+            if (!visited[idx] && colorDistance(ref, pixels[idx]) < 48) {
+                visited[idx] = true
+                queue.addLast(idx)
+            }
+        }
+
+        for (x in 0 until w) {
+            tryEnqueue(x)
+            tryEnqueue((h - 1) * w + x)
+        }
+        for (y in 0 until h) {
+            tryEnqueue(y * w)
+            tryEnqueue(y * w + (w - 1))
+        }
+
+        while (queue.isNotEmpty()) {
+            val idx = queue.removeFirst()
+            out[idx] = Color.TRANSPARENT
+            val x = idx % w
+            val y = idx / w
+            if (x > 0) tryEnqueue(idx - 1)
+            if (x < w - 1) tryEnqueue(idx + 1)
+            if (y > 0) tryEnqueue(idx - w)
+            if (y < h - 1) tryEnqueue(idx + w)
+        }
+
+        return Bitmap.createBitmap(out, w, h, Bitmap.Config.ARGB_8888)
+    }
+
+    private fun colorDistance(c1: Int, c2: Int): Int {
+        val dr = abs(Color.red(c1) - Color.red(c2))
+        val dg = abs(Color.green(c1) - Color.green(c2))
+        val db = abs(Color.blue(c1) - Color.blue(c2))
+        return dr + dg + db
+    }
+
+    private fun trimTransparentToSquare(src: Bitmap, outSize: Int): Bitmap {
+        val w = src.width
+        val h = src.height
+        val pixels = IntArray(w * h)
+        src.getPixels(pixels, 0, w, 0, 0, w, h)
+
+        var minX = w
+        var minY = h
+        var maxX = -1
+        var maxY = -1
+        for (y in 0 until h) {
+            val row = y * w
+            for (x in 0 until w) {
+                if ((pixels[row + x] ushr 24) > 24) {
+                    if (x < minX) minX = x
+                    if (x > maxX) maxX = x
+                    if (y < minY) minY = y
+                    if (y > maxY) maxY = y
+                }
+            }
+        }
+        if (maxX < minX || maxY < minY) return src
+
+        val cropW = maxX - minX + 1
+        val cropH = maxY - minY + 1
+        val span = max(cropW, cropH)
+        val dest = Bitmap.createBitmap(outSize, outSize, Bitmap.Config.ARGB_8888)
+        val c = Canvas(dest)
+        val scale = (outSize * 0.86f) / span.toFloat()
+        val drawW = cropW * scale
+        val drawH = cropH * scale
+        val left = (outSize - drawW) / 2f
+        val top = (outSize - drawH) / 2f
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        c.drawBitmap(
+            src,
+            Rect(minX, minY, maxX + 1, maxY + 1),
+            RectF(left, top, left + drawW, top + drawH),
+            paint
+        )
+        return dest
+    }
+
+    private fun drawSculptedLiquidSilverSymbol(
+        canvas: Canvas,
+        symbolBmp: Bitmap,
+        canvasSize: Int
+    ) {
+        val drawSize = (canvasSize * 0.62f).toInt()
+        val offset = (canvasSize - drawSize) / 2f
+        val destRect = RectF(offset, offset, offset + drawSize, offset + drawSize)
+
+        val alphaMask = symbolBmp.extractAlpha()
+
+        // Drop shadow for 3D depth
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(210, 0, 0, 0)
+            maskFilter = BlurMaskFilter(6f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left + 4f, destRect.top + 6f, destRect.right + 4f, destRect.bottom + 6f),
+            shadowPaint
+        )
+
+        // Electric cyan & violet rim bounce behind the sculpted metal
+        val cyanRim = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(155, 34, 211, 238)
+            maskFilter = BlurMaskFilter(4f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left - 2f, destRect.top - 1.5f, destRect.right - 2f, destRect.bottom - 1.5f),
+            cyanRim
+        )
+
+        val violetRim = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(150, 139, 92, 246)
+            maskFilter = BlurMaskFilter(4f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left + 2.5f, destRect.top + 2.5f, destRect.right + 2.5f, destRect.bottom + 2.5f),
+            violetRim
+        )
+
+        // Sculpted metallic liquid-silver fill preserving internal shading details
+        val sculpted = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
+        val sCanvas = Canvas(sculpted)
+
+        // Convert original foreground to high-contrast silver-gray preserving detail
+        // Even pure black or colorful third-party logos map into rich metallic titanium tones
+        val contrastMatrix = ColorMatrix(
+            floatArrayOf(
+                0.21f, 0.41f, 0.08f, 0f, 74f,
+                0.21f, 0.41f, 0.08f, 0f, 80f,
+                0.21f, 0.41f, 0.08f, 0f, 92f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
+        val basePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(contrastMatrix)
+        }
+        sCanvas.drawBitmap(symbolBmp, null, RectF(0f, 0f, drawSize.toFloat(), drawSize.toFloat()), basePaint)
+
+        // Apply diagonal brushed-titanium chrome gradient onto opaque pixels
+        val chromeGradientPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+            shader = LinearGradient(
+                0f,
+                0f,
+                drawSize.toFloat(),
+                drawSize.toFloat(),
+                intArrayOf(
+                    Color.argb(175, 255, 255, 255),
+                    Color.argb(120, 203, 213, 225),
+                    Color.argb(145, 71, 85, 105),
+                    Color.argb(165, 226, 232, 240),
+                    Color.argb(140, 103, 232, 249)
+                ),
+                floatArrayOf(0f, 0.25f, 0.54f, 0.78f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        sCanvas.drawRect(0f, 0f, drawSize.toFloat(), drawSize.toFloat(), chromeGradientPaint)
+
+        // Top-left crisp specular highlight
+        val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(165, 255, 255, 255)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left - 1.2f, destRect.top - 1.2f, destRect.right - 1.2f, destRect.bottom - 1.2f),
+            highlightPaint
+        )
+        canvas.drawBitmap(sculpted, null, destRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+
+        sculpted.recycle()
+        alphaMask.recycle()
+    }
+
+    private fun drawMetallicFramedArtwork(
+        canvas: Canvas,
+        artworkBmp: Bitmap,
+        canvasSize: Int
+    ) {
+        val inset = canvasSize * 0.16f
+        val innerRect = RectF(inset, inset, canvasSize - inset, canvasSize - inset)
+        val innerRadius = canvasSize * 0.16f
+        val clipPath = Path().apply {
+            addRoundRect(innerRect, innerRadius, innerRadius, Path.Direction.CW)
+        }
+
+        canvas.save()
+        canvas.clipPath(clipPath)
+        val coolMetalMatrix = ColorMatrix().apply { setSaturation(0.28f) }
+        val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(coolMetalMatrix)
+        }
+        canvas.drawBitmap(artworkBmp, null, innerRect, artPaint)
+
+        val tintOverlay = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                innerRect.left,
+                innerRect.top,
+                innerRect.right,
+                innerRect.bottom,
+                Color.argb(55, 34, 211, 238),
+                Color.argb(65, 139, 92, 246),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(innerRect, tintOverlay)
+        canvas.restore()
     }
 
     private fun buildIconSourcePath(pack: ParsedPack, fileName: String): String {
@@ -434,7 +920,6 @@ class IconPackManager(
         cachedManagedPacks?.let { return it }
         val discovered = linkedMapOf<String, ParsedPack>()
 
-        // Built-in asset collections
         val assetFolders = try {
             context.assets.list("icon_packs")?.toList().orEmpty()
         } catch (_: Exception) {
@@ -458,7 +943,6 @@ class IconPackManager(
             }
         }
 
-        // Imported ZIP collections on internal app storage
         val dirs = importedRootDir.listFiles()?.filter { it.isDirectory }.orEmpty()
         dirs.forEach { dir ->
             val manifestFile = File(dir, "manifest.json")
@@ -505,6 +989,7 @@ class IconPackManager(
                 if (isAsset) "HILM Studio" else "Importado (.zip)"
             }
             val version = json.optString("version").ifBlank { "1.0.0" }
+            val fallbackStyle = json.optString("fallbackStyle").ifBlank { "titanium_liquid" }
 
             val entries = mutableListOf<PackIconEntry>()
             val pkgMap = mutableMapOf<String, String>()
@@ -599,6 +1084,7 @@ class IconPackManager(
                 kind = if (isAsset) IconPackKind.ILLUSTRATED_ASSET else IconPackKind.IMPORTED_PACK,
                 assetFolder = if (isAsset) folderKey else null,
                 storageDirName = if (!isAsset) folderKey else null,
+                fallbackStyle = fallbackStyle,
                 previewFiles = previewItems,
                 iconCount = entries.size
             )
@@ -639,6 +1125,7 @@ class IconPackManager(
             put("subtitle", "Pacote importado via arquivo .zip (${fileNames.size} ícones).")
             put("author", "Importado localmente")
             put("version", "1.0.0")
+            put("fallbackStyle", "titanium_liquid")
             put("previewFiles", previewFiles)
             put("icons", iconsArray)
         }
@@ -669,60 +1156,6 @@ class IconPackManager(
             .replace(Regex("[^a-z0-9_-]+"), "_")
             .trim('_')
             .take(40)
-    }
-
-    private fun applyAdaptiveLiquidEnclosure(source: Drawable): Drawable {
-        val size = 144
-        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(out)
-        val rect = RectF(6f, 6f, size - 6f, size - 6f)
-        val radius = 32f
-
-        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(
-                0f,
-                0f,
-                size.toFloat(),
-                size.toFloat(),
-                intArrayOf(
-                    Color.rgb(16, 22, 34),
-                    Color.rgb(6, 9, 16),
-                    Color.rgb(14, 18, 32)
-                ),
-                null,
-                Shader.TileMode.CLAMP
-            )
-        }
-        canvas.drawRoundRect(rect, radius, radius, bgPaint)
-
-        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 4.5f
-            shader = LinearGradient(
-                0f,
-                0f,
-                size.toFloat(),
-                size.toFloat(),
-                intArrayOf(
-                    Color.parseColor("#E2E8F0"),
-                    Color.parseColor("#22D3EE"),
-                    Color.parseColor("#8B5CF6"),
-                    Color.parseColor("#CBD5E1")
-                ),
-                null,
-                Shader.TileMode.CLAMP
-            )
-        }
-        canvas.drawRoundRect(rect, radius, radius, borderPaint)
-
-        val appBitmap = drawableToBitmap(source, 86)
-        val satMatrix = ColorMatrix().apply { setSaturation(0.45f) }
-        val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            colorFilter = ColorMatrixColorFilter(satMatrix)
-        }
-        val offset = (size - appBitmap.width) / 2f
-        canvas.drawBitmap(appBitmap, offset, offset, iconPaint)
-        return BitmapDrawable(context.resources, out)
     }
 
     private fun applyHudCyanTint(source: Drawable): Drawable {

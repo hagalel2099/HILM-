@@ -1,15 +1,8 @@
 package com.nossouniverso.launcher.ui.settings
 
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffColorFilter
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
@@ -44,8 +37,15 @@ class IconPackManagerActivity : AppCompatActivity() {
     private lateinit var recyclerIconPacks: RecyclerView
     private lateinit var adapter: IconPackCardAdapter
 
+    private data class SampleApp(
+        val packageName: String,
+        val activityName: String,
+        val label: String,
+        val drawable: Drawable
+    )
+
     private val ioExecutor = Executors.newSingleThreadExecutor()
-    private var sampleNativeIcons: List<Pair<String, Drawable>> = emptyList()
+    private var sampleNativeApps: List<SampleApp> = emptyList()
 
     private val pickZipPackLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -90,7 +90,7 @@ class IconPackManagerActivity : AppCompatActivity() {
             )
         }
 
-        sampleNativeIcons = loadSampleNativeApps(limit = 6)
+        sampleNativeApps = loadSampleNativeApps(limit = 16)
 
         adapter = IconPackCardAdapter(
             onPreview = { pack -> openPackPreviewDialog(pack) },
@@ -192,13 +192,29 @@ class IconPackManagerActivity : AppCompatActivity() {
             IconPackKind.ILLUSTRATED_ASSET, IconPackKind.IMPORTED_PACK -> {
                 val items: List<IconPackPreviewItem> =
                     app.iconPackManager.getPreviewItemsForPack(pack.id)
-                items.map { item ->
+                val packEntries = items.map { item ->
                     item.label to app.iconPackManager.loadPreviewDrawable(item, 160)
                 }
+                val adaptedInstalled = sampleNativeApps
+                    .take(12)
+                    .map { sample ->
+                        sample.label to app.iconPackManager.resolveForPack(
+                            packId = pack.id,
+                            packageName = sample.packageName,
+                            activityName = sample.activityName,
+                            fallback = sample.drawable
+                        )
+                    }
+                packEntries + adaptedInstalled
             }
             else -> {
-                sampleNativeIcons.map { (label, raw) ->
-                    label to renderStyleSample(pack.id, raw)
+                sampleNativeApps.map { sample ->
+                    sample.label to app.iconPackManager.resolveForPack(
+                        packId = pack.id,
+                        packageName = sample.packageName,
+                        activityName = sample.activityName,
+                        fallback = sample.drawable
+                    )
                 }
             }
         }
@@ -214,7 +230,7 @@ class IconPackManagerActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun loadSampleNativeApps(limit: Int): List<Pair<String, Drawable>> {
+    private fun loadSampleNativeApps(limit: Int): List<SampleApp> {
         val intent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
         }
@@ -229,47 +245,31 @@ class IconPackManagerActivity : AppCompatActivity() {
         }
         return list
             .filter { it.activityInfo.packageName != packageName }
+            .sortedWith(
+                compareBy<android.content.pm.ResolveInfo> {
+                    (it.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                }.thenBy {
+                    it.loadLabel(packageManager)?.toString()?.lowercase().orEmpty()
+                }
+            )
             .take(limit)
             .mapNotNull { info ->
                 try {
+                    val pkg = info.activityInfo.packageName
+                    val act = info.activityInfo.name
                     val label = info.loadLabel(packageManager)?.toString().orEmpty()
-                        .ifBlank { info.activityInfo.packageName }
+                        .ifBlank { pkg }
                     val drawable = info.loadIcon(packageManager)
-                    label to drawable
+                    SampleApp(
+                        packageName = pkg,
+                        activityName = act,
+                        label = label,
+                        drawable = drawable
+                    )
                 } catch (_: Exception) {
                     null
                 }
             }
-    }
-
-    private fun renderStyleSample(packId: String, raw: Drawable): Drawable {
-        if (packId == IconPackInfo.STYLE_SYSTEM_DEFAULT) return raw
-        val size = 96
-        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
-        raw.setBounds(0, 0, size, size)
-        raw.draw(canvas)
-
-        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val outCanvas = Canvas(out)
-        if (packId == IconPackInfo.STYLE_MONOCHROME_HUD) {
-            val matrix = ColorMatrix().apply { setSaturation(0f) }
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                colorFilter = ColorMatrixColorFilter(matrix)
-            }
-            outCanvas.drawBitmap(bmp, 0f, 0f, paint)
-        } else {
-            val matrix = ColorMatrix().apply { setSaturation(0.35f) }
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                colorFilter = ColorMatrixColorFilter(matrix)
-            }
-            outCanvas.drawBitmap(bmp, 0f, 0f, paint)
-            val tintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                colorFilter = PorterDuffColorFilter(0x3322D3EE, PorterDuff.Mode.SRC_ATOP)
-            }
-            outCanvas.drawBitmap(out.copy(Bitmap.Config.ARGB_8888, false), 0f, 0f, tintPaint)
-        }
-        return BitmapDrawable(resources, out)
     }
 
     private inner class IconPackCardAdapter(
@@ -351,13 +351,28 @@ class IconPackManagerActivity : AppCompatActivity() {
                 val marginEnd = (10 * density).toInt()
 
                 val stripDrawables: List<Drawable?> = when (pack.kind) {
-                    IconPackKind.ILLUSTRATED_ASSET, IconPackKind.IMPORTED_PACK ->
-                        pack.previewFiles.take(6).map { item ->
+                    IconPackKind.ILLUSTRATED_ASSET, IconPackKind.IMPORTED_PACK -> {
+                        val assetThumbs = pack.previewFiles.take(4).map { item ->
                             app.iconPackManager.loadPreviewDrawable(item, 128)
                         }
+                        val adaptedThumbs = sampleNativeApps.take(2).map { sample ->
+                            app.iconPackManager.resolveForPack(
+                                packId = pack.id,
+                                packageName = sample.packageName,
+                                activityName = sample.activityName,
+                                fallback = sample.drawable
+                            )
+                        }
+                        assetThumbs + adaptedThumbs
+                    }
                     else ->
-                        sampleNativeIcons.take(5).map { (_, raw) ->
-                            renderStyleSample(pack.id, raw)
+                        sampleNativeApps.take(5).map { sample ->
+                            app.iconPackManager.resolveForPack(
+                                packId = pack.id,
+                                packageName = sample.packageName,
+                                activityName = sample.activityName,
+                                fallback = sample.drawable
+                            )
                         }
                 }
 

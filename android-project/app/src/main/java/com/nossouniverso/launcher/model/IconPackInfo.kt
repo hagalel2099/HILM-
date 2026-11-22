@@ -26,6 +26,7 @@ data class IconPackInfo(
     val kind: IconPackKind = IconPackKind.BUILT_IN_STYLE,
     val assetFolder: String? = null,
     val storageDirName: String? = null,
+    val fallbackStyle: String = "titanium_liquid",
     val previewFiles: List<IconPackPreviewItem> = emptyList(),
     val iconCount: Int = 0
 ) {

@@ -1,9 +1,10 @@
 {
   "id": "titanium_liquid",
   "title": "Titanium Liquid · HILM",
-  "subtitle": "Coleção ilustrada em titânio líquido 3D com reflexos ciano e violeta.",
+  "subtitle": "Coleção ilustrada em titânio líquido 3D com reflexos ciano e violeta para todos os apps.",
   "author": "HILM Studio",
   "version": "1.0.0",
+  "fallbackStyle": "titanium_liquid",
   "previewFiles": [
     "phone.png",
     "messages.png",

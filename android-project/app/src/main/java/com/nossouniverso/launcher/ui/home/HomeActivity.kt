@@ -186,6 +186,7 @@ class HomeActivity : AppCompatActivity() {
 
         packageReceiver = app.appRepository.registerPackageReceiver {
             runOnUiThread {
+                app.iconPackManager.clearCache()
                 reloadAppsAndRender()
             }
         }
