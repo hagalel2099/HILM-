@@ -429,17 +429,18 @@ class LauncherUpdateManager(private val context: Context) {
                 }
 
                 val sessionId = packageInstaller.createSession(params)
-                session = packageInstaller.openSession(sessionId)
+                val activeSession = packageInstaller.openSession(sessionId)
+                session = activeSession
 
                 FileInputStream(apkFile).use { input ->
-                    session.openWrite("nosso_universo_update.apk", 0L, apkFile.length()).use { output ->
+                    activeSession.openWrite("nosso_universo_update.apk", 0L, apkFile.length()).use { output ->
                         val buffer = ByteArray(16 * 1024)
                         while (true) {
                             val read = input.read(buffer)
                             if (read == -1) break
                             output.write(buffer, 0, read)
                         }
-                        session.fsync(output)
+                        activeSession.fsync(output)
                     }
                 }
 
@@ -455,8 +456,8 @@ class LauncherUpdateManager(private val context: Context) {
                     flags
                 )
 
-                session.commit(callbackIntent.intentSender)
-                session.close()
+                activeSession.commit(callbackIntent.intentSender)
+                activeSession.close()
                 session = null
             } catch (_: Exception) {
                 try {

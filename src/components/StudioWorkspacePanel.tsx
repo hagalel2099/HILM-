@@ -364,7 +364,7 @@ export function StudioWorkspacePanel({
                   Projeto Android Nativo (Kotlin + ViewBinding)
                 </h2>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-mono-tabular text-slate-400">
-                  <span>Gradle {treeData?.gradleVersion || "8.2"}</span>
+                  <span>Gradle {treeData?.gradleVersion || "8.4"}</span>
                   <span aria-hidden="true">·</span>
                   <span>AGP {treeData?.agpVersion || "8.2.2"}</span>
                   <span aria-hidden="true">·</span>
@@ -502,7 +502,7 @@ export function StudioWorkspacePanel({
                   Descompacte o conteúdo e abra a pasta <code className="text-cyan-300">NossoUniversoLauncher</code> no AndroidIDE com JDK 17 configurado.
                 </li>
                 <li>
-                  Confirme que o projeto sincroniza com o Wrapper <code className="text-cyan-300">gradle-8.2-bin.zip</code> e AGP <code className="text-cyan-300">8.2.2</code>.
+                  Confirme que o projeto sincroniza com o Wrapper <code className="text-cyan-300">gradle-8.4-bin.zip</code> e AGP <code className="text-cyan-300">8.2.2</code>.
                 </li>
                 <li>
                   Compile o APK e instale no smartphone; ao pressionar o botão Início, escolha <strong>Nosso Universo</strong> como launcher padrão.
