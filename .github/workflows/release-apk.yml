@@ -93,7 +93,7 @@ jobs:
           elif [ -n "${{ inputs.release_tag }}" ]; then
             echo "tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=v1.0.${{ steps.appver.outputs.version }}.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+            echo "tag=v1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
           fi
 
