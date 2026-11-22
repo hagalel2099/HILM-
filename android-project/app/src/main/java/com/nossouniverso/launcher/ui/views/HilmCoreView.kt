@@ -7,6 +7,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
@@ -143,6 +145,7 @@ class HilmCoreView @JvmOverloads constructor(
 
     private var coreSourceBitmap: Bitmap? = null
     private var coreScaledBitmap: Bitmap? = null
+    private var coreGlowBitmap: Bitmap? = null
     private val orbBitmaps = arrayOfNulls<Bitmap>(3)
     private val trailPuffBitmaps = arrayOfNulls<Bitmap>(3)
     private val coreRect = RectF()
@@ -150,12 +153,16 @@ class HilmCoreView @JvmOverloads constructor(
     private val puffDestRect = RectF()
 
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val coreGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+        xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+    }
     private val trailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
 
+    private val pulsePeriodMs = 4600f
     private val trailSegments = 126
     private val trailArcRad = 2.65f
     private val filamentLimit = (trailSegments * 0.68f).toInt()
@@ -346,6 +353,13 @@ class HilmCoreView @JvmOverloads constructor(
         val coreDrawSize = (minDim * 0.505f).toInt().coerceAtLeast(1)
         coreScaledBitmap = Bitmap.createScaledBitmap(src, coreDrawSize, coreDrawSize, true)
 
+        val softMiniSize = (coreDrawSize / 4).coerceAtLeast(16)
+        val softMini = Bitmap.createScaledBitmap(src, softMiniSize, softMiniSize, true)
+        coreGlowBitmap = Bitmap.createScaledBitmap(softMini, coreDrawSize, coreDrawSize, true)
+        if (softMini !== src) {
+            softMini.recycle()
+        }
+
         val cx = w / 2f
         val cy = h / 2f
         val half = coreDrawSize / 2f
@@ -473,10 +487,25 @@ class HilmCoreView @JvmOverloads constructor(
             drawOrbAndCurvedTrail(canvas, idx, minDim, baseOrbRadius, drawFront = false)
         }
 
-        // Pass 2: Fixed & unaltered central HILM nucleus
+        // Pass 2: Central HILM nucleus with smooth self-luminance breathing pulse
         coreScaledBitmap?.let { bmp ->
             bitmapPaint.alpha = 255
             canvas.drawBitmap(bmp, null, coreRect, bitmapPaint)
+
+            val pulse = if (isReducedMotionEnabled()) {
+                0f
+            } else {
+                val wave = 0.5f - 0.5f * cos((elapsedF / pulsePeriodMs) * twoPi)
+                wave.pow(1.15f)
+            }
+
+            coreGlowPaint.alpha = ((0.03f + 0.34f * pulse) * 255f).toInt().coerceIn(0, 255)
+            canvas.drawBitmap(bmp, null, coreRect, coreGlowPaint)
+
+            coreGlowBitmap?.let { glowBmp ->
+                coreGlowPaint.alpha = ((0.02f + 0.16f * pulse) * 255f).toInt().coerceIn(0, 255)
+                canvas.drawBitmap(glowBmp, null, coreRect, coreGlowPaint)
+            }
         }
 
         // Pass 3: Front hemisphere (z >= 0) in front of central sphere

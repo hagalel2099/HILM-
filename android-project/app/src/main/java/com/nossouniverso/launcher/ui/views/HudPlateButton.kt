@@ -42,7 +42,7 @@ class HudPlateButton @JvmOverloads constructor(
 
     var panelOpacityPercent: Int = 78
         set(value) {
-            field = value.coerceIn(25, 95)
+            field = value.coerceIn(15, 95)
             invalidate()
         }
 
@@ -78,7 +78,7 @@ class HudPlateButton @JvmOverloads constructor(
         setPadding(padH, padV, padH, padV)
 
         iconView = ImageView(context).apply {
-            val size = (20 * density).toInt()
+            val size = (24 * density).toInt()
             layoutParams = LayoutParams(size, size).apply {
                 marginEnd = (8 * density).toInt()
             }
@@ -128,7 +128,11 @@ class HudPlateButton @JvmOverloads constructor(
             close()
         }
 
-        val fillAlphaRatio = (panelOpacityPercent / 100f).coerceAtLeast(0.45f)
+        val fillAlphaRatio = if (isSlotEmpty) {
+            ((panelOpacityPercent / 100f) * 0.23f).coerceIn(0.15f, 0.20f)
+        } else {
+            (panelOpacityPercent / 100f).coerceIn(0.18f, 0.90f)
+        }
         fillPaint.alpha = (fillAlphaRatio * 255f).toInt().coerceIn(0, 255)
         canvas.drawPath(path, fillPaint)
 

@@ -3,7 +3,7 @@
 Launcher Android independente com identidade visual futurista e **Núcleo HILM** (Hagalel, Íris, Luna, Maya), idealizado por **Luna**.
 
 ## Ambiente e Versões Configuradas
-- **Android Gradle Plugin (AGP):** `8.2.2`
+- **Android Gradle Plugin (AGP):** `8.1.4`
 - **Gradle Wrapper:** `8.2` (`gradle/wrapper/gradle-wrapper.properties`)
 - **JDK:** `17`
 - **Compile SDK / Target SDK:** `33` (Android 13)
@@ -22,10 +22,7 @@ Launcher Android independente com identidade visual futurista e **Núcleo HILM**
 4. Sincronize o Gradle e compile com **Build > Build APK** (`assembleDebug`).
 5. Instale no dispositivo, pressione o botão **Home** e selecione **Nosso Universo** (ou segure o ícone central para abrir as Configurações e definir como Launcher Padrão).
 
-## Sistema de Atualização via Núcleo HILM (Repositório Privado)
+## Sistema de Atualização via Núcleo HILM (Cloudflare Worker + GitHub Actions)
 - **Acesso discreto:** Toque no **Núcleo HILM** central na tela inicial para abrir o painel compacto com **"Buscar atualizações"** (sem botões extras fixos na interface).
-- **Segurança:** Nenhum token ou credencial do GitHub é embutido no código Android ou no APK. O aplicativo consulta apenas o servidor proxy configurado em `NOSSO_UNIVERSO_UPDATE_URL` (`gradle.properties`), que autentica no repositório privado via variáveis de ambiente do servidor:
-  - `GITHUB_TOKEN` (Personal Access Token com acesso `Contents: Read` ao repositório privado)
-  - `GITHUB_REPO_OWNER` e `GITHUB_REPO_NAME`
-- **Publicação de nova versão:** Crie uma tag `vX.Y.Z` (com `versionName` / `versionCode` incrementados em `app/build.gradle.kts`) e faça push no GitHub; o workflow `.github/workflows/release-apk.yml` gera o `.apk` e o anexa automaticamente à GitHub Release.
-
+- **Compilação na nuvem sem AndroidIDE:** O workflow `.github/workflows/release-apk.yml` compila o APK automaticamente no GitHub Actions em qualquer *push* para `main`/`master`, por tag `v*` ou pelo botão manual **Run workflow** no GitHub (publicando o `.apk` diretamente em *Releases* para o Núcleo HILM baixar).
+- **Pacotes de ícones sem recompilar:** No app, acesse **Configurações → Gerenciar Pacotes de Ícones → Importar .ZIP** para carregar novas coleções de ícones (`manifest.json` + `.png` ou pasta compactada de `.png`) direto na memória interna.

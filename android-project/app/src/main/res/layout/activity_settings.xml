@@ -46,6 +46,24 @@
             android:textSize="14sp"
             android:textStyle="bold" />
 
+        <TextView
+            android:id="@+id/txtSettingsActivePack"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/hud_text_secondary"
+            android:textSize="12.5sp" />
+
+        <Button
+            android:id="@+id/btnOpenIconPackManager"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="10dp"
+            android:backgroundTint="#13233A"
+            android:text="@string/manage_icon_packs"
+            android:textColor="@color/hud_cyan"
+            android:textStyle="bold" />
+
         <RadioGroup
             android:id="@+id/radioIconPacks"
             android:layout_width="match_parent"

@@ -16,4 +16,17 @@
     <string name="update_action_authorize">Autorizar instalação</string>
     <string name="update_checking">Consultando atualizações…</string>
     <string name="update_up_to_date">O aplicativo já está atualizado.</string>
+    <string name="icon_pack_manager_title">Pacotes de Ícones — HILM</string>
+    <string name="manage_icon_packs">Gerenciar Pacotes de Ícones</string>
+    <string name="preview_icon_pack">Visualizar</string>
+    <string name="apply_icon_pack">Aplicar</string>
+    <string name="restore_original_icons">Restaurar Ícones Originais</string>
+    <string name="active_badge">Ativo</string>
+    <string name="close_label">Fechar</string>
+    <string name="active_icon_pack_format">Ativo: %1$s</string>
+    <string name="icon_pack_applied_format">Pacote aplicado: %1$s</string>
+    <string name="original_icons_restored">Ícones originais restaurados.</string>
+    <string name="import_zip_pack">Importar .ZIP</string>
+    <string name="importing_zip_pack">Importando pacote…</string>
+    <string name="delete_pack">Excluir</string>
 </resources>

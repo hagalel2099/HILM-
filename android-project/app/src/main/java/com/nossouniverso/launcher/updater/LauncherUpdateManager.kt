@@ -1,7 +1,9 @@
 package com.nossouniverso.launcher.updater
 
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -10,6 +12,7 @@ import android.os.Looper
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.nossouniverso.launcher.BuildConfig
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedInputStream
 import java.io.File
@@ -19,7 +22,6 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
-import java.net.URLEncoder
 import java.net.UnknownHostException
 import java.util.concurrent.Executors
 
@@ -54,6 +56,10 @@ sealed class ApkDownloadResult {
 
 class LauncherUpdateManager(private val context: Context) {
 
+    companion object {
+        private const val WORKER_RELEASES_LATEST_PATH = "/repos/hagalel2099/HILM-/releases/latest"
+    }
+
     private val appContext = context.applicationContext
     private val executor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -83,12 +89,12 @@ class LauncherUpdateManager(private val context: Context) {
     }
 
     fun checkForUpdates(callback: (UpdateCheckResult) -> Unit) {
-        val baseUrl = BuildConfig.UPDATE_API_BASE_URL.trim().trimEnd('/')
-        if (baseUrl.isBlank()) {
+        val workerOrigin = resolveWorkerOrigin(BuildConfig.UPDATE_API_BASE_URL)
+        if (workerOrigin == null) {
             mainHandler.post {
                 callback(
                     UpdateCheckResult.Failure(
-                        "Endereço do servidor de atualização não definido neste APK."
+                        "Endereço do Worker do Cloudflare não configurado neste APK (NOSSO_UNIVERSO_UPDATE_URL)."
                     )
                 )
             }
@@ -96,16 +102,17 @@ class LauncherUpdateManager(private val context: Context) {
         }
 
         executor.execute {
-            val (installedVersion, installedCode) = getInstalledVersionInfo()
+            val (installedVersionRaw, _) = getInstalledVersionInfo()
+            val installedVersion = normalizeVersion(installedVersionRaw)
             var conn: HttpURLConnection? = null
             try {
-                val encodedVer = URLEncoder.encode(installedVersion, "UTF-8")
-                val endpoint = "$baseUrl/api/launcher/updates/check?currentVersion=$encodedVer&versionCode=$installedCode"
+                val endpoint = "$workerOrigin$WORKER_RELEASES_LATEST_PATH"
                 conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
                     connectTimeout = 12_000
                     readTimeout = 15_000
                     setRequestProperty("Accept", "application/json")
+                    setRequestProperty("User-Agent", "NossoUniversoLauncher-Android")
                 }
 
                 val statusCode = conn.responseCode
@@ -113,56 +120,79 @@ class LauncherUpdateManager(private val context: Context) {
                 val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
 
                 if (statusCode !in 200..299) {
-                    val serverError = try {
+                    val workerError = try {
                         if (body.isNotBlank()) JSONObject(body).optString("error") else ""
                     } catch (_: Exception) {
                         ""
                     }
-                    val message = serverError.ifBlank {
-                        "Não foi possível verificar atualizações (HTTP $statusCode)."
+                    val message = when {
+                        statusCode == 404 && workerError.contains("não contém APK", ignoreCase = true) ->
+                            "A release mais recente publicada ainda não possui um pacote .apk anexado."
+                        workerError.isNotBlank() -> workerError
+                        else -> "Não foi possível consultar atualizações no Worker (HTTP $statusCode)."
                     }
                     mainHandler.post { callback(UpdateCheckResult.Failure(message)) }
                     return@execute
                 }
 
-                val json = JSONObject(body)
-                val status = json.optString("status")
-                val latestVersion = json.optString("latestVersion", installedVersion)
-
-                val result = when (status) {
-                    "up_to_date" -> UpdateCheckResult.UpToDate(
-                        installedVersion = installedVersion,
-                        latestVersion = latestVersion
-                    )
-                    "no_apk_asset" -> UpdateCheckResult.NoApkAsset(
-                        installedVersion = installedVersion,
-                        latestVersion = latestVersion
-                    )
-                    "update_available" -> {
-                        val assetId = json.optLong("assetId", -1L)
-                        val assetName = json.optString("assetName")
-                        val downloadPath = json.optString("downloadPath")
-                        if (assetId <= 0L || downloadPath.isBlank() || !assetName.lowercase().endsWith(".apk")) {
-                            UpdateCheckResult.Failure("Pacote APK inválido retornado pelo servidor.")
-                        } else {
-                            UpdateCheckResult.UpdateAvailable(
-                                installedVersion = installedVersion,
-                                latestVersion = latestVersion,
-                                releaseName = json.optString("releaseName", latestVersion),
-                                assetId = assetId,
-                                assetName = assetName,
-                                assetSizeBytes = json.optLong("assetSizeBytes", -1L),
-                                downloadPath = downloadPath
+                val releaseJson = JSONObject(body)
+                val tagName = releaseJson.optString("tag_name").trim()
+                if (tagName.isBlank()) {
+                    mainHandler.post {
+                        callback(
+                            UpdateCheckResult.Failure(
+                                "Resposta do Worker sem identificação de versão (tag_name)."
                             )
-                        }
+                        )
                     }
-                    else -> UpdateCheckResult.Failure("Resposta inesperada do servidor de atualizações.")
+                    return@execute
+                }
+
+                val latestVersion = normalizeVersion(tagName)
+                val releaseName = releaseJson.optString("name").trim().ifBlank { tagName }
+                val apkAsset = selectApkAsset(releaseJson.optJSONArray("assets"))
+
+                val result = if (compareSemver(latestVersion, installedVersion) <= 0) {
+                    UpdateCheckResult.UpToDate(
+                        installedVersion = installedVersion,
+                        latestVersion = latestVersion
+                    )
+                } else if (apkAsset == null) {
+                    UpdateCheckResult.NoApkAsset(
+                        installedVersion = installedVersion,
+                        latestVersion = latestVersion
+                    )
+                } else {
+                    val assetId = apkAsset.optLong("id", -1L)
+                    val assetName = apkAsset.optString("name").trim()
+                    val assetSizeBytes = apkAsset.optLong("size", -1L)
+                    val rawDownloadUrl = apkAsset.optString("browser_download_url").trim()
+                    val resolvedDownloadUrl = when {
+                        rawDownloadUrl.startsWith("https://", ignoreCase = true) ||
+                            rawDownloadUrl.startsWith("http://", ignoreCase = true) -> rawDownloadUrl
+                        assetId > 0L -> "$workerOrigin/download/$assetId"
+                        else -> ""
+                    }
+
+                    if (resolvedDownloadUrl.isBlank() || !assetName.lowercase().endsWith(".apk")) {
+                        UpdateCheckResult.Failure("Pacote APK inválido retornado pelo Worker.")
+                    } else {
+                        UpdateCheckResult.UpdateAvailable(
+                            installedVersion = installedVersion,
+                            latestVersion = latestVersion,
+                            releaseName = releaseName,
+                            assetId = assetId,
+                            assetName = assetName,
+                            assetSizeBytes = assetSizeBytes,
+                            downloadPath = resolvedDownloadUrl
+                        )
+                    }
                 }
 
                 mainHandler.post { callback(result) }
             } catch (_: UnknownHostException) {
                 mainHandler.post {
-                    callback(UpdateCheckResult.Failure("Sem conexão com a internet ou servidor inacessível."))
+                    callback(UpdateCheckResult.Failure("Sem conexão com a internet ou Worker inacessível."))
                 }
             } catch (_: SocketTimeoutException) {
                 mainHandler.post {
@@ -178,7 +208,7 @@ class LauncherUpdateManager(private val context: Context) {
                 }
             } catch (_: Exception) {
                 mainHandler.post {
-                    callback(UpdateCheckResult.Failure("Erro ao interpretar resposta de atualização."))
+                    callback(UpdateCheckResult.Failure("Erro ao interpretar resposta do Worker de atualização."))
                 }
             } finally {
                 conn?.disconnect()
@@ -191,10 +221,13 @@ class LauncherUpdateManager(private val context: Context) {
         onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit,
         onComplete: (ApkDownloadResult) -> Unit
     ) {
-        val baseUrl = BuildConfig.UPDATE_API_BASE_URL.trim().trimEnd('/')
-        if (baseUrl.isBlank()) {
+        val workerOrigin = resolveWorkerOrigin(BuildConfig.UPDATE_API_BASE_URL)
+        val hasAbsoluteDownloadUrl = update.downloadPath.startsWith("https://", ignoreCase = true) ||
+            update.downloadPath.startsWith("http://", ignoreCase = true)
+
+        if (workerOrigin == null && !hasAbsoluteDownloadUrl) {
             mainHandler.post {
-                onComplete(ApkDownloadResult.Failure("Servidor de atualização não configurado."))
+                onComplete(ApkDownloadResult.Failure("Endereço do Worker de atualização não configurado."))
             }
             return
         }
@@ -220,12 +253,11 @@ class LauncherUpdateManager(private val context: Context) {
                     partFile.delete()
                 }
 
-                val targetUrl = if (update.downloadPath.startsWith("http://") ||
-                    update.downloadPath.startsWith("https://")
-                ) {
+                val targetUrl = if (hasAbsoluteDownloadUrl) {
                     update.downloadPath
                 } else {
-                    "$baseUrl${if (update.downloadPath.startsWith("/")) "" else "/"}${update.downloadPath}"
+                    val base = workerOrigin.orEmpty()
+                    "$base${if (update.downloadPath.startsWith("/")) "" else "/"}${update.downloadPath}"
                 }
 
                 conn = (URL(targetUrl).openConnection() as HttpURLConnection).apply {
@@ -233,6 +265,7 @@ class LauncherUpdateManager(private val context: Context) {
                     instanceFollowRedirects = true
                     connectTimeout = 15_000
                     readTimeout = 60_000
+                    setRequestProperty("User-Agent", "NossoUniversoLauncher-Android")
                 }
 
                 val statusCode = conn.responseCode
@@ -351,6 +384,7 @@ class LauncherUpdateManager(private val context: Context) {
     }
 
     fun createInstallApkIntent(apkFile: File): Intent {
+        UpdateInstallReceiver.markPendingUpdateRelaunch(appContext, true)
         val apkUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             FileProvider.getUriForFile(
                 appContext,
@@ -368,8 +402,155 @@ class LauncherUpdateManager(private val context: Context) {
         }
     }
 
+    fun installApkWithPackageInstaller(
+        apkFile: File,
+        onFallbackLegacyIntent: (Intent) -> Unit,
+        onSessionError: (String) -> Unit
+    ) {
+        if (!apkFile.exists() || !isValidApkFile(apkFile)) {
+            onSessionError("Arquivo APK inválido ou não encontrado para instalação.")
+            return
+        }
+
+        UpdateInstallReceiver.markPendingUpdateRelaunch(appContext, true)
+
+        executor.execute {
+            var session: PackageInstaller.Session? = null
+            try {
+                val packageInstaller = appContext.packageManager.packageInstaller
+                val params = PackageInstaller.SessionParams(
+                    PackageInstaller.SessionParams.MODE_FULL_INSTALL
+                ).apply {
+                    setAppPackageName(appContext.packageName)
+                    setSize(apkFile.length())
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_UNSPECIFIED)
+                    }
+                }
+
+                val sessionId = packageInstaller.createSession(params)
+                val activeSession = packageInstaller.openSession(sessionId)
+                session = activeSession
+
+                FileInputStream(apkFile).use { input ->
+                    activeSession.openWrite("nosso_universo_update.apk", 0L, apkFile.length()).use { output ->
+                        val buffer = ByteArray(16 * 1024)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read == -1) break
+                            output.write(buffer, 0, read)
+                        }
+                        activeSession.fsync(output)
+                    }
+                }
+
+                val commitIntent = Intent(appContext, UpdateInstallReceiver::class.java).apply {
+                    action = UpdateInstallReceiver.ACTION_PACKAGE_INSTALL_STATUS
+                }
+                val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+                val callbackIntent = PendingIntent.getBroadcast(
+                    appContext,
+                    sessionId,
+                    commitIntent,
+                    flags
+                )
+
+                activeSession.commit(callbackIntent.intentSender)
+                activeSession.close()
+                session = null
+            } catch (_: Exception) {
+                try {
+                    session?.abandon()
+                } catch (_: Exception) {
+                    // Ignore abandon failure
+                }
+                try {
+                    session?.close()
+                } catch (_: Exception) {
+                    // Ignore close failure
+                }
+                val legacyIntent = createInstallApkIntent(apkFile)
+                mainHandler.post {
+                    onFallbackLegacyIntent(legacyIntent)
+                }
+            }
+        }
+    }
+
     fun shutdown() {
         executor.shutdownNow()
+    }
+
+    private fun resolveWorkerOrigin(rawUrl: String): String? {
+        var trimmed = rawUrl.trim().trimEnd('/')
+        if (trimmed.isBlank() || trimmed.contains("SEU-WORKER", ignoreCase = true)) {
+            return null
+        }
+        if (!trimmed.startsWith("https://", ignoreCase = true) &&
+            !trimmed.startsWith("http://", ignoreCase = true)
+        ) {
+            return null
+        }
+        if (trimmed.endsWith(WORKER_RELEASES_LATEST_PATH, ignoreCase = true)) {
+            trimmed = trimmed.substring(0, trimmed.length - WORKER_RELEASES_LATEST_PATH.length).trimEnd('/')
+        }
+        return try {
+            val parsed = URL(trimmed)
+            if (parsed.host.isNullOrBlank()) null else trimmed
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun normalizeVersion(raw: String): String {
+        return raw.trim()
+            .replace(Regex("^[vV]"), "")
+            .substringBefore("+")
+            .trim()
+    }
+
+    private fun compareSemver(aRaw: String, bRaw: String): Int {
+        fun parse(v: String): Pair<List<Int>, String> {
+            val normalized = normalizeVersion(v)
+            val dashIdx = normalized.indexOf('-')
+            val core = if (dashIdx >= 0) normalized.substring(0, dashIdx) else normalized
+            val pre = if (dashIdx >= 0) normalized.substring(dashIdx + 1) else ""
+            val nums = core.split('.').map { part ->
+                part.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
+            }.toMutableList()
+            while (nums.size < 3) nums.add(0)
+            return nums to pre
+        }
+
+        val (aNums, aPre) = parse(aRaw)
+        val (bNums, bPre) = parse(bRaw)
+        val len = maxOf(aNums.size, bNums.size)
+        for (i in 0 until len) {
+            val av = aNums.getOrElse(i) { 0 }
+            val bv = bNums.getOrElse(i) { 0 }
+            if (av != bv) return if (av > bv) 1 else -1
+        }
+        if (aPre.isEmpty() && bPre.isNotEmpty()) return 1
+        if (aPre.isNotEmpty() && bPre.isEmpty()) return -1
+        return aPre.compareTo(bPre)
+    }
+
+    private fun selectApkAsset(assets: JSONArray?): JSONObject? {
+        if (assets == null || assets.length() == 0) return null
+        val apkAssets = mutableListOf<JSONObject>()
+        for (i in 0 until assets.length()) {
+            val obj = assets.optJSONObject(i) ?: continue
+            val name = obj.optString("name").trim()
+            if (name.lowercase().endsWith(".apk")) {
+                apkAssets.add(obj)
+            }
+        }
+        if (apkAssets.isEmpty()) return null
+        return apkAssets.firstOrNull { asset ->
+            val lower = asset.optString("name").lowercase()
+            lower.contains("release") || lower.contains("signed")
+        } ?: apkAssets.first()
     }
 
     private fun getUpdatesDirectory(): File {
@@ -389,3 +570,4 @@ class LauncherUpdateManager(private val context: Context) {
         }
     }
 }
+

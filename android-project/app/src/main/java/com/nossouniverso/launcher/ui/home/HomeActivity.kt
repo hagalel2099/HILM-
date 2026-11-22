@@ -3,10 +3,17 @@ package com.nossouniverso.launcher.ui.home
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.ClipData
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageInstaller
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.os.Build
 import android.os.Bundle
 import android.view.DragEvent
 import android.view.View
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -17,12 +24,14 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.nossouniverso.launcher.NossoUniversoApp
 import com.nossouniverso.launcher.R
 import com.nossouniverso.launcher.model.AppInfo
 import com.nossouniverso.launcher.model.ShortcutSlot
 import com.nossouniverso.launcher.model.SlotPosition
 import com.nossouniverso.launcher.ui.drawer.AppDrawerBottomSheet
+import com.nossouniverso.launcher.ui.settings.IconPackManagerActivity
 import com.nossouniverso.launcher.ui.settings.LauncherSettingsActivity
 import com.nossouniverso.launcher.ui.views.HilmCoreView
 import com.nossouniverso.launcher.ui.views.HudDockSlotView
@@ -31,6 +40,7 @@ import com.nossouniverso.launcher.ui.views.HudPlateButton
 import com.nossouniverso.launcher.updater.ApkDownloadResult
 import com.nossouniverso.launcher.updater.LauncherUpdateManager
 import com.nossouniverso.launcher.updater.UpdateCheckResult
+import com.nossouniverso.launcher.updater.UpdateInstallReceiver
 import java.io.File
 
 class HomeActivity : AppCompatActivity() {
@@ -59,6 +69,7 @@ class HomeActivity : AppCompatActivity() {
     private var pendingSwapSource: SlotPosition? = null
     private var pendingCustomIconTarget: SlotPosition? = null
     private var packageReceiver: BroadcastReceiver? = null
+    private var installUiReceiver: BroadcastReceiver? = null
 
     private var updateState: UpdateUiState = UpdateUiState.IDLE
     private var availableUpdate: UpdateCheckResult.UpdateAvailable? = null
@@ -155,19 +166,35 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        window.attributes = window.attributes.apply { dimAmount = 0f }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
         setContentView(R.layout.activity_home)
+        findViewById<View>(R.id.homeRoot).setBackgroundColor(Color.TRANSPARENT)
 
         app = application as NossoUniversoApp
         updateManager = LauncherUpdateManager(this)
         bindViews()
         setupListeners()
         preventHomeBackExit()
+        registerInstallUiReceiver()
+        handlePostUpdateRelaunchIntent(intent)
 
         packageReceiver = app.appRepository.registerPackageReceiver {
             runOnUiThread {
                 reloadAppsAndRender()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handlePostUpdateRelaunchIntent(intent)
     }
 
     override fun onResume() {
@@ -182,6 +209,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onDestroy() {
         updateManager.shutdown()
         packageReceiver?.let { unregisterReceiver(it) }
+        installUiReceiver?.let { unregisterReceiver(it) }
         super.onDestroy()
     }
 
@@ -327,7 +355,8 @@ class HomeActivity : AppCompatActivity() {
         val hasApp = slot != null && !slot.isEmpty
         val options = mutableListOf(
             "Selecionar aplicativo",
-            if (isEditMode) "Sair do modo de edição" else "Reorganizar posições"
+            if (isEditMode) "Sair do modo de edição" else "Reorganizar posições",
+            "Gerenciar pacotes de ícones"
         )
         if (hasApp) {
             options.add("Escolher imagem própria para ícone")
@@ -341,6 +370,9 @@ class HomeActivity : AppCompatActivity() {
                     "Selecionar aplicativo" -> openAppDrawer(targetSlot = position)
                     "Reorganizar posições" -> toggleEditMode(true)
                     "Sair do modo de edição" -> toggleEditMode(false)
+                    "Gerenciar pacotes de ícones" -> {
+                        startActivity(Intent(this, IconPackManagerActivity::class.java))
+                    }
                     "Escolher imagem própria para ícone" -> {
                         pendingCustomIconTarget = position
                         pickCustomIconLauncher.launch(arrayOf("image/*"))
@@ -657,21 +689,100 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun launchApkInstaller(apkFile: File) {
-        try {
-            updateState = UpdateUiState.READY_TO_INSTALL
+        updateState = UpdateUiState.READY_TO_INSTALL
+        renderUpdatePopover(
+            message = "Abrindo confirmação de instalação do Android…",
+            actionLabel = "Instalar agora",
+            actionEnabled = true
+        )
+        updateManager.installApkWithPackageInstaller(
+            apkFile = apkFile,
+            onFallbackLegacyIntent = { legacyIntent ->
+                try {
+                    installApkLauncher.launch(legacyIntent)
+                } catch (e: Exception) {
+                    UpdateInstallReceiver.markPendingUpdateRelaunch(this, false)
+                    updateState = UpdateUiState.ERROR
+                    renderUpdatePopover(
+                        message = "Falha ao abrir o instalador do Android: ${e.localizedMessage ?: "erro desconhecido"}",
+                        actionLabel = "Tentar novamente",
+                        actionEnabled = true
+                    )
+                }
+            },
+            onSessionError = { errorMsg ->
+                UpdateInstallReceiver.markPendingUpdateRelaunch(this, false)
+                updateState = UpdateUiState.ERROR
+                renderUpdatePopover(
+                    message = errorMsg,
+                    actionLabel = "Tentar novamente",
+                    actionEnabled = true
+                )
+            }
+        )
+    }
+
+    private fun registerInstallUiReceiver() {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action != UpdateInstallReceiver.ACTION_INSTALL_UI_RESULT) return
+                val status = intent.getIntExtra(
+                    UpdateInstallReceiver.EXTRA_INSTALL_STATUS,
+                    PackageInstaller.STATUS_FAILURE
+                )
+                val message = intent.getStringExtra(UpdateInstallReceiver.EXTRA_INSTALL_MESSAGE)
+                    .orEmpty()
+
+                when (status) {
+                    PackageInstaller.STATUS_SUCCESS -> {
+                        updateState = UpdateUiState.INSTALLED_SUCCESS
+                        renderUpdatePopover(
+                            message = message.ifBlank { "Atualização instalada com sucesso." },
+                            actionLabel = "Fechar",
+                            actionEnabled = true
+                        )
+                    }
+                    PackageInstaller.STATUS_FAILURE_ABORTED -> {
+                        updateState = UpdateUiState.READY_TO_INSTALL
+                        renderUpdatePopover(
+                            message = message.ifBlank { "Instalação cancelada pelo usuário. Você pode tentar novamente." },
+                            actionLabel = "Instalar agora",
+                            actionEnabled = true
+                        )
+                    }
+                    else -> {
+                        updateState = UpdateUiState.READY_TO_INSTALL
+                        renderUpdatePopover(
+                            message = message.ifBlank { "Não foi possível concluir a instalação no Android." },
+                            actionLabel = "Tentar instalar novamente",
+                            actionEnabled = true
+                        )
+                    }
+                }
+            }
+        }
+        installUiReceiver = receiver
+        ContextCompat.registerReceiver(
+            this,
+            receiver,
+            IntentFilter(UpdateInstallReceiver.ACTION_INSTALL_UI_RESULT),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    private fun handlePostUpdateRelaunchIntent(incomingIntent: Intent?) {
+        if (incomingIntent?.getBooleanExtra(UpdateInstallReceiver.EXTRA_RELAUNCHED_AFTER_UPDATE, false) == true) {
+            incomingIntent.removeExtra(UpdateInstallReceiver.EXTRA_RELAUNCHED_AFTER_UPDATE)
+            val (installedVersion, _) = updateManager.getInstalledVersionInfo()
+            updateState = UpdateUiState.INSTALLED_SUCCESS
+            availableUpdate = null
+            downloadedApkFile = null
             renderUpdatePopover(
-                message = "Abrindo confirmação de instalação do Android…",
-                actionLabel = "Instalar agora",
+                message = "Atualização concluída com sucesso (v$installedVersion).",
+                actionLabel = "Fechar",
                 actionEnabled = true
             )
-            installApkLauncher.launch(updateManager.createInstallApkIntent(apkFile))
-        } catch (e: Exception) {
-            updateState = UpdateUiState.ERROR
-            renderUpdatePopover(
-                message = "Falha ao abrir o instalador do Android: ${e.localizedMessage ?: "erro desconhecido"}",
-                actionLabel = "Tentar novamente",
-                actionEnabled = true
-            )
+            coreUpdatePopover.visibility = View.VISIBLE
         }
     }
 
