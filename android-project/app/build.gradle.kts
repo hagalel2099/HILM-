@@ -11,8 +11,13 @@ android {
         applicationId = "com.nossouniverso.launcher"
         minSdk = 23
         targetSdk = 33
-        versionCode = 2
-        versionName = "1.0.1"
+        val runNum = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = 2 + runNum
+        versionName = "1.0.$runNum"
+
+        
+
+        
 
         val updateApiUrl = ((project.findProperty("NOSSO_UNIVERSO_UPDATE_URL") as? String) ?: "")
             .trim()
