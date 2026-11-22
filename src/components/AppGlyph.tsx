@@ -17,6 +17,7 @@ import {
   Terminal,
 } from "lucide-react";
 import type { IconPackId, InstalledAppItem } from "../types/launcher";
+import { resolveIllustratedIconUrl } from "../data/iconPackRegistry";
 
 interface AppGlyphProps {
   app: InstalledAppItem;
@@ -38,6 +39,18 @@ export function AppGlyph({
         alt={app.label}
         referrerPolicy="no-referrer"
         className={`${sizeClass} rounded-md object-cover`}
+      />
+    );
+  }
+
+  const illustratedUrl = resolveIllustratedIconUrl(iconPack, app);
+  if (illustratedUrl) {
+    return (
+      <img
+        src={illustratedUrl}
+        alt={app.label}
+        referrerPolicy="no-referrer"
+        className={`${sizeClass} object-contain`}
       />
     );
   }

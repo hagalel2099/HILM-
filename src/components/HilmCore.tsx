@@ -90,6 +90,7 @@ const CORE_DRAW_SIZE = 108;
 const CAMERA_DISTANCE = 240;
 const TRAIL_ARC_RAD = 2.65;
 const TRAIL_SEGMENTS = 126;
+const PULSE_PERIOD_MS = 4600;
 
 interface Vec3 {
   x: number;
@@ -240,12 +241,27 @@ export function HilmCore({ onClick }: HilmCoreProps) {
     canvas.height = VIEW_SIZE * dpr;
 
     let imgLoaded = false;
+    let coreGlowCanvas: HTMLCanvasElement | null = null;
     let reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const img = new Image();
     img.src = HILM_CORE_IMAGE;
     img.onload = () => {
       imgLoaded = true;
       coreImgRef.current = img;
+
+      const glowSize = Math.round(CORE_DRAW_SIZE * dpr);
+      const glowCanvas = document.createElement("canvas");
+      glowCanvas.width = glowSize;
+      glowCanvas.height = glowSize;
+      const gctx = glowCanvas.getContext("2d");
+      if (gctx) {
+        if ("filter" in gctx) {
+          gctx.filter = `blur(${(3.2 * dpr).toFixed(1)}px)`;
+        }
+        gctx.drawImage(img, 0, 0, glowSize, glowSize);
+        coreGlowCanvas = glowCanvas;
+      }
+
       if (reduceMotion) {
         rafId = window.requestAnimationFrame(renderFrame);
       }
@@ -495,15 +511,43 @@ export function HilmCore({ onClick }: HilmCoreProps) {
         drawOrbHeadPass(item.orb, item.head, false);
       }
 
-      // Pass 2: Núcleo central HILM intacto e fixo
+      // Pass 2: Núcleo central HILM com pulsação suave em intensidade luminosa
       if (imgLoaded && coreImgRef.current) {
+        const coreX = cx - CORE_DRAW_SIZE / 2;
+        const coreY = cy - CORE_DRAW_SIZE / 2;
         ctx.drawImage(
           coreImgRef.current,
-          cx - CORE_DRAW_SIZE / 2,
-          cy - CORE_DRAW_SIZE / 2,
+          coreX,
+          coreY,
           CORE_DRAW_SIZE,
           CORE_DRAW_SIZE
         );
+
+        const pulseWave =
+          0.5 - 0.5 * Math.cos((elapsed / PULSE_PERIOD_MS) * Math.PI * 2);
+        const pulse = reduceMotion ? 0 : Math.pow(pulseWave, 1.15);
+
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = 0.03 + 0.34 * pulse;
+        ctx.drawImage(
+          coreImgRef.current,
+          coreX,
+          coreY,
+          CORE_DRAW_SIZE,
+          CORE_DRAW_SIZE
+        );
+        if (coreGlowCanvas) {
+          ctx.globalAlpha = 0.02 + 0.16 * pulse;
+          ctx.drawImage(
+            coreGlowCanvas,
+            coreX,
+            coreY,
+            CORE_DRAW_SIZE,
+            CORE_DRAW_SIZE
+          );
+        }
+        ctx.restore();
       } else {
         ctx.beginPath();
         ctx.arc(cx, cy, 43, 0, Math.PI * 2);

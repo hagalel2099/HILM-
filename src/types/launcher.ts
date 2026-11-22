@@ -8,11 +8,35 @@ export type SlotId =
   | "dock_4"
   | "dock_5";
 
-export type IconPackId =
+export type BuiltInIconPackId =
+  | "titanium-liquid"
   | "nosso-universo"
   | "monochrome-hud"
   | "orbital-glow"
   | "system-default";
+
+export type IconPackId = BuiltInIconPackId | (string & {});
+
+export interface IconPackIconEntry {
+  key: string;
+  label: string;
+  file: string;
+  iconKeys?: string[];
+  packages?: string[];
+  keywords?: string[];
+}
+
+export interface IconPackDescriptor {
+  id: IconPackId;
+  name: string;
+  description: string;
+  author: string;
+  version: string;
+  kind: "illustrated" | "hud-style" | "system-default";
+  basePath?: string;
+  previewIcons?: string[];
+  icons?: IconPackIconEntry[];
+}
 
 export type WallpaperId =
   | "ref-horizon"

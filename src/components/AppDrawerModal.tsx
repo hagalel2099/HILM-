@@ -2,6 +2,7 @@ import { Plus, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { IconPackId, InstalledAppItem, SlotId } from "../types/launcher";
 import { SLOT_LABELS } from "../data/launcherCatalog";
+import { isIllustratedIconPack } from "../data/iconPackRegistry";
 import { AppGlyph } from "./AppGlyph";
 
 interface AppDrawerModalProps {
@@ -116,8 +117,12 @@ export function AppDrawerModal({
                   onClick={() => onSelectApp(app)}
                   className="w-full flex flex-col items-center gap-1.5 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#060A12] border border-cyan-500/30 flex items-center justify-center">
-                    <AppGlyph app={app} iconPack={iconPack} sizeClass="w-5 h-5" />
+                  <div className="w-11 h-11 rounded-full bg-[#060A12] border border-cyan-500/30 flex items-center justify-center">
+                    <AppGlyph
+                      app={app}
+                      iconPack={iconPack}
+                      sizeClass={isIllustratedIconPack(iconPack) ? "w-8 h-8" : "w-5 h-5"}
+                    />
                   </div>
                   <span className="text-[11px] text-slate-200 truncate w-full text-center">
                     {app.label}

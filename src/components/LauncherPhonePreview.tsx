@@ -28,6 +28,7 @@ import {
   INSTALLED_APPS_CATALOG,
   SLOT_LABELS,
 } from "../data/launcherCatalog";
+import { isIllustratedIconPack } from "../data/iconPackRegistry";
 import { AppGlyph } from "./AppGlyph";
 import { AppDrawerModal } from "./AppDrawerModal";
 import { HilmCore } from "./HilmCore";
@@ -230,7 +231,7 @@ export function LauncherPhonePreview({
       }
     } catch {
       setUpdatePhase("error");
-      setUpdateMessage("Erro de conexão ao consultar o servidor de atualizações.");
+      setUpdateMessage("Erro de conexão ao consultar o serviço de atualizações.");
     }
   };
 
@@ -391,7 +392,11 @@ export function LauncherPhonePreview({
                 app={app}
                 iconPack={state.iconPack}
                 customIconDataUrl={slot.customIconDataUrl}
-                sizeClass="w-4 h-4 shrink-0"
+                sizeClass={
+                  isIllustratedIconPack(state.iconPack)
+                    ? "w-6 h-6 shrink-0"
+                    : "w-4 h-4 shrink-0"
+                }
               />
               <span className="font-display text-[11px] font-semibold tracking-wider uppercase text-slate-100 truncate">
                 {slot.customLabel || app.label}
@@ -513,7 +518,11 @@ export function LauncherPhonePreview({
               app={app}
               iconPack={state.iconPack}
               customIconDataUrl={slot.customIconDataUrl}
-              sizeClass="w-5 h-5 relative z-10"
+              sizeClass={
+                isIllustratedIconPack(state.iconPack)
+                  ? "w-8 h-8 relative z-10"
+                  : "w-5 h-5 relative z-10"
+              }
             />
           ) : (
             <Plus className="w-4 h-4 text-cyan-300/75 relative z-10" />
@@ -680,7 +689,7 @@ export function LauncherPhonePreview({
         </div>
 
         {/* 5. Android Bottom Navigation Bar (Functional in Preview) */}
-        <div className="relative z-20 h-10 bg-[#05080D]/85 border-t border-slate-800/70 flex items-center justify-around px-8 text-slate-300">
+        <div className="relative z-20 h-10 flex items-center justify-around px-8 text-slate-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
           <button
             type="button"
             onClick={() => {
@@ -942,7 +951,11 @@ export function LauncherPhonePreview({
 
             <div className="flex flex-col items-center text-center space-y-3 my-auto">
               <div className="w-16 h-16 rounded-2xl bg-[#0C1422] border border-cyan-400/40 flex items-center justify-center">
-                <AppGlyph app={activeAppWindow} iconPack={state.iconPack} sizeClass="w-8 h-8" />
+                <AppGlyph
+                  app={activeAppWindow}
+                  iconPack={state.iconPack}
+                  sizeClass={isIllustratedIconPack(state.iconPack) ? "w-12 h-12" : "w-8 h-8"}
+                />
               </div>
               <div>
                 <h4 className="font-display text-lg font-semibold text-slate-100">

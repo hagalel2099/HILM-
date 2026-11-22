@@ -70,24 +70,68 @@ function compareSemver(aRaw: string, bRaw: string): number {
   return a.pre.localeCompare(b.pre);
 }
 
-function getGitHubRepoConfig(): {
-  token: string;
-  owner: string;
-  repo: string;
-  assetPattern: string;
-} | null {
-  const token = (process.env.GITHUB_TOKEN || "").trim();
-  let owner = (process.env.GITHUB_REPO_OWNER || "").trim();
-  let repo = (process.env.GITHUB_REPO_NAME || "").trim();
-  const combined = (process.env.GITHUB_REPO || "").trim();
-  if ((!owner || !repo) && combined.includes("/")) {
-    const [o, r] = combined.split("/");
-    owner = owner || o.trim();
-    repo = repo || r.trim();
+const WORKER_RELEASES_LATEST_PATH = "/repos/hagalel2099/HILM-/releases/latest";
+
+function readGradleUpdateUrl(): string {
+  const propsPath = path.join(ANDROID_PROJECT_DIR, "gradle.properties");
+  try {
+    const raw = fs.readFileSync(propsPath, "utf-8");
+    const match = raw.match(/^\s*NOSSO_UNIVERSO_UPDATE_URL\s*=\s*(.+)$/m);
+    return match?.[1]?.trim() || "";
+  } catch {
+    return "";
   }
-  const assetPattern = (process.env.GITHUB_APK_ASSET_PATTERN || "").trim().toLowerCase();
-  if (!token || !owner || !repo) return null;
-  return { token, owner, repo, assetPattern };
+}
+
+function resolveCloudflareWorkerConfig(): {
+  workerOrigin: string | null;
+  reason?: "not_configured" | "invalid";
+  assetPattern: string;
+} {
+  const raw = (
+    process.env.CLOUDFLARE_WORKER_URL ||
+    process.env.URL_DO_TRABALHADOR_CLOUDFLARE ||
+    process.env.CLOUDFLARE_UPDATER_URL ||
+    process.env.NOSSO_UNIVERSO_UPDATE_URL ||
+    readGradleUpdateUrl() ||
+    ""
+  ).trim();
+  const assetPattern = (
+    process.env.NOSSO_UNIVERSO_APK_ASSET_PATTERN ||
+    process.env.GITHUB_APK_ASSET_PATTERN ||
+    ""
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!raw) {
+    return { workerOrigin: null, reason: "not_configured", assetPattern };
+  }
+
+  let cleaned = raw.replace(/\/+$/, "");
+  if (/SEU-WORKER/i.test(cleaned)) {
+    return { workerOrigin: null, reason: "invalid", assetPattern };
+  }
+
+  if (
+    cleaned
+      .toLowerCase()
+      .endsWith(WORKER_RELEASES_LATEST_PATH.toLowerCase())
+  ) {
+    cleaned = cleaned
+      .slice(0, cleaned.length - WORKER_RELEASES_LATEST_PATH.length)
+      .replace(/\/+$/, "");
+  }
+
+  try {
+    const parsed = new URL(cleaned);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return { workerOrigin: null, reason: "invalid", assetPattern };
+    }
+    return { workerOrigin: cleaned, assetPattern };
+  } catch {
+    return { workerOrigin: null, reason: "invalid", assetPattern };
+  }
 }
 
 function selectApkAsset(
@@ -145,7 +189,7 @@ async function startServer() {
       res.json({
         projectName: "NossoUniversoLauncher",
         gradleVersion: "8.2",
-        agpVersion: "8.2.2",
+        agpVersion: "8.1.4",
         compileSdk: 33,
         minSdk: 23,
         jdkVersion: 17,
@@ -202,92 +246,82 @@ async function startServer() {
         : gradleVer.versionName;
     const installedVersion = normalizeVersion(installedRaw);
 
-    const cfg = getGitHubRepoConfig();
-    if (!cfg) {
+    const cfg = resolveCloudflareWorkerConfig();
+    if (!cfg.workerOrigin) {
       res.status(503).json({
-        errorCode: "UPDATER_NOT_CONFIGURED",
+        errorCode: "CLOUDFLARE_WORKER_NOT_CONFIGURED",
         error:
-          "Repositório privado do GitHub não configurado no servidor. Defina GITHUB_TOKEN, GITHUB_REPO_OWNER e GITHUB_REPO_NAME nas variáveis de ambiente do servidor.",
+          cfg.reason === "invalid"
+            ? "CLOUDFLARE_WORKER_URL inválida. Informe a URL real do Worker no Cloudflare (ex.: https://hilm.<subdominio>.workers.dev)."
+            : "URL do Worker do Cloudflare não configurada no servidor. Defina CLOUDFLARE_WORKER_URL nas variáveis de ambiente para conectar o preview Web.",
         installedVersion,
       });
       return;
     }
 
     try {
-      const ghUrl = `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/releases?per_page=10`;
-      const ghRes = await fetch(ghUrl, {
+      const workerEndpoint = `${cfg.workerOrigin}${WORKER_RELEASES_LATEST_PATH}`;
+      const workerRes = await fetch(workerEndpoint, {
         headers: {
-          Authorization: `Bearer ${cfg.token}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "NossoUniversoLauncher-Updater",
+          Accept: "application/json",
+          "User-Agent": "NossoUniversoLauncher-Preview",
         },
         signal: AbortSignal.timeout(12000),
       });
 
-      if (ghRes.status === 401 || ghRes.status === 403) {
-        res.status(502).json({
-          errorCode: "GITHUB_AUTH_FAILED",
+      if (!workerRes.ok) {
+        const errBody = await workerRes.text().catch(() => "");
+        let workerErr: { error?: string; githubStatus?: number } | null = null;
+        try {
+          workerErr = errBody ? (JSON.parse(errBody) as { error?: string; githubStatus?: number }) : null;
+        } catch {
+          workerErr = null;
+        }
+
+        if (
+          workerRes.status === 404 &&
+          workerErr?.error?.toLowerCase().includes("não contém apk")
+        ) {
+          res.status(404).json({
+            errorCode: "NO_APK_ASSET",
+            error: "A release mais recente publicada ainda não possui um pacote .apk anexado.",
+            installedVersion,
+          });
+          return;
+        }
+
+        res.status(workerRes.status >= 500 ? 502 : workerRes.status).json({
+          errorCode: "CLOUDFLARE_WORKER_ERROR",
           error:
-            "Credencial do GitHub recusada ou sem permissão de leitura no repositório privado.",
+            workerErr?.error ||
+            `Erro ao consultar o Worker do Cloudflare (HTTP ${workerRes.status}).`,
           installedVersion,
         });
         return;
       }
 
-      if (ghRes.status === 404) {
-        res.status(404).json({
-          errorCode: "GITHUB_REPO_OR_RELEASE_NOT_FOUND",
-          error:
-            "Repositório privado ou releases não encontradas no GitHub.",
-          installedVersion,
-        });
-        return;
-      }
-
-      if (!ghRes.ok) {
+      const release = (await workerRes.json()) as GitHubRelease;
+      if (!release?.tag_name) {
         res.status(502).json({
-          errorCode: "GITHUB_UPSTREAM_ERROR",
-          error: `Erro ao consultar releases no GitHub (HTTP ${ghRes.status}).`,
+          errorCode: "CLOUDFLARE_WORKER_INVALID_RESPONSE",
+          error: "Resposta do Worker sem identificação de versão (tag_name).",
           installedVersion,
         });
         return;
       }
 
-      const releases = (await ghRes.json()) as GitHubRelease[];
-      const publishedReleases = releases.filter((r) => !r.draft);
-      if (publishedReleases.length === 0) {
-        res.json({
-          status: "up_to_date",
-          installedVersion,
-          latestVersion: installedVersion,
-          releaseName: `v${installedVersion}`,
-          publishedAt: null,
-          releaseNotes: null,
-          assetId: null,
-          assetName: null,
-          assetSizeBytes: null,
-          downloadPath: null,
-        });
-        return;
-      }
-
-      // Seleciona a release publicada de maior versão semântica
-      const latestRelease = [...publishedReleases].sort((a, b) =>
-        compareSemver(b.tag_name, a.tag_name)
-      )[0];
-      const latestVersion = normalizeVersion(latestRelease.tag_name);
+      const latestVersion = normalizeVersion(release.tag_name);
       const isNewer = compareSemver(latestVersion, installedVersion) > 0;
-      const apkAsset = selectApkAsset(latestRelease.assets, cfg.assetPattern);
+      const apkAsset = selectApkAsset(release.assets, cfg.assetPattern);
 
       if (!isNewer) {
         res.json({
           status: "up_to_date",
           installedVersion,
           latestVersion,
-          releaseName: latestRelease.name || latestRelease.tag_name,
-          publishedAt: latestRelease.published_at || null,
-          releaseNotes: latestRelease.body || null,
+          releaseName: release.name || release.tag_name,
+          publishedAt: release.published_at || null,
+          releaseNotes: release.body || null,
           assetId: apkAsset?.id ?? null,
           assetName: apkAsset?.name ?? null,
           assetSizeBytes: apkAsset?.size ?? null,
@@ -301,9 +335,9 @@ async function startServer() {
           status: "no_apk_asset",
           installedVersion,
           latestVersion,
-          releaseName: latestRelease.name || latestRelease.tag_name,
-          publishedAt: latestRelease.published_at || null,
-          releaseNotes: latestRelease.body || null,
+          releaseName: release.name || release.tag_name,
+          publishedAt: release.published_at || null,
+          releaseNotes: release.body || null,
           assetId: null,
           assetName: null,
           assetSizeBytes: null,
@@ -316,9 +350,9 @@ async function startServer() {
         status: "update_available",
         installedVersion,
         latestVersion,
-        releaseName: latestRelease.name || latestRelease.tag_name,
-        publishedAt: latestRelease.published_at || null,
-        releaseNotes: latestRelease.body || null,
+        releaseName: release.name || release.tag_name,
+        publishedAt: release.published_at || null,
+        releaseNotes: release.body || null,
         assetId: apkAsset.id,
         assetName: apkAsset.name,
         assetSizeBytes: apkAsset.size,
@@ -327,10 +361,10 @@ async function startServer() {
     } catch (err) {
       const isTimeout = err instanceof Error && err.name === "TimeoutError";
       res.status(504).json({
-        errorCode: isTimeout ? "GITHUB_TIMEOUT" : "GITHUB_CONNECTION_ERROR",
+        errorCode: isTimeout ? "CLOUDFLARE_WORKER_TIMEOUT" : "CLOUDFLARE_WORKER_CONNECTION_ERROR",
         error: isTimeout
-          ? "Tempo limite excedido ao consultar o GitHub."
-          : "Falha de conexão ao consultar atualizações no GitHub.",
+          ? "Tempo limite excedido ao consultar o Worker do Cloudflare."
+          : "Falha de conexão ao consultar atualizações no Worker do Cloudflare.",
         installedVersion,
       });
     }
@@ -343,66 +377,51 @@ async function startServer() {
       return;
     }
 
-    const cfg = getGitHubRepoConfig();
-    if (!cfg) {
+    const cfg = resolveCloudflareWorkerConfig();
+    if (!cfg.workerOrigin) {
       res.status(503).json({
-        error: "Repositório privado do GitHub não configurado no servidor.",
+        error: "URL do Worker do Cloudflare não configurada no servidor.",
       });
       return;
     }
 
     try {
-      const metaUrl = `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/releases/assets/${assetIdRaw}`;
-      const metaRes = await fetch(metaUrl, {
+      const workerDownloadUrl = `${cfg.workerOrigin}/download/${assetIdRaw}`;
+      const downloadRes = await fetch(workerDownloadUrl, {
         headers: {
-          Authorization: `Bearer ${cfg.token}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "NossoUniversoLauncher-Updater",
-        },
-        signal: AbortSignal.timeout(12000),
-      });
-
-      if (!metaRes.ok) {
-        res.status(metaRes.status === 404 ? 404 : 502).json({
-          error: `Pacote APK não encontrado no repositório privado (HTTP ${metaRes.status}).`,
-        });
-        return;
-      }
-
-      const meta = (await metaRes.json()) as GitHubReleaseAsset;
-      if (!meta.name || !meta.name.toLowerCase().endsWith(".apk")) {
-        res.status(400).json({
-          error: "O arquivo solicitado não é um pacote instalável (.apk).",
-        });
-        return;
-      }
-
-      const downloadRes = await fetch(metaUrl, {
-        headers: {
-          Authorization: `Bearer ${cfg.token}`,
-          Accept: "application/octet-stream",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "NossoUniversoLauncher-Updater",
+          "User-Agent": "NossoUniversoLauncher-Preview",
         },
         redirect: "follow",
         signal: AbortSignal.timeout(120000),
       });
 
       if (!downloadRes.ok || !downloadRes.body) {
-        res.status(502).json({
-          error: `Falha ao baixar o APK do GitHub (HTTP ${downloadRes.status}).`,
+        const errBody = await downloadRes.text().catch(() => "");
+        let workerErr: string | undefined;
+        try {
+          workerErr = errBody ? (JSON.parse(errBody) as { error?: string }).error : undefined;
+        } catch {
+          workerErr = undefined;
+        }
+        res.status(downloadRes.status >= 400 && downloadRes.status < 500 ? downloadRes.status : 502).json({
+          error:
+            workerErr ||
+            `Falha ao baixar o APK pelo Worker do Cloudflare (HTTP ${downloadRes.status}).`,
         });
         return;
       }
 
-      const safeFilename = path.basename(meta.name).replace(/[^a-zA-Z0-9._-]/g, "_");
+      const disposition = downloadRes.headers.get("content-disposition") || "";
+      const filenameMatch = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";\r\n]+)"?/i);
+      const rawFilename = filenameMatch?.[1] || `NossoUniverso-${assetIdRaw}.apk`;
+      const safeFilename = path.basename(rawFilename).replace(/[^a-zA-Z0-9._-]/g, "_");
+
       res.setHeader("Content-Type", "application/vnd.android.package-archive");
       res.setHeader(
         "Content-Disposition",
         `attachment; filename="${safeFilename}"`
       );
-      const contentLen = downloadRes.headers.get("content-length") || (meta.size ? String(meta.size) : "");
+      const contentLen = downloadRes.headers.get("content-length");
       if (contentLen) {
         res.setHeader("Content-Length", contentLen);
       }
@@ -411,16 +430,16 @@ async function startServer() {
         downloadRes.body as unknown as import("stream/web").ReadableStream
       );
       await pipeline(nodeStream, res);
-    } catch (err) {
+    } catch {
       if (!res.headersSent) {
         res.status(502).json({
-          error: "Falha de rede durante o download do pacote APK.",
+          error: "Falha de rede durante o download do pacote APK pelo Worker.",
         });
       }
     }
   });
 
-  app.get("/api/android-project/download-zip", async (req, res) => {
+  app.get("/api/android-project/download-zip", async (_req, res) => {
     try {
       const zip = new JSZip();
       const rootFolder = zip.folder("NossoUniversoLauncher");
@@ -429,30 +448,19 @@ async function startServer() {
         return;
       }
 
-      const forwardedProto = (req.get("x-forwarded-proto") || req.protocol || "https")
-        .split(",")[0]
-        .trim();
-      const reqHost = req.get("host");
-      const rawAppUrl = (process.env.APP_URL || "").trim();
-      const publicBaseUrl =
-        rawAppUrl && !rawAppUrl.includes("MY_APP_URL")
-          ? rawAppUrl.replace(/\/+$/, "")
-          : reqHost
-            ? `${forwardedProto}://${reqHost}`
-            : "";
-
+      const workerCfg = resolveCloudflareWorkerConfig();
       const files = collectFiles(ANDROID_PROJECT_DIR, ANDROID_PROJECT_DIR);
       for (const file of files) {
         const fullPath = path.join(ANDROID_PROJECT_DIR, file.path);
         let data: Buffer | string = fs.readFileSync(fullPath);
-        if (file.path === "gradle.properties" && publicBaseUrl) {
+        if (file.path === "gradle.properties" && workerCfg.workerOrigin) {
           const text = data.toString("utf-8").replace(
             /^NOSSO_UNIVERSO_UPDATE_URL=.*$/m,
-            `NOSSO_UNIVERSO_UPDATE_URL=${publicBaseUrl}`
+            `NOSSO_UNIVERSO_UPDATE_URL=${workerCfg.workerOrigin}`
           );
           data = text.includes("NOSSO_UNIVERSO_UPDATE_URL=")
             ? text
-            : `${text.trimEnd()}\nNOSSO_UNIVERSO_UPDATE_URL=${publicBaseUrl}\n`;
+            : `${text.trimEnd()}\nNOSSO_UNIVERSO_UPDATE_URL=${workerCfg.workerOrigin}\n`;
         }
         const isExec = file.path === "gradlew";
         rootFolder.file(file.path, data, isExec ? { unixPermissions: "755" } : undefined);
