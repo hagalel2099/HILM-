@@ -86,7 +86,7 @@ jobs:
 
       - name: Determine Release Tag
         id: reltag
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+        
         run: |
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
