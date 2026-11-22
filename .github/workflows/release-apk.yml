@@ -93,7 +93,8 @@ jobs:
           elif [ -n "${{ inputs.release_tag }}" ]; then
             echo "tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=v${{ steps.appver.outputs.version_name }}" >> "$GITHUB_OUTPUT"
+            echo "tag=v${{ steps.appver.outputs.version }}.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
           fi
 
       - name: Publish APK to GitHub Release
