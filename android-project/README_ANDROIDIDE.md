@@ -3,8 +3,8 @@
 Launcher Android independente com identidade visual futurista e **Núcleo HILM** (Hagalel, Íris, Luna, Maya), idealizado por **Luna**.
 
 ## Ambiente e Versões Configuradas
-- **Android Gradle Plugin (AGP):** `8.2.2`
-- **Gradle Wrapper:** `8.4` (`gradle/wrapper/gradle-wrapper.properties`)
+- **Android Gradle Plugin (AGP):** `8.1.4`
+- **Gradle Wrapper:** `8.2` (`gradle/wrapper/gradle-wrapper.properties`)
 - **JDK:** `17`
 - **Compile SDK / Target SDK:** `33` (Android 13)
 - **Minimum SDK:** `23` (Android 6.0)
@@ -18,7 +18,7 @@ Launcher Android independente com identidade visual futurista e **Núcleo HILM**
 ## Como Abrir no AndroidIDE
 1. Extraia o arquivo `NossoUniversoLauncher-AndroidIDE.zip`.
 2. Abra a pasta `NossoUniversoLauncher` no **AndroidIDE**.
-3. Certifique-se de que o AndroidIDE está usando **JDK 17** e que o Gradle Wrapper (`gradle/wrapper/gradle-wrapper.properties`) aponta para **Gradle 8.4**.
+3. Certifique-se de que o AndroidIDE está usando **JDK 17** e que o Gradle Wrapper (`gradle/wrapper/gradle-wrapper.properties`) aponta para **Gradle 8.2**.
 4. Sincronize o Gradle e compile com **Build > Build APK** (`assembleDebug`).
 5. Instale no dispositivo, pressione o botão **Home** e selecione **Nosso Universo** (ou segure o ícone central para abrir as Configurações e definir como Launcher Padrão).
 

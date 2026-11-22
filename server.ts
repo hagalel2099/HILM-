@@ -188,8 +188,8 @@ async function startServer() {
       const files = collectFiles(ANDROID_PROJECT_DIR, ANDROID_PROJECT_DIR);
       res.json({
         projectName: "NossoUniversoLauncher",
-        gradleVersion: "8.4",
-        agpVersion: "8.2.2",
+        gradleVersion: "8.2",
+        agpVersion: "8.1.4",
         compileSdk: 33,
         minSdk: 23,
         jdkVersion: 17,

@@ -245,7 +245,7 @@ export const ACCEPTANCE_CRITERIA = [
   },
   {
     id: "gradle-82",
-    label: "Gradle Wrapper 8.4 e AGP 8.2.2 com JDK 17 e SDK 33",
+    label: "Gradle Wrapper 8.2 e AGP 8.1.4 com JDK 17 e SDK 33",
     status: "implemented" as const,
     detail: "Configurados em gradle-wrapper.properties, build.gradle.kts e app/build.gradle.kts.",
   },
