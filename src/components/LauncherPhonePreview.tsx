@@ -28,6 +28,7 @@ import {
   INSTALLED_APPS_CATALOG,
   SLOT_LABELS,
 } from "../data/launcherCatalog";
+import { isIllustratedIconPack } from "../data/iconPackRegistry";
 import { AppGlyph } from "./AppGlyph";
 import { AppDrawerModal } from "./AppDrawerModal";
 import { HilmCore } from "./HilmCore";
@@ -391,7 +392,11 @@ export function LauncherPhonePreview({
                 app={app}
                 iconPack={state.iconPack}
                 customIconDataUrl={slot.customIconDataUrl}
-                sizeClass="w-4 h-4 shrink-0"
+                sizeClass={
+                  isIllustratedIconPack(state.iconPack)
+                    ? "w-6 h-6 shrink-0"
+                    : "w-4 h-4 shrink-0"
+                }
               />
               <span className="font-display text-[11px] font-semibold tracking-wider uppercase text-slate-100 truncate">
                 {slot.customLabel || app.label}
@@ -513,7 +518,11 @@ export function LauncherPhonePreview({
               app={app}
               iconPack={state.iconPack}
               customIconDataUrl={slot.customIconDataUrl}
-              sizeClass="w-5 h-5 relative z-10"
+              sizeClass={
+                isIllustratedIconPack(state.iconPack)
+                  ? "w-8 h-8 relative z-10"
+                  : "w-5 h-5 relative z-10"
+              }
             />
           ) : (
             <Plus className="w-4 h-4 text-cyan-300/75 relative z-10" />
@@ -942,7 +951,11 @@ export function LauncherPhonePreview({
 
             <div className="flex flex-col items-center text-center space-y-3 my-auto">
               <div className="w-16 h-16 rounded-2xl bg-[#0C1422] border border-cyan-400/40 flex items-center justify-center">
-                <AppGlyph app={activeAppWindow} iconPack={state.iconPack} sizeClass="w-8 h-8" />
+                <AppGlyph
+                  app={activeAppWindow}
+                  iconPack={state.iconPack}
+                  sizeClass={isIllustratedIconPack(state.iconPack) ? "w-12 h-12" : "w-8 h-8"}
+                />
               </div>
               <div>
                 <h4 className="font-display text-lg font-semibold text-slate-100">

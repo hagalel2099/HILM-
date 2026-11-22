@@ -31,6 +31,7 @@ import com.nossouniverso.launcher.model.AppInfo
 import com.nossouniverso.launcher.model.ShortcutSlot
 import com.nossouniverso.launcher.model.SlotPosition
 import com.nossouniverso.launcher.ui.drawer.AppDrawerBottomSheet
+import com.nossouniverso.launcher.ui.settings.IconPackManagerActivity
 import com.nossouniverso.launcher.ui.settings.LauncherSettingsActivity
 import com.nossouniverso.launcher.ui.views.HilmCoreView
 import com.nossouniverso.launcher.ui.views.HudDockSlotView
@@ -354,7 +355,8 @@ class HomeActivity : AppCompatActivity() {
         val hasApp = slot != null && !slot.isEmpty
         val options = mutableListOf(
             "Selecionar aplicativo",
-            if (isEditMode) "Sair do modo de edição" else "Reorganizar posições"
+            if (isEditMode) "Sair do modo de edição" else "Reorganizar posições",
+            "Gerenciar pacotes de ícones"
         )
         if (hasApp) {
             options.add("Escolher imagem própria para ícone")
@@ -368,6 +370,9 @@ class HomeActivity : AppCompatActivity() {
                     "Selecionar aplicativo" -> openAppDrawer(targetSlot = position)
                     "Reorganizar posições" -> toggleEditMode(true)
                     "Sair do modo de edição" -> toggleEditMode(false)
+                    "Gerenciar pacotes de ícones" -> {
+                        startActivity(Intent(this, IconPackManagerActivity::class.java))
+                    }
                     "Escolher imagem própria para ícone" -> {
                         pendingCustomIconTarget = position
                         pickCustomIconLauncher.launch(arrayOf("image/*"))

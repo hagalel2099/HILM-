@@ -19,12 +19,12 @@ import type {
 } from "../types/launcher";
 import {
   ACCEPTANCE_CRITERIA,
-  ICON_PACKS,
   INSTALLED_APPS_CATALOG,
   SLOT_IDS,
   SLOT_LABELS,
   WALLPAPERS,
 } from "../data/launcherCatalog";
+import { IconPackManagerPanel } from "./IconPackManagerPanel";
 
 export type WorkspaceTab = "personalizacao" | "androidide" | "criterios";
 
@@ -256,47 +256,11 @@ export function StudioWorkspacePanel({
               </div>
             </section>
 
-            {/* Section 2: Icon Packs */}
-            <section className="space-y-4 pt-6 border-t border-slate-800/80">
-              <div>
-                <h2 className="font-display text-base font-semibold text-slate-100">
-                  Conjunto de Ícones
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Alterne estilos visuais ou use pacotes externos no Android via <code className="text-cyan-300">IconPackManager.kt</code>.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {ICON_PACKS.map((pack) => {
-                  const selected = state.iconPack === pack.id;
-                  return (
-                    <button
-                      key={pack.id}
-                      type="button"
-                      onClick={() => onSelectIconPack(pack.id)}
-                      className={`p-3.5 rounded-xl text-left border transition-colors cursor-pointer ${
-                        selected
-                          ? "bg-cyan-500/10 border-cyan-400/60"
-                          : "bg-[#0B111C] border-slate-800 hover:border-slate-700"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-slate-100">
-                          {pack.name}
-                        </span>
-                        {selected && (
-                          <span className="text-[11px] font-mono-tabular text-cyan-300">
-                            Ativo
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">{pack.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
+            {/* Section 2: Icon Pack Manager */}
+            <IconPackManagerPanel
+              activePackId={state.iconPack}
+              onSelectIconPack={onSelectIconPack}
+            />
 
             {/* Section 3: Persistent Shortcut Mapping Overview */}
             <section className="space-y-4 pt-6 border-t border-slate-800/80">

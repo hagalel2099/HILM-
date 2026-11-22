@@ -63,7 +63,7 @@ class HudDockSlotView @JvmOverloads constructor(
     init {
         setWillNotDraw(false)
         iconView = ImageView(context).apply {
-            val pad = (14 * density).toInt()
+            val pad = (9 * density).toInt()
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
                 gravity = Gravity.CENTER
             }

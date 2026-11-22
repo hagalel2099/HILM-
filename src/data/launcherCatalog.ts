@@ -4,6 +4,7 @@ import type {
   LauncherPersistedState,
   SlotId,
 } from "../types/launcher";
+import { ICON_PACK_REGISTRY } from "./iconPackRegistry";
 
 export const SLOT_IDS: SlotId[] = [
   "plate_top_left",
@@ -162,28 +163,11 @@ export const ICON_PACKS: {
   id: IconPackId;
   name: string;
   description: string;
-}[] = [
-  {
-    id: "nosso-universo",
-    name: "Nosso Universo Padrão",
-    description: "Traço técnico ciano & âmbar alinhado às molduras HUD.",
-  },
-  {
-    id: "monochrome-hud",
-    name: "HUD Monocromático Prata",
-    description: "Ícones em escala metálica fria com alto contraste.",
-  },
-  {
-    id: "orbital-glow",
-    name: "Núcleo Orbital HILM",
-    description: "Acentos violeta e dourado inspirados nas órbitas do núcleo.",
-  },
-  {
-    id: "system-default",
-    name: "Ícones Originais Android",
-    description: "Mantém as cores de destaque nativas de cada aplicativo.",
-  },
-];
+}[] = ICON_PACK_REGISTRY.map((pack) => ({
+  id: pack.id,
+  name: pack.name,
+  description: pack.description,
+}));
 
 export const WALLPAPERS = [
   {

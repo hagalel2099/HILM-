@@ -17,6 +17,8 @@ class LauncherSettingsActivity : AppCompatActivity() {
     private lateinit var app: NossoUniversoApp
     private lateinit var txtDefaultStatus: TextView
     private lateinit var btnSetDefaultLauncher: Button
+    private lateinit var txtSettingsActivePack: TextView
+    private lateinit var btnOpenIconPackManager: Button
     private lateinit var radioIconPacks: RadioGroup
     private lateinit var seekOpacity: SeekBar
 
@@ -27,11 +29,17 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
         txtDefaultStatus = findViewById(R.id.txtDefaultStatus)
         btnSetDefaultLauncher = findViewById(R.id.btnSetDefaultLauncher)
+        txtSettingsActivePack = findViewById(R.id.txtSettingsActivePack)
+        btnOpenIconPackManager = findViewById(R.id.btnOpenIconPackManager)
         radioIconPacks = findViewById(R.id.radioIconPacks)
         seekOpacity = findViewById(R.id.seekOpacity)
 
         btnSetDefaultLauncher.setOnClickListener {
             startActivity(app.appRepository.createDefaultLauncherIntent())
+        }
+
+        btnOpenIconPackManager.setOnClickListener {
+            startActivity(android.content.Intent(this, IconPackManagerActivity::class.java))
         }
 
         findViewById<Button>(R.id.btnResetShortcuts).setOnClickListener {
@@ -47,6 +55,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshDefaultStatus()
+        setupIconPacks()
     }
 
     private fun refreshDefaultStatus() {
@@ -62,6 +71,13 @@ class LauncherSettingsActivity : AppCompatActivity() {
     private fun setupIconPacks() {
         val packs = app.iconPackManager.getAvailableIconPacks()
         val currentId = app.shortcutStorage.getSelectedIconPackId()
+        val activePack = packs.firstOrNull { it.id == currentId }
+        txtSettingsActivePack.text = getString(
+            R.string.active_icon_pack_format,
+            activePack?.title ?: "Nosso Universo Padrão"
+        )
+
+        radioIconPacks.setOnCheckedChangeListener(null)
         radioIconPacks.removeAllViews()
 
         packs.forEachIndexed { index, pack ->
@@ -79,6 +95,12 @@ class LauncherSettingsActivity : AppCompatActivity() {
         radioIconPacks.setOnCheckedChangeListener { group, checkedId ->
             val selected = group.findViewById<RadioButton>(checkedId)?.tag as? String ?: return@setOnCheckedChangeListener
             app.shortcutStorage.setSelectedIconPackId(selected)
+            app.iconPackManager.clearCache()
+            val updated = packs.firstOrNull { it.id == selected }
+            txtSettingsActivePack.text = getString(
+                R.string.active_icon_pack_format,
+                updated?.title ?: selected
+            )
         }
     }
 

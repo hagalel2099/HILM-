@@ -78,7 +78,7 @@ class HudPlateButton @JvmOverloads constructor(
         setPadding(padH, padV, padH, padV)
 
         iconView = ImageView(context).apply {
-            val size = (20 * density).toInt()
+            val size = (24 * density).toInt()
             layoutParams = LayoutParams(size, size).apply {
                 marginEnd = (8 * density).toInt()
             }

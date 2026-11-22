@@ -57,6 +57,12 @@
             android:label="@string/settings_title"
             android:theme="@style/Theme.NossoUniverso.Settings" />
 
+        <activity
+            android:name=".ui.settings.IconPackManagerActivity"
+            android:exported="false"
+            android:label="@string/icon_pack_manager_title"
+            android:theme="@style/Theme.NossoUniverso.Settings" />
+
         <receiver
             android:name=".updater.UpdateInstallReceiver"
             android:enabled="true"
