@@ -1,0 +1,21 @@
+name: Gerar Chave Keystore
+
+on:
+  workflow_dispatch:
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Criar Keystore e Base64
+        run: |
+          keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias hilmkey -storepass 123456 -keypass 123456 -dname "CN=HIUM Launcher, OU=Dev, O=NossoUniverso, L=SaoLeopoldo, S=RS, C=BR"
+          base64 -w 0 release.jks > keystore_base64.txt
+
+      - name: Baixar Arquivos da Chave
+        uses: actions/upload-artifact@v4
+        with:
+          name: minha-chave-release
+          path: |
+            release.jks
+            keystore_base64.txt
