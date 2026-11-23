@@ -6,7 +6,17 @@ export type SlotId =
   | "dock_1"
   | "dock_2"
   | "dock_4"
-  | "dock_5";
+  | "dock_5"
+  | "left_1"
+  | "left_2"
+  | "left_3"
+  | "left_4"
+  | "left_5"
+  | "right_1"
+  | "right_2"
+  | "right_3"
+  | "right_4"
+  | "right_5";
 
 export type BuiltInIconPackId =
   | "titanium-liquid"

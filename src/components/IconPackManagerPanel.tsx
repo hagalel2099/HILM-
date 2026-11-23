@@ -1,10 +1,24 @@
-import { Check, Eye, RotateCcw, Sparkles, X } from "lucide-react";
-import { useState } from "react";
+import {
+  Check,
+  Download,
+  Eye,
+  FolderArchive,
+  RotateCcw,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useRef, useState } from "react";
 import type { IconPackDescriptor, IconPackId } from "../types/launcher";
 import {
+  exportIconPackAsZip,
+  getAllIconPacks,
   getIconPackDescriptor,
+  getPackAllIconEntries,
   getPackPreviewUrls,
-  ICON_PACK_REGISTRY,
+  importIconPackFromZipFile,
+  isRuntimeImportedPack,
+  removeRuntimeImportedPack,
 } from "../data/iconPackRegistry";
 import { INSTALLED_APPS_CATALOG } from "../data/launcherCatalog";
 import { AppGlyph } from "./AppGlyph";
@@ -22,42 +36,114 @@ export function IconPackManagerPanel({
 }: IconPackManagerPanelProps) {
   const [inspectingPack, setInspectingPack] =
     useState<IconPackDescriptor | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importingZip, setImportingZip] = useState(false);
+  const [exportingPackId, setExportingPackId] = useState<string | null>(null);
+  const [, setVersionTick] = useState(0);
+  const zipInputRef = useRef<HTMLInputElement>(null);
 
+  const packs = getAllIconPacks();
   const activePack = getIconPackDescriptor(activePackId);
   const isOriginalActive = activePackId === "system-default";
 
+  const handleZipSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setImportError(null);
+    setImportingZip(true);
+    try {
+      const imported = await importIconPackFromZipFile(file);
+      setVersionTick((t) => t + 1);
+      onSelectIconPack(imported.id);
+    } catch (err) {
+      setImportError(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível importar o arquivo .zip."
+      );
+    } finally {
+      setImportingZip(false);
+    }
+  };
+
+  const handleExportZip = async (pack: IconPackDescriptor) => {
+    setExportingPackId(pack.id);
+    try {
+      await exportIconPackAsZip(pack);
+    } finally {
+      setExportingPackId(null);
+    }
+  };
+
+  const handleRemoveImported = (packId: IconPackId) => {
+    removeRuntimeImportedPack(packId);
+    if (activePackId === packId) {
+      onSelectIconPack("nosso-universo");
+    }
+    setVersionTick((t) => t + 1);
+  };
+
   return (
     <section className="space-y-4 pt-6 border-t border-slate-800/80">
+      <input
+        ref={zipInputRef}
+        type="file"
+        accept=".zip,application/zip"
+        className="hidden"
+        onChange={handleZipSelected}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-base font-semibold text-slate-100">
             Gerenciador de Pacotes de Ícones
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Visualize, selecione, aplique coleções ilustradas ou restaure os ícones originais. Ativo:{" "}
+            Visualize, selecione, importe pacotes <code className="text-cyan-300">.zip</code> sem recompilar o APK ou restaure os originais. Ativo:{" "}
             <span className="text-cyan-300 font-medium">{activePack.name}</span>
           </p>
         </div>
 
-        <button
-          type="button"
-          disabled={isOriginalActive}
-          onClick={() => onSelectIconPack("system-default")}
-          className={`px-3 py-2 rounded-lg border text-xs font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
-            isOriginalActive
-              ? "bg-slate-900/60 border-slate-800 text-slate-500 cursor-not-allowed"
-              : "bg-[#0D1523] border-slate-700 hover:border-amber-400/60 text-amber-300 cursor-pointer"
-          }`}
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Restaurar Originais</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={importingZip}
+            onClick={() => zipInputRef.current?.click()}
+            className="px-3 py-2 rounded-lg bg-[#0D1A2D] border border-cyan-500/40 hover:border-cyan-400 text-xs font-medium text-cyan-200 flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors cursor-pointer"
+          >
+            <FolderArchive className="w-3.5 h-3.5 text-cyan-300" />
+            <span>{importingZip ? "Importando…" : "Importar .ZIP"}</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={isOriginalActive}
+            onClick={() => onSelectIconPack("system-default")}
+            className={`px-3 py-2 rounded-lg border text-xs font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
+              isOriginalActive
+                ? "bg-slate-900/60 border-slate-800 text-slate-500 cursor-not-allowed"
+                : "bg-[#0D1523] border-slate-700 hover:border-amber-400/60 text-amber-300 cursor-pointer"
+            }`}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Restaurar Originais</span>
+          </button>
+        </div>
       </div>
 
+      {importError && (
+        <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200">
+          {importError}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5">
-        {ICON_PACK_REGISTRY.map((pack) => {
+        {packs.map((pack) => {
           const isActive = activePackId === pack.id;
           const illustratedThumbs = getPackPreviewUrls(pack);
+          const isImported = isRuntimeImportedPack(pack.id);
 
           return (
             <div
@@ -81,7 +167,7 @@ export function IconPackManagerPanel({
                     </div>
                     <p className="text-[11px] font-mono-tabular text-slate-400 mt-0.5">
                       {pack.kind === "illustrated"
-                        ? `Coleção PNG RGBA · ${pack.icons?.length ?? 0} ícones · v${pack.version}`
+                        ? `${isImported ? "Importado .ZIP" : "Coleção PNG RGBA"} · ${pack.icons?.length ?? 0} ícones · v${pack.version}`
                         : pack.kind === "system-default"
                           ? "Aparência Nativa do Android"
                           : `Estilo HUD · ${pack.author}`}
@@ -140,6 +226,30 @@ export function IconPackManagerPanel({
                   <span>Visualizar</span>
                 </button>
 
+                {pack.kind === "illustrated" && !isImported && (
+                  <button
+                    type="button"
+                    disabled={exportingPackId === pack.id}
+                    onClick={() => handleExportZip(pack)}
+                    title="Baixar arquivo .zip pronto para editar ou importar direto no Android"
+                    className="h-9 px-2.5 rounded-lg bg-[#0F1728] border border-slate-700 hover:border-cyan-400/50 text-xs text-slate-200 flex items-center justify-center gap-1 transition-colors cursor-pointer shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5 text-cyan-300" />
+                    <span className="hidden sm:inline">.ZIP</span>
+                  </button>
+                )}
+
+                {isImported && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImported(pack.id)}
+                    aria-label={`Remover ${pack.name}`}
+                    className="h-9 px-2.5 rounded-lg bg-rose-950/40 border border-rose-500/40 hover:border-rose-400 text-xs text-rose-300 flex items-center justify-center cursor-pointer shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
                 <button
                   type="button"
                   disabled={isActive}
@@ -188,9 +298,9 @@ export function IconPackManagerPanel({
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 hud-scroll">
-              {inspectingPack.kind === "illustrated" && inspectingPack.icons ? (
+              {inspectingPack.kind === "illustrated" ? (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                  {inspectingPack.icons.map((entry) => (
+                  {getPackAllIconEntries(inspectingPack).map((entry) => (
                     <div
                       key={entry.key}
                       className="rounded-xl border border-slate-800 bg-[#05080F] p-3 flex flex-col items-center gap-2"
@@ -205,7 +315,7 @@ export function IconPackManagerPanel({
                         }}
                       >
                         <img
-                          src={`${inspectingPack.basePath}/${entry.file}`}
+                          src={entry.url}
                           alt={entry.label}
                           referrerPolicy="no-referrer"
                           className="w-full h-full object-contain drop-shadow-[0_6px_12px_rgba(34,211,238,0.2)]"

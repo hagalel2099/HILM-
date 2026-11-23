@@ -66,12 +66,10 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var btnFinishEdit: TextView
     private lateinit var btnHubControl: ImageButton
 
-    private lateinit var btnLeftDrawerHandle: TextView
-    private lateinit var btnRightDrawerHandle: TextView
+    private lateinit var btnLeftDrawerHandle: View
+    private lateinit var btnRightDrawerHandle: View
     private lateinit var leftSideDrawer: LinearLayout
     private lateinit var rightSideDrawer: LinearLayout
-    private lateinit var btnCloseLeftDrawer: TextView
-    private lateinit var btnCloseRightDrawer: TextView
 
     private lateinit var coreUpdatePopover: LinearLayout
     private lateinit var btnCloseUpdatePopover: TextView
@@ -335,8 +333,6 @@ class HomeActivity : AppCompatActivity() {
         btnRightDrawerHandle = findViewById(R.id.btnRightDrawerHandle)
         leftSideDrawer = findViewById(R.id.leftSideDrawer)
         rightSideDrawer = findViewById(R.id.rightSideDrawer)
-        btnCloseLeftDrawer = findViewById(R.id.btnCloseLeftDrawer)
-        btnCloseRightDrawer = findViewById(R.id.btnCloseRightDrawer)
 
         coreUpdatePopover = findViewById(R.id.coreUpdatePopover)
         btnCloseUpdatePopover = findViewById(R.id.btnCloseUpdatePopover)
@@ -364,7 +360,7 @@ class HomeActivity : AppCompatActivity() {
         )
         leftWingSlots.forEach { (pos, viewId) ->
             val slotView = findViewById<HudDockSlotView>(viewId)
-            slotView.innerAccentColor = Color.parseColor("#22D3EE")
+            slotView.transparentHudMode = true
             dockViews[pos] = slotView
         }
 
@@ -377,7 +373,7 @@ class HomeActivity : AppCompatActivity() {
         )
         rightWingSlots.forEach { (pos, viewId) ->
             val slotView = findViewById<HudDockSlotView>(viewId)
-            slotView.innerAccentColor = Color.parseColor("#F59E0B")
+            slotView.transparentHudMode = true
             dockViews[pos] = slotView
         }
 
@@ -387,18 +383,12 @@ class HomeActivity : AppCompatActivity() {
     private fun setupListeners() {
         btnLeftDrawerHandle.setOnClickListener {
             hideUpdatePopover()
-            setSideDrawerOpen(isLeft = true, open = true)
-        }
-        btnCloseLeftDrawer.setOnClickListener {
-            setSideDrawerOpen(isLeft = true, open = false)
+            setSideDrawerOpen(isLeft = true, open = !isLeftDrawerOpen)
         }
 
         btnRightDrawerHandle.setOnClickListener {
             hideUpdatePopover()
-            setSideDrawerOpen(isLeft = false, open = true)
-        }
-        btnCloseRightDrawer.setOnClickListener {
-            setSideDrawerOpen(isLeft = false, open = false)
+            setSideDrawerOpen(isLeft = false, open = !isRightDrawerOpen)
         }
 
         dockCenterDrawer.setOnClickListener {
@@ -465,12 +455,10 @@ class HomeActivity : AppCompatActivity() {
     private fun setSideDrawerOpen(isLeft: Boolean, open: Boolean, animate: Boolean = true) {
         if (isLeft) isLeftDrawerOpen = open else isRightDrawerOpen = open
         val drawer = if (isLeft) leftSideDrawer else rightSideDrawer
-        val handle = if (isLeft) btnLeftDrawerHandle else btnRightDrawerHandle
-        val offsetPx = (if (isLeft) -76f else 76f) * resources.displayMetrics.density
+        val offsetPx = (if (isLeft) -48f else 48f) * resources.displayMetrics.density
 
         drawer.animate().cancel()
         if (open) {
-            handle.visibility = View.GONE
             if (drawer.visibility != View.VISIBLE) {
                 drawer.visibility = View.VISIBLE
                 drawer.alpha = 0f
@@ -496,13 +484,11 @@ class HomeActivity : AppCompatActivity() {
                     .setInterpolator(DecelerateInterpolator())
                     .withEndAction {
                         drawer.visibility = View.GONE
-                        handle.visibility = View.VISIBLE
                     }
                     .start()
             } else {
                 drawer.visibility = View.GONE
                 drawer.alpha = 0f
-                handle.visibility = View.VISIBLE
             }
         }
     }

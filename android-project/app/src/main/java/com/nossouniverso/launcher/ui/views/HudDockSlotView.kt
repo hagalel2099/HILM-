@@ -46,6 +46,12 @@ class HudDockSlotView @JvmOverloads constructor(
             invalidate()
         }
 
+    var transparentHudMode: Boolean = false
+        set(value) {
+            field = value
+            invalidate()
+        }
+
     var innerAccentColor: Int = Color.parseColor("#F59E0B")
         set(value) {
             field = value
@@ -70,6 +76,12 @@ class HudDockSlotView @JvmOverloads constructor(
         strokeWidth = 1.6f * density
     }
 
+    private val transparentRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(64, 255, 255, 255)
+        style = Paint.Style.STROKE
+        strokeWidth = 1.2f * density
+    }
+
     init {
         setWillNotDraw(false)
         iconView = ImageView(context).apply {
@@ -90,7 +102,7 @@ class HudDockSlotView @JvmOverloads constructor(
             iconView.alpha = 1f
         } else {
             iconView.setImageResource(android.R.drawable.ic_input_add)
-            iconView.alpha = 0.55f
+            iconView.alpha = if (transparentHudMode) 0.40f else 0.55f
         }
     }
 
@@ -131,6 +143,20 @@ class HudDockSlotView @JvmOverloads constructor(
         val r = min(width, height) / 2f - 3f * density
         if (r <= 0f) return
 
+        val outerRect = RectF(cx - r, cy - r, cx + r, cy + r)
+
+        if (transparentHudMode) {
+            transparentRingPaint.color = if (isEditModeActive) {
+                Color.argb(190, 245, 158, 11)
+            } else {
+                Color.argb(62, 255, 255, 255)
+            }
+            canvas.drawArc(outerRect, 20f, 140f, false, transparentRingPaint)
+            canvas.drawArc(outerRect, 200f, 140f, false, transparentRingPaint)
+            super.onDraw(canvas)
+            return
+        }
+
         val bgAlphaRatio = if (isCenterDrawerButton) {
             0.90f
         } else {
@@ -139,7 +165,6 @@ class HudDockSlotView @JvmOverloads constructor(
         bgPaint.alpha = (bgAlphaRatio * 255f).toInt().coerceIn(0, 255)
         canvas.drawCircle(cx, cy, r, bgPaint)
 
-        val outerRect = RectF(cx - r, cy - r, cx + r, cy + r)
         cyanPaint.color = if (isEditModeActive && !isCenterDrawerButton) {
             Color.parseColor("#F59E0B")
         } else {

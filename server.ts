@@ -30,16 +30,23 @@ interface GitHubRelease {
 
 function readGradleInstalledVersion(): { versionName: string; versionCode: number } {
   const gradlePath = path.join(ANDROID_PROJECT_DIR, "app", "build.gradle.kts");
+  const envRunNum = Number.parseInt(process.env.GITHUB_RUN_NUMBER || "", 10);
+  const runNum = Number.isFinite(envRunNum) && envRunNum > 0 ? envRunNum : 1;
   try {
     const raw = fs.readFileSync(gradlePath, "utf-8");
     const nameMatch = raw.match(/versionName\s*=\s*"([^"]+)"/);
     const codeMatch = raw.match(/versionCode\s*=\s*(\d+)/);
-    return {
-      versionName: nameMatch?.[1] || "1.0.0",
-      versionCode: codeMatch ? Number.parseInt(codeMatch[1], 10) : 1,
-    };
+    const rawName = nameMatch?.[1];
+    const versionName =
+      !rawName || rawName.includes("$runNum") || rawName.includes("GITHUB_RUN_NUMBER")
+        ? `1.0.${runNum}`
+        : rawName;
+    const versionCode = codeMatch
+      ? Number.parseInt(codeMatch[1], 10)
+      : 2 + runNum;
+    return { versionName, versionCode };
   } catch {
-    return { versionName: "1.0.0", versionCode: 1 };
+    return { versionName: `1.0.${runNum}`, versionCode: 2 + runNum };
   }
 }
 
@@ -453,6 +460,16 @@ async function startServer() {
       for (const file of files) {
         const fullPath = path.join(ANDROID_PROJECT_DIR, file.path);
         let data: Buffer | string = fs.readFileSync(fullPath);
+        if (file.path === "app/build.gradle.kts") {
+          let gradleText = data.toString("utf-8");
+          if (!gradleText.includes('System.getenv("GITHUB_RUN_NUMBER")')) {
+            gradleText = gradleText.replace(
+              /versionCode\s*=\s*[^\r\n]+\r?\n\s*versionName\s*=\s*"[^"]+"/,
+              `val runNum = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1\n        versionCode = 2 + runNum\n        versionName = "1.0.$runNum"`
+            );
+          }
+          data = gradleText;
+        }
         if (file.path === "gradle.properties" && workerCfg.workerOrigin) {
           const text = data.toString("utf-8").replace(
             /^NOSSO_UNIVERSO_UPDATE_URL=.*$/m,

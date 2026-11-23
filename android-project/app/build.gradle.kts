@@ -15,7 +15,6 @@ android {
         versionCode = 2 + runNum
         versionName = "1.0.$runNum"
 
-
         val updateApiUrl = ((project.findProperty("NOSSO_UNIVERSO_UPDATE_URL") as? String) ?: "")
             .trim()
             .trimEnd('/')
