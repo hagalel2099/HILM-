@@ -1,5 +1,6 @@
 package com.nossouniverso.launcher.ui.drawer
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -7,15 +8,20 @@ import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.nossouniverso.launcher.R
 import com.nossouniverso.launcher.model.AppInfo
@@ -36,6 +42,27 @@ class AppDrawerBottomSheet(
         return inflater.inflate(R.layout.bottom_sheet_app_drawer, container, false)
     }
 
+    override fun onStart() {
+        super.onStart()
+        val bottomSheetDialog = dialog as? BottomSheetDialog ?: return
+        val bottomSheet = bottomSheetDialog.findViewById<View>(
+            com.google.android.material.R.id.design_bottom_sheet
+        ) ?: return
+
+        val sheetHeight = (resources.displayMetrics.heightPixels * 0.90f).toInt()
+        bottomSheet.layoutParams = bottomSheet.layoutParams.apply {
+            height = sheetHeight
+        }
+        bottomSheet.requestLayout()
+
+        val behavior = BottomSheetBehavior.from(bottomSheet)
+        behavior.peekHeight = sheetHeight
+        behavior.isFitToContents = true
+        behavior.skipCollapsed = true
+        behavior.state = BottomSheetBehavior.STATE_EXPANDED
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -46,6 +73,10 @@ class AppDrawerBottomSheet(
         val recycler = view.findViewById<RecyclerView>(R.id.recyclerApps)
 
         titleView.text = title
+
+        // Ensure BottomSheetBehavior binds vertical nested scroll exclusively to recyclerApps
+        ViewCompat.setNestedScrollingEnabled(recentRecycler, false)
+        ViewCompat.setNestedScrollingEnabled(recycler, true)
 
         val hasRecents = recentApps.isNotEmpty()
         recentHeader.visibility = if (hasRecents) View.VISIBLE else View.GONE
@@ -76,6 +107,50 @@ class AppDrawerBottomSheet(
         recycler.layoutManager = GridLayoutManager(requireContext(), 4)
         recycler.adapter = adapter
         adapter.submitList(apps)
+
+        val baseBottomPadding = (64 * resources.displayMetrics.density).toInt()
+        recycler.clipToPadding = false
+        recycler.setPadding(
+            recycler.paddingLeft,
+            recycler.paddingTop,
+            recycler.paddingRight,
+            baseBottomPadding
+        )
+        ViewCompat.setOnApplyWindowInsetsListener(view) { _, insets ->
+            val navAndImeBottom = insets.getInsets(
+                WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.ime()
+            ).bottom
+            recycler.setPadding(
+                recycler.paddingLeft,
+                recycler.paddingTop,
+                recycler.paddingRight,
+                baseBottomPadding + navAndImeBottom
+            )
+            insets
+        }
+        ViewCompat.requestApplyInsets(view)
+
+        var touchDownY = 0f
+        recycler.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    touchDownY = event.y
+                    if (v.canScrollVertically(-1) || v.canScrollVertically(1)) {
+                        v.parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dy = event.y - touchDownY
+                    val shouldRecyclerHandle =
+                        v.canScrollVertically(-1) || (dy < 0f && v.canScrollVertically(1))
+                    v.parent?.requestDisallowInterceptTouchEvent(shouldRecyclerHandle)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    v.parent?.requestDisallowInterceptTouchEvent(false)
+                }
+            }
+            false
+        }
 
         searchEdit.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit

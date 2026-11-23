@@ -3,6 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#06090F"
+    android:fitsSystemWindows="true"
     android:orientation="vertical"
     android:padding="18dp">
 
@@ -38,8 +39,15 @@
         <Button
             android:id="@+id/btnBackFromPacks"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="wrap_content"
             android:backgroundTint="#1E293B"
+            android:gravity="center"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minHeight="40dp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp"
+            android:singleLine="false"
             android:text="@string/close_label"
             android:textColor="@color/hud_text_primary"
             android:textSize="12sp" />
@@ -49,15 +57,23 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
+        android:baselineAligned="false"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/btnImportZipPack"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:layout_weight="1"
             android:backgroundTint="#13233A"
+            android:gravity="center"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minHeight="48dp"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="10dp"
+            android:singleLine="false"
             android:text="@string/import_zip_pack"
             android:textColor="@color/hud_cyan"
             android:textSize="12sp"
@@ -66,9 +82,16 @@
         <Button
             android:id="@+id/btnRestoreOriginalIcons"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
             android:backgroundTint="#1E293B"
+            android:gravity="center"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minHeight="48dp"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="10dp"
+            android:singleLine="false"
             android:text="@string/restore_original_icons"
             android:textColor="@color/hud_amber"
             android:textSize="12sp"
@@ -82,6 +105,6 @@
         android:layout_marginTop="14dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingBottom="12dp" />
+        android:paddingBottom="28dp" />
 
 </LinearLayout>

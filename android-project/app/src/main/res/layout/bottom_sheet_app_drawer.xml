@@ -3,8 +3,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F0070B12"
+    android:descendantFocusability="beforeDescendants"
+    android:focusableInTouchMode="true"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingStart="16dp"
+    android:paddingTop="16dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="0dp">
 
     <TextView
         android:id="@+id/txtDrawerTitle"
@@ -45,6 +50,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
+        android:nestedScrollingEnabled="false"
         android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -52,5 +58,11 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="10dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fadeScrollbars="false"
+        android:nestedScrollingEnabled="true"
+        android:overScrollMode="always"
+        android:paddingBottom="64dp"
+        android:scrollbars="vertical" />
 </LinearLayout>
