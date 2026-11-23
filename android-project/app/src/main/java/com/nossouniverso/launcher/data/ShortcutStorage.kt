@@ -89,8 +89,118 @@ class ShortcutStorage(context: Context) {
         return current
     }
 
+    fun renameSlot(position: SlotPosition, customLabel: String?): Map<SlotPosition, ShortcutSlot> {
+        val current = loadSlots().toMutableMap()
+        val existing = current[position] ?: return current
+        val clean = customLabel?.trim()?.takeIf { it.isNotEmpty() }
+        current[position] = existing.copy(customLabel = clean)
+        saveSlots(current)
+        return current
+    }
+
     fun clearAllSlots() {
         prefs.edit().remove(KEY_SLOTS).apply()
+    }
+
+    fun getRecentPackages(): List<String> {
+        val raw = prefs.getString(KEY_RECENT_PACKAGES, null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).mapNotNull { i ->
+                arr.optString(i).takeIf { it.isNotBlank() }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun recordRecentPackage(packageName: String) {
+        if (packageName.isBlank()) return
+        val updated = (listOf(packageName) + getRecentPackages().filter { it != packageName }).take(5)
+        prefs.edit().putString(KEY_RECENT_PACKAGES, JSONArray(updated).toString()).apply()
+    }
+
+    fun exportBackupJson(): String {
+        val slotsObj = JSONObject()
+        val loaded = loadSlots()
+        SlotPosition.values().forEach { pos ->
+            val slot = loaded[pos] ?: ShortcutSlot(pos)
+            slotsObj.put(
+                pos.id,
+                JSONObject().apply {
+                    put("slotId", pos.id)
+                    put("packageName", slot.packageName ?: JSONObject.NULL)
+                    if (!slot.activityName.isNullOrBlank()) put("activityName", slot.activityName)
+                    if (!slot.customLabel.isNullOrBlank()) put("customLabel", slot.customLabel)
+                    if (!slot.customIconUri.isNullOrBlank()) put("customIconUri", slot.customIconUri)
+                }
+            )
+        }
+        return JSONObject().apply {
+            put("schema", "nosso_universo_layout_v1")
+            put("iconPack", getSelectedIconPackId())
+            put("panelOpacity", getPanelOpacityPercent())
+            put("slots", slotsObj)
+        }.toString(2)
+    }
+
+    fun importBackupJson(rawJson: String): Boolean {
+        return try {
+            val root = JSONObject(rawJson)
+            val current = SlotPosition.values().associateWith { ShortcutSlot(it) }.toMutableMap()
+            val slotsNode = root.opt("slots")
+            when (slotsNode) {
+                is JSONObject -> {
+                    SlotPosition.values().forEach { pos ->
+                        val item = slotsNode.optJSONObject(pos.id) ?: return@forEach
+                        current[pos] = ShortcutSlot(
+                            position = pos,
+                            packageName = item.optString("packageName").takeIf {
+                                it.isNotBlank() && it != "null"
+                            },
+                            activityName = item.optString("activityName").takeIf { it.isNotBlank() },
+                            customLabel = item.optString("customLabel").takeIf { it.isNotBlank() },
+                            customIconUri = item.optString("customIconUri").takeIf { it.isNotBlank() }
+                        )
+                    }
+                }
+                is JSONArray -> {
+                    for (i in 0 until slotsNode.length()) {
+                        val item = slotsNode.optJSONObject(i) ?: continue
+                        val pos = SlotPosition.fromId(item.optString("position")) ?: continue
+                        current[pos] = ShortcutSlot(
+                            position = pos,
+                            packageName = item.optString("packageName").takeIf {
+                                it.isNotBlank() && it != "null"
+                            },
+                            activityName = item.optString("activityName").takeIf { it.isNotBlank() },
+                            customLabel = item.optString("customLabel").takeIf { it.isNotBlank() },
+                            customIconUri = item.optString("customIconUri").takeIf { it.isNotBlank() }
+                        )
+                    }
+                }
+                else -> return false
+            }
+
+            saveSlots(current)
+            if (root.has("panelOpacity")) {
+                setPanelOpacityPercent(root.optInt("panelOpacity", 78))
+            }
+            val importedPack = root.optString("iconPack")
+            if (importedPack.isNotBlank()) {
+                val mappedPack = when (importedPack) {
+                    "titanium-liquid" -> IconPackInfo.ASSET_PACK_PREFIX + "titanium_liquid"
+                    "nosso-universo" -> IconPackInfo.STYLE_NOSSO_UNIVERSO
+                    "monochrome-hud" -> IconPackInfo.STYLE_MONOCHROME_HUD
+                    "system-default" -> IconPackInfo.STYLE_SYSTEM_DEFAULT
+                    else -> importedPack
+                }
+                setSelectedIconPackId(mappedPack)
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun getSelectedIconPackId(): String {
@@ -115,5 +225,6 @@ class ShortcutStorage(context: Context) {
         private const val KEY_SLOTS = "shortcut_slots_v1"
         private const val KEY_ICON_PACK = "selected_icon_pack_v1"
         private const val KEY_PANEL_OPACITY = "hud_panel_opacity_v1"
+        private const val KEY_RECENT_PACKAGES = "recent_packages_v1"
     }
 }

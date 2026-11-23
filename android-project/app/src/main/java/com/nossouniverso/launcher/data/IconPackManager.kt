@@ -37,6 +37,8 @@ import org.xmlpull.v1.XmlPullParser
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.util.ArrayDeque
 import java.util.zip.ZipInputStream
 import kotlin.math.abs
@@ -66,10 +68,15 @@ class IconPackManager(
     private var cachedPackPackage: String? = null
     private var cachedResources: Resources? = null
     private val componentToDrawable = mutableMapOf<String, String>()
+
+    @Volatile
     private var cachedManagedPacks: Map<String, ParsedPack>? = null
 
     private val importedRootDir: File
         get() = File(context.filesDir, "imported_icon_packs")
+
+    private val renderDiskCacheDir: File
+        get() = File(context.cacheDir, "titanium_liquid_cache_v1")
 
     private val bitmapCache: LruCache<String, Bitmap> = object : LruCache<String, Bitmap>(
         ((Runtime.getRuntime().maxMemory() / 1024L).toInt() / 16).coerceIn(2048, 8192)
@@ -371,6 +378,13 @@ class IconPackManager(
     fun clearCache() {
         bitmapCache.evictAll()
         cachedManagedPacks = null
+        try {
+            if (renderDiskCacheDir.exists()) {
+                renderDiskCacheDir.deleteRecursively()
+            }
+        } catch (_: Exception) {
+            // Ignore disk cache cleanup issues
+        }
     }
 
     fun resolveCustomUriDrawable(uriString: String?): Drawable? {
@@ -458,6 +472,20 @@ class IconPackManager(
         val cacheKey = "liquid_auto:$cacheIdentity#$size"
         bitmapCache.get(cacheKey)?.let { cached ->
             return BitmapDrawable(context.resources, cached)
+        }
+
+        val diskFile = diskCacheFileForKey(cacheKey)
+        if (diskFile.exists()) {
+            try {
+                FileInputStream(diskFile).use { stream ->
+                    BitmapFactory.decodeStream(stream)?.let { decoded ->
+                        bitmapCache.put(cacheKey, decoded)
+                        return BitmapDrawable(context.resources, decoded)
+                    }
+                }
+            } catch (_: Exception) {
+                // Re-render cleanly if disk entry was corrupted
+            }
         }
 
         val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -605,7 +633,21 @@ class IconPackManager(
         )
 
         bitmapCache.put(cacheKey, out)
+        try {
+            renderDiskCacheDir.mkdirs()
+            FileOutputStream(diskFile).use { fos ->
+                out.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+        } catch (_: Exception) {
+            // Disk cache write is best-effort
+        }
         return BitmapDrawable(context.resources, out)
+    }
+
+    private fun diskCacheFileForKey(key: String): File {
+        val digest = MessageDigest.getInstance("SHA-256").digest(key.toByteArray())
+        val hex = digest.joinToString("") { "%02x".format(it) }.take(32)
+        return File(renderDiskCacheDir, "$hex.png")
     }
 
     private data class PreparedSymbol(

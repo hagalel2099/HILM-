@@ -11,7 +11,8 @@ import com.nossouniverso.launcher.model.AppInfo
 
 class AppAdapter(
     private val onAppClick: (AppInfo) -> Unit,
-    private val onAppLongClick: (AppInfo) -> Unit
+    private val onAppLongClick: (AppInfo) -> Unit,
+    private val itemLayoutResId: Int = R.layout.item_app_drawer
 ) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
 
     private val fullList = mutableListOf<AppInfo>()
@@ -38,7 +39,7 @@ class AppAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_app_drawer, parent, false)
+            .inflate(itemLayoutResId, parent, false)
         return AppViewHolder(view)
     }
 

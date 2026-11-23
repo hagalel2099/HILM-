@@ -15,9 +15,6 @@ android {
         versionCode = 2 + runNum
         versionName = "1.0.$runNum"
 
-        
-
-        
 
         val updateApiUrl = ((project.findProperty("NOSSO_UNIVERSO_UPDATE_URL") as? String) ?: "")
             .trim()
@@ -26,8 +23,29 @@ android {
         buildConfigField("String", "UPDATE_API_BASE_URL", "\"$updateApiUrl\"")
     }
 
+    val releaseStorePath = System.getenv("RELEASE_STORE_FILE")?.takeIf { it.isNotBlank() }
+        ?: (project.findProperty("RELEASE_STORE_FILE") as? String)?.takeIf { it.isNotBlank() }
+    val releaseStoreFileObj = releaseStorePath?.let { file(it) }?.takeIf { it.exists() }
+
+    signingConfigs {
+        if (releaseStoreFileObj != null) {
+            create("release") {
+                storeFile = releaseStoreFileObj
+                storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+                    ?: (project.findProperty("RELEASE_STORE_PASSWORD") as? String)
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                    ?: (project.findProperty("RELEASE_KEY_ALIAS") as? String)
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+                    ?: (project.findProperty("RELEASE_KEY_PASSWORD") as? String)
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (releaseStoreFileObj != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

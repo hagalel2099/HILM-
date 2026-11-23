@@ -8,6 +8,9 @@ import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
+import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import com.nossouniverso.launcher.R
@@ -43,6 +46,13 @@ class HudDockSlotView @JvmOverloads constructor(
             invalidate()
         }
 
+    var innerAccentColor: Int = Color.parseColor("#F59E0B")
+        set(value) {
+            field = value
+            amberPaint.color = value
+            invalidate()
+        }
+
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(8, 14, 23)
         style = Paint.Style.FILL
@@ -55,7 +65,7 @@ class HudDockSlotView @JvmOverloads constructor(
     }
 
     private val amberPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#F59E0B")
+        color = innerAccentColor
         style = Paint.Style.STROKE
         strokeWidth = 1.6f * density
     }
@@ -89,6 +99,30 @@ class HudDockSlotView @JvmOverloads constructor(
         contentDescription = contentDescriptionText
         iconView.setImageResource(R.drawable.ic_launcher_foreground)
         iconView.alpha = 1f
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                animate().cancel()
+                animate()
+                    .scaleX(0.88f)
+                    .scaleY(0.88f)
+                    .setDuration(90L)
+                    .start()
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                animate().cancel()
+                animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(230L)
+                    .setInterpolator(OvershootInterpolator(1.7f))
+                    .start()
+            }
+        }
+        return super.onTouchEvent(event)
     }
 
     override fun onDraw(canvas: Canvas) {

@@ -1,5 +1,6 @@
 package com.nossouniverso.launcher.ui.home
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.ClipData
@@ -9,12 +10,19 @@ import android.content.IntentFilter
 import android.content.pm.PackageInstaller
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
+import android.text.InputType
 import android.view.DragEvent
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -24,6 +32,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
 import com.nossouniverso.launcher.NossoUniversoApp
 import com.nossouniverso.launcher.R
@@ -42,15 +51,27 @@ import com.nossouniverso.launcher.updater.LauncherUpdateManager
 import com.nossouniverso.launcher.updater.UpdateCheckResult
 import com.nossouniverso.launcher.updater.UpdateInstallReceiver
 import java.io.File
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
+import kotlin.math.max
 
 class HomeActivity : AppCompatActivity() {
 
     private lateinit var app: NossoUniversoApp
+    private lateinit var homeRoot: View
     private lateinit var hudFrameView: HudFrameView
     private lateinit var hilmCoreView: HilmCoreView
     private lateinit var editModeBar: LinearLayout
     private lateinit var btnFinishEdit: TextView
     private lateinit var btnHubControl: ImageButton
+
+    private lateinit var btnLeftDrawerHandle: TextView
+    private lateinit var btnRightDrawerHandle: TextView
+    private lateinit var leftSideDrawer: LinearLayout
+    private lateinit var rightSideDrawer: LinearLayout
+    private lateinit var btnCloseLeftDrawer: TextView
+    private lateinit var btnCloseRightDrawer: TextView
 
     private lateinit var coreUpdatePopover: LinearLayout
     private lateinit var btnCloseUpdatePopover: TextView
@@ -66,10 +87,21 @@ class HomeActivity : AppCompatActivity() {
     private var installedApps: List<AppInfo> = emptyList()
     private var slots: Map<SlotPosition, ShortcutSlot> = emptyMap()
     private var isEditMode = false
+    private var isLeftDrawerOpen = false
+    private var isRightDrawerOpen = false
     private var pendingSwapSource: SlotPosition? = null
     private var pendingCustomIconTarget: SlotPosition? = null
     private var packageReceiver: BroadcastReceiver? = null
     private var installUiReceiver: BroadcastReceiver? = null
+    private var batteryReceiver: BroadcastReceiver? = null
+
+    private val bgExecutor = Executors.newSingleThreadExecutor()
+    private val reloadSeq = AtomicInteger(0)
+
+    private var gestureStartX = 0f
+    private var gestureStartY = 0f
+    private var gestureTriggered = false
+    private var touchSlopPx = 24f
 
     private var updateState: UpdateUiState = UpdateUiState.IDLE
     private var availableUpdate: UpdateCheckResult.UpdateAvailable? = null
@@ -174,7 +206,10 @@ class HomeActivity : AppCompatActivity() {
             window.isNavigationBarContrastEnforced = false
         }
         setContentView(R.layout.activity_home)
-        findViewById<View>(R.id.homeRoot).setBackgroundColor(Color.TRANSPARENT)
+        homeRoot = findViewById(R.id.homeRoot)
+        homeRoot.setBackgroundColor(Color.TRANSPARENT)
+
+        touchSlopPx = ViewConfiguration.get(this).scaledTouchSlop.toFloat()
 
         app = application as NossoUniversoApp
         updateManager = LauncherUpdateManager(this)
@@ -182,6 +217,7 @@ class HomeActivity : AppCompatActivity() {
         setupListeners()
         preventHomeBackExit()
         registerInstallUiReceiver()
+        registerBatteryReceiver()
         handlePostUpdateRelaunchIntent(intent)
 
         packageReceiver = app.appRepository.registerPackageReceiver {
@@ -208,10 +244,84 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        reloadSeq.incrementAndGet()
+        bgExecutor.shutdownNow()
         updateManager.shutdown()
         packageReceiver?.let { unregisterReceiver(it) }
         installUiReceiver?.let { unregisterReceiver(it) }
+        batteryReceiver?.let { unregisterReceiver(it) }
         super.onDestroy()
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                gestureStartX = ev.rawX
+                gestureStartY = ev.rawY
+                gestureTriggered = false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!isEditMode && !gestureTriggered && ev.pointerCount == 1 &&
+                    coreUpdatePopover.visibility != View.VISIBLE
+                ) {
+                    val dx = ev.rawX - gestureStartX
+                    val dy = ev.rawY - gestureStartY
+                    val absDx = abs(dx)
+                    val absDy = abs(dy)
+                    val density = resources.displayMetrics.density
+                    val rootW = max(homeRoot.width, resources.displayMetrics.widthPixels).toFloat()
+                    val rootH = max(homeRoot.height, resources.displayMetrics.heightPixels).toFloat()
+                    val edgeZone = 56f * density
+                    val horizThresh = max(touchSlopPx * 2.4f, 42f * density)
+                    val vertThresh = max(touchSlopPx * 3.0f, 68f * density)
+
+                    val fired = when {
+                        gestureStartX <= edgeZone && dx > horizThresh && absDx > absDy * 1.3f && !isLeftDrawerOpen -> {
+                            setSideDrawerOpen(isLeft = true, open = true)
+                            true
+                        }
+                        isLeftDrawerOpen && gestureStartX <= 140f * density && dx < -horizThresh && absDx > absDy * 1.3f -> {
+                            setSideDrawerOpen(isLeft = true, open = false)
+                            true
+                        }
+                        gestureStartX >= rootW - edgeZone && dx < -horizThresh && absDx > absDy * 1.3f && !isRightDrawerOpen -> {
+                            setSideDrawerOpen(isLeft = false, open = true)
+                            true
+                        }
+                        isRightDrawerOpen && gestureStartX >= rootW - 140f * density && dx > horizThresh && absDx > absDy * 1.3f -> {
+                            setSideDrawerOpen(isLeft = false, open = false)
+                            true
+                        }
+                        dy < -vertThresh && absDy > absDx * 1.45f && gestureStartY < rootH * 0.90f -> {
+                            openAppDrawer(targetSlot = null)
+                            true
+                        }
+                        dy > vertThresh && absDy > absDx * 1.45f && gestureStartY > 36f * density -> {
+                            expandNotificationShade()
+                            true
+                        }
+                        else -> false
+                    }
+
+                    if (fired) {
+                        gestureTriggered = true
+                        val cancel = MotionEvent.obtain(ev).apply {
+                            action = MotionEvent.ACTION_CANCEL
+                        }
+                        super.dispatchTouchEvent(cancel)
+                        cancel.recycle()
+                        return true
+                    }
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (gestureTriggered) {
+                    gestureTriggered = false
+                    return true
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
     }
 
     private fun bindViews() {
@@ -220,6 +330,13 @@ class HomeActivity : AppCompatActivity() {
         editModeBar = findViewById(R.id.editModeBar)
         btnFinishEdit = findViewById(R.id.btnFinishEdit)
         btnHubControl = findViewById(R.id.btnHubControl)
+
+        btnLeftDrawerHandle = findViewById(R.id.btnLeftDrawerHandle)
+        btnRightDrawerHandle = findViewById(R.id.btnRightDrawerHandle)
+        leftSideDrawer = findViewById(R.id.leftSideDrawer)
+        rightSideDrawer = findViewById(R.id.rightSideDrawer)
+        btnCloseLeftDrawer = findViewById(R.id.btnCloseLeftDrawer)
+        btnCloseRightDrawer = findViewById(R.id.btnCloseRightDrawer)
 
         coreUpdatePopover = findViewById(R.id.coreUpdatePopover)
         btnCloseUpdatePopover = findViewById(R.id.btnCloseUpdatePopover)
@@ -238,10 +355,52 @@ class HomeActivity : AppCompatActivity() {
         dockViews[SlotPosition.DOCK_4] = findViewById(R.id.dock4)
         dockViews[SlotPosition.DOCK_5] = findViewById(R.id.dock5)
 
+        val leftWingSlots = listOf(
+            SlotPosition.LEFT_1 to R.id.leftSlot1,
+            SlotPosition.LEFT_2 to R.id.leftSlot2,
+            SlotPosition.LEFT_3 to R.id.leftSlot3,
+            SlotPosition.LEFT_4 to R.id.leftSlot4,
+            SlotPosition.LEFT_5 to R.id.leftSlot5
+        )
+        leftWingSlots.forEach { (pos, viewId) ->
+            val slotView = findViewById<HudDockSlotView>(viewId)
+            slotView.innerAccentColor = Color.parseColor("#22D3EE")
+            dockViews[pos] = slotView
+        }
+
+        val rightWingSlots = listOf(
+            SlotPosition.RIGHT_1 to R.id.rightSlot1,
+            SlotPosition.RIGHT_2 to R.id.rightSlot2,
+            SlotPosition.RIGHT_3 to R.id.rightSlot3,
+            SlotPosition.RIGHT_4 to R.id.rightSlot4,
+            SlotPosition.RIGHT_5 to R.id.rightSlot5
+        )
+        rightWingSlots.forEach { (pos, viewId) ->
+            val slotView = findViewById<HudDockSlotView>(viewId)
+            slotView.innerAccentColor = Color.parseColor("#F59E0B")
+            dockViews[pos] = slotView
+        }
+
         dockCenterDrawer.bindCenterButton("Abrir gaveta de aplicativos")
     }
 
     private fun setupListeners() {
+        btnLeftDrawerHandle.setOnClickListener {
+            hideUpdatePopover()
+            setSideDrawerOpen(isLeft = true, open = true)
+        }
+        btnCloseLeftDrawer.setOnClickListener {
+            setSideDrawerOpen(isLeft = true, open = false)
+        }
+
+        btnRightDrawerHandle.setOnClickListener {
+            hideUpdatePopover()
+            setSideDrawerOpen(isLeft = false, open = true)
+        }
+        btnCloseRightDrawer.setOnClickListener {
+            setSideDrawerOpen(isLeft = false, open = false)
+        }
+
         dockCenterDrawer.setOnClickListener {
             hideUpdatePopover()
             openAppDrawer(targetSlot = null)
@@ -303,6 +462,63 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private fun setSideDrawerOpen(isLeft: Boolean, open: Boolean, animate: Boolean = true) {
+        if (isLeft) isLeftDrawerOpen = open else isRightDrawerOpen = open
+        val drawer = if (isLeft) leftSideDrawer else rightSideDrawer
+        val handle = if (isLeft) btnLeftDrawerHandle else btnRightDrawerHandle
+        val offsetPx = (if (isLeft) -76f else 76f) * resources.displayMetrics.density
+
+        drawer.animate().cancel()
+        if (open) {
+            handle.visibility = View.GONE
+            if (drawer.visibility != View.VISIBLE) {
+                drawer.visibility = View.VISIBLE
+                drawer.alpha = 0f
+                drawer.translationX = offsetPx
+            }
+            if (animate) {
+                drawer.animate()
+                    .alpha(1f)
+                    .translationX(0f)
+                    .setDuration(220L)
+                    .setInterpolator(OvershootInterpolator(1.05f))
+                    .start()
+            } else {
+                drawer.alpha = 1f
+                drawer.translationX = 0f
+            }
+        } else {
+            if (animate && drawer.visibility == View.VISIBLE) {
+                drawer.animate()
+                    .alpha(0f)
+                    .translationX(offsetPx)
+                    .setDuration(170L)
+                    .setInterpolator(DecelerateInterpolator())
+                    .withEndAction {
+                        drawer.visibility = View.GONE
+                        handle.visibility = View.VISIBLE
+                    }
+                    .start()
+            } else {
+                drawer.visibility = View.GONE
+                drawer.alpha = 0f
+                handle.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    @SuppressLint("WrongConstant")
+    private fun expandNotificationShade() {
+        try {
+            val statusBarService = getSystemService("statusbar") ?: return
+            val statusBarManager = Class.forName("android.app.StatusBarManager")
+            val method = statusBarManager.getMethod("expandNotificationsPanel")
+            method.invoke(statusBarService)
+        } catch (_: Exception) {
+            // Some OEMs restrict programmatic expansion on non-system signatures
+        }
+    }
+
     private fun handleSlotDrag(targetPosition: SlotPosition, event: DragEvent): Boolean {
         return when (event.action) {
             DragEvent.ACTION_DRAG_STARTED -> event.localState is SlotPosition
@@ -346,7 +562,9 @@ class HomeActivity : AppCompatActivity() {
         }
 
         val launched = app.appRepository.launchApp(slot.packageName, slot.activityName)
-        if (!launched) {
+        if (launched) {
+            app.shortcutStorage.recordRecentPackage(slot.packageName)
+        } else {
             Toast.makeText(this, "Aplicativo não encontrado.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -360,6 +578,7 @@ class HomeActivity : AppCompatActivity() {
             "Gerenciar pacotes de ícones"
         )
         if (hasApp) {
+            options.add("Renomear atalho")
             options.add("Escolher imagem própria para ícone")
             options.add("Remover atalho da tela inicial")
         }
@@ -374,6 +593,7 @@ class HomeActivity : AppCompatActivity() {
                     "Gerenciar pacotes de ícones" -> {
                         startActivity(Intent(this, IconPackManagerActivity::class.java))
                     }
+                    "Renomear atalho" -> showRenameSlotDialog(position, slot?.customLabel.orEmpty())
                     "Escolher imagem própria para ícone" -> {
                         pendingCustomIconTarget = position
                         pickCustomIconLauncher.launch(arrayOf("image/*"))
@@ -387,6 +607,27 @@ class HomeActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun showRenameSlotDialog(position: SlotPosition, currentLabel: String) {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+            hint = "Nome personalizado (deixe vazio para padrão)"
+            setText(currentLabel)
+            setSelection(text.length)
+            val pad = (18 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad / 2, pad, pad / 2)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Renomear atalho")
+            .setView(input)
+            .setPositiveButton("Salvar") { _, _ ->
+                slots = app.shortcutStorage.renameSlot(position, input.text.toString())
+                renderAllSlots()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
     private fun openAppDrawer(targetSlot: SlotPosition?) {
         val title = if (targetSlot != null) {
             "Escolher aplicativo para o atalho"
@@ -394,9 +635,13 @@ class HomeActivity : AppCompatActivity() {
             "Aplicativos Instalados"
         }
 
+        val byPkg = installedApps.associateBy { it.packageName }
+        val recentApps = app.shortcutStorage.getRecentPackages().mapNotNull { byPkg[it] }
+
         val sheet = AppDrawerBottomSheet(
             title = title,
             apps = installedApps,
+            recentApps = recentApps,
             onSelectApp = { selectedApp ->
                 if (targetSlot != null) {
                     slots = app.shortcutStorage.assignSlot(
@@ -406,7 +651,9 @@ class HomeActivity : AppCompatActivity() {
                     )
                     renderAllSlots()
                 } else {
-                    app.appRepository.launchApp(selectedApp.packageName, selectedApp.activityName)
+                    if (app.appRepository.launchApp(selectedApp.packageName, selectedApp.activityName)) {
+                        app.shortcutStorage.recordRecentPackage(selectedApp.packageName)
+                    }
                 }
             },
             onPinShortcut = { selectedApp ->
@@ -420,10 +667,12 @@ class HomeActivity : AppCompatActivity() {
                         activityName = selectedApp.activityName
                     )
                     renderAllSlots()
+                    if (firstEmpty.isLeftDrawer) setSideDrawerOpen(isLeft = true, open = true)
+                    if (firstEmpty.isRightDrawer) setSideDrawerOpen(isLeft = false, open = true)
                 } else {
                     Toast.makeText(
                         this,
-                        "Todos os atalhos estão ocupados. Segure um espaço para substituir.",
+                        "Todos os 18 atalhos estão ocupados. Segure um espaço para substituir.",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -441,9 +690,17 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun reloadAppsAndRender() {
-        installedApps = app.appRepository.loadInstalledApps()
-        slots = app.shortcutStorage.loadSlots()
-        renderAllSlots()
+        val seq = reloadSeq.incrementAndGet()
+        bgExecutor.execute {
+            val loadedApps = app.appRepository.loadInstalledApps()
+            val loadedSlots = app.shortcutStorage.loadSlots()
+            runOnUiThread {
+                if (isFinishing || isDestroyed || seq != reloadSeq.get()) return@runOnUiThread
+                installedApps = loadedApps
+                slots = loadedSlots
+                renderAllSlots()
+            }
+        }
     }
 
     private fun renderAllSlots() {
@@ -470,9 +727,13 @@ class HomeActivity : AppCompatActivity() {
             val resolved = resolveAppForSlot(slot, appByComponent, appByPackage)
             if (slot != null && resolved != null) {
                 val customDrawable = app.iconPackManager.resolveCustomUriDrawable(slot.customIconUri)
-                view.bindIcon(customDrawable ?: resolved.icon, resolved.label)
+                val displayLabel = slot.customLabel ?: resolved.label
+                view.bindIcon(customDrawable ?: resolved.icon, displayLabel)
+                TooltipCompat.setTooltipText(view, displayLabel)
             } else {
-                view.bindIcon(null, getString(R.string.slot_empty))
+                val emptyText = getString(R.string.slot_empty)
+                view.bindIcon(null, emptyText)
+                TooltipCompat.setTooltipText(view, emptyText)
             }
         }
     }
@@ -485,6 +746,29 @@ class HomeActivity : AppCompatActivity() {
         if (slot == null || slot.packageName.isNullOrBlank()) return null
         val key = "${slot.packageName}/${slot.activityName.orEmpty()}"
         return byComponent[key] ?: byPackage[slot.packageName]
+    }
+
+    private fun registerBatteryReceiver() {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                applyBatteryIntent(intent)
+            }
+        }
+        batteryReceiver = receiver
+        val sticky = registerReceiver(receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        if (sticky != null) {
+            applyBatteryIntent(sticky)
+        }
+    }
+
+    private fun applyBatteryIntent(intent: Intent) {
+        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+        val pct = if (level >= 0 && scale > 0) ((level * 100f) / scale).toInt() else 100
+        val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+            status == BatteryManager.BATTERY_STATUS_FULL
+        hilmCoreView.updateBatteryTelemetry(pct, charging)
     }
 
     private fun toggleCoreUpdatePopover() {
@@ -813,6 +1097,9 @@ class HomeActivity : AppCompatActivity() {
                     updateState != UpdateUiState.DOWNLOADING
                 ) {
                     hideUpdatePopover()
+                } else if (isLeftDrawerOpen || isRightDrawerOpen) {
+                    if (isLeftDrawerOpen) setSideDrawerOpen(isLeft = true, open = false)
+                    if (isRightDrawerOpen) setSideDrawerOpen(isLeft = false, open = false)
                 } else if (isEditMode) {
                     toggleEditMode(false)
                 }

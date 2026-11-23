@@ -161,6 +161,12 @@ class HilmCoreView @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
+    private val batteryAuraPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
+
+    private var batteryLevelPercent: Int = 100
+    private var isCharging: Boolean = false
 
     private val pulsePeriodMs = 4600f
     private val trailSegments = 126
@@ -307,6 +313,15 @@ class HilmCoreView @JvmOverloads constructor(
             true
         }
         return animScale <= 0f || !sysEnabled
+    }
+
+    fun updateBatteryTelemetry(levelPercent: Int, charging: Boolean) {
+        val clamped = levelPercent.coerceIn(0, 100)
+        if (batteryLevelPercent != clamped || isCharging != charging) {
+            batteryLevelPercent = clamped
+            isCharging = charging
+            invalidate()
+        }
     }
 
     private fun startOrbitLoop() {
@@ -499,12 +514,29 @@ class HilmCoreView @JvmOverloads constructor(
                 wave.pow(1.15f)
             }
 
-            coreGlowPaint.alpha = ((0.03f + 0.34f * pulse) * 255f).toInt().coerceIn(0, 255)
+            val pulseBoost = when {
+                isCharging -> 0.42f
+                batteryLevelPercent <= 15 -> 0.20f
+                else -> 0.34f
+            }
+            val baseGlow = if (isCharging) 0.06f else 0.03f
+            coreGlowPaint.alpha = ((baseGlow + pulseBoost * pulse) * 255f).toInt().coerceIn(0, 255)
             canvas.drawBitmap(bmp, null, coreRect, coreGlowPaint)
 
             coreGlowBitmap?.let { glowBmp ->
-                coreGlowPaint.alpha = ((0.02f + 0.16f * pulse) * 255f).toInt().coerceIn(0, 255)
+                coreGlowPaint.alpha = ((0.02f + (pulseBoost * 0.48f) * pulse) * 255f).toInt().coerceIn(0, 255)
                 canvas.drawBitmap(glowBmp, null, coreRect, coreGlowPaint)
+            }
+
+            // Ultra-subtle ambient telemetry halo only when charging or low battery (<= 15%)
+            if (isCharging || batteryLevelPercent <= 15) {
+                batteryAuraPaint.strokeWidth = max(1.2f, minDim * 0.008f)
+                batteryAuraPaint.color = if (isCharging) {
+                    Color.argb((38 + (35 * pulse).toInt()), 34, 211, 238)
+                } else {
+                    Color.argb((42 + (36 * pulse).toInt()), 245, 158, 11)
+                }
+                canvas.drawCircle(cx, cy, coreRect.width() * 0.56f, batteryAuraPaint)
             }
         }
 

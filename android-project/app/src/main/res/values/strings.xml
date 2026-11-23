@@ -29,4 +29,10 @@
     <string name="import_zip_pack">Importar .ZIP</string>
     <string name="importing_zip_pack">Importando pacote…</string>
     <string name="delete_pack">Excluir</string>
+    <string name="backup_section">Backup e Restauração do Layout</string>
+    <string name="export_backup_json">Exportar Backup (.JSON)</string>
+    <string name="import_backup_json">Importar Backup (.JSON)</string>
+    <string name="recent_apps_header">Recentes</string>
+    <string name="left_drawer_toggle_desc">Gaveta lateral esquerda</string>
+    <string name="right_drawer_toggle_desc">Gaveta lateral direita</string>
 </resources>

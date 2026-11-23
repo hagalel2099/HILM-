@@ -1,5 +1,6 @@
 package com.nossouniverso.launcher.ui.settings
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.RadioButton
@@ -7,10 +8,12 @@ import android.widget.RadioGroup
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.nossouniverso.launcher.NossoUniversoApp
 import com.nossouniverso.launcher.R
+import java.nio.charset.StandardCharsets
 
 class LauncherSettingsActivity : AppCompatActivity() {
 
@@ -21,6 +24,43 @@ class LauncherSettingsActivity : AppCompatActivity() {
     private lateinit var btnOpenIconPackManager: Button
     private lateinit var radioIconPacks: RadioGroup
     private lateinit var seekOpacity: SeekBar
+
+    private val exportBackupLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        try {
+            val payload = app.shortcutStorage.exportBackupJson()
+            contentResolver.openOutputStream(uri)?.use { out ->
+                out.write(payload.toByteArray(StandardCharsets.UTF_8))
+            } ?: error("Output stream unavailable")
+            Toast.makeText(this, "Backup exportado com sucesso.", Toast.LENGTH_SHORT).show()
+        } catch (_: Exception) {
+            Toast.makeText(this, "Não foi possível exportar o backup.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val importBackupLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        try {
+            val raw = contentResolver.openInputStream(uri)?.use { input ->
+                input.readBytes().toString(StandardCharsets.UTF_8)
+            }.orEmpty()
+            val ok = raw.isNotBlank() && app.shortcutStorage.importBackupJson(raw)
+            if (ok) {
+                app.iconPackManager.clearCache()
+                setupIconPacks()
+                seekOpacity.progress = (app.shortcutStorage.getPanelOpacityPercent() - 25).coerceIn(0, 70)
+                Toast.makeText(this, "Backup restaurado com sucesso.", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Arquivo de backup inválido.", Toast.LENGTH_SHORT).show()
+            }
+        } catch (_: Exception) {
+            Toast.makeText(this, "Não foi possível importar o backup.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +79,15 @@ class LauncherSettingsActivity : AppCompatActivity() {
         }
 
         btnOpenIconPackManager.setOnClickListener {
-            startActivity(android.content.Intent(this, IconPackManagerActivity::class.java))
+            startActivity(Intent(this, IconPackManagerActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btnExportBackup).setOnClickListener {
+            exportBackupLauncher.launch("nosso-universo-backup.json")
+        }
+
+        findViewById<Button>(R.id.btnImportBackup).setOnClickListener {
+            importBackupLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
         }
 
         findViewById<Button>(R.id.btnResetShortcuts).setOnClickListener {

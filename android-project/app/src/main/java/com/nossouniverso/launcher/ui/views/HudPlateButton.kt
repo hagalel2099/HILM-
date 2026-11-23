@@ -9,6 +9,9 @@ import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -107,6 +110,30 @@ class HudPlateButton @JvmOverloads constructor(
             iconView.visibility = GONE
             labelView.alpha = 0.65f
         }
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                animate().cancel()
+                animate()
+                    .scaleX(0.92f)
+                    .scaleY(0.92f)
+                    .setDuration(90L)
+                    .start()
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                animate().cancel()
+                animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(220L)
+                    .setInterpolator(OvershootInterpolator(1.6f))
+                    .start()
+            }
+        }
+        return super.onTouchEvent(event)
     }
 
     override fun onDraw(canvas: Canvas) {
