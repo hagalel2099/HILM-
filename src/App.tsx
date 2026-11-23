@@ -109,6 +109,20 @@ export default function App() {
     }));
   };
 
+  const handleRenameSlot = (slotId: SlotId, customLabel: string) => {
+    const trimmed = customLabel.trim();
+    setState((prev) => ({
+      ...prev,
+      slots: {
+        ...prev.slots,
+        [slotId]: {
+          ...(prev.slots[slotId] || { slotId, packageName: null }),
+          customLabel: trimmed.length > 0 ? trimmed : undefined,
+        },
+      },
+    }));
+  };
+
   const handleLaunchApp = (app: InstalledAppItem) => {
     setState((prev) => ({
       ...prev,
@@ -139,6 +153,22 @@ export default function App() {
   const handleResetState = () => {
     setState(DEFAULT_LAUNCHER_STATE);
     setIsEditMode(false);
+  };
+
+  const handleImportState = (imported: Partial<LauncherPersistedState>) => {
+    setState((prev) => ({
+      slots: { ...DEFAULT_LAUNCHER_STATE.slots, ...(imported.slots || prev.slots) },
+      iconPack: imported.iconPack || prev.iconPack,
+      wallpaperId: imported.wallpaperId || prev.wallpaperId,
+      customWallpaperUrl: imported.customWallpaperUrl ?? prev.customWallpaperUrl,
+      panelOpacity:
+        typeof imported.panelOpacity === "number"
+          ? Math.max(25, Math.min(95, imported.panelOpacity))
+          : prev.panelOpacity,
+      recentPackages: Array.isArray(imported.recentPackages)
+        ? imported.recentPackages.slice(0, 8)
+        : prev.recentPackages,
+    }));
   };
 
   const handleNavClick = (target: "launcher" | WorkspaceTab) => {
@@ -266,10 +296,11 @@ export default function App() {
             onRemoveSlot={handleRemoveSlot}
             onSwapSlots={handleSwapSlots}
             onSetCustomIcon={handleSetCustomIcon}
+            onRenameSlot={handleRenameSlot}
             onLaunchApp={handleLaunchApp}
           />
           <p className="mt-3 text-xs text-slate-400 text-center max-w-[340px]">
-            Toque no hexágono central para editar ou reorganizar atalhos; toque no anel inferior central para abrir a gaveta de aplicativos.
+            Toque nas abas laterais para abrir as gavetas esquerda/direita sem cobrir o núcleo HILM; deslize para cima para abrir todos os apps.
           </p>
         </section>
 
@@ -292,6 +323,7 @@ export default function App() {
             onSelectIconPack={handleSelectIconPack}
             onSelectWallpaper={handleSelectWallpaper}
             onChangeOpacity={handleChangeOpacity}
+            onImportState={handleImportState}
             onResetState={handleResetState}
           />
         </section>

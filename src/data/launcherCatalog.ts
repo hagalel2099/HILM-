@@ -6,6 +6,22 @@ import type {
 } from "../types/launcher";
 import { ICON_PACK_REGISTRY } from "./iconPackRegistry";
 
+export const LEFT_DRAWER_SLOT_IDS: SlotId[] = [
+  "left_1",
+  "left_2",
+  "left_3",
+  "left_4",
+  "left_5",
+];
+
+export const RIGHT_DRAWER_SLOT_IDS: SlotId[] = [
+  "right_1",
+  "right_2",
+  "right_3",
+  "right_4",
+  "right_5",
+];
+
 export const SLOT_IDS: SlotId[] = [
   "plate_top_left",
   "plate_top_right",
@@ -15,6 +31,8 @@ export const SLOT_IDS: SlotId[] = [
   "dock_2",
   "dock_4",
   "dock_5",
+  ...LEFT_DRAWER_SLOT_IDS,
+  ...RIGHT_DRAWER_SLOT_IDS,
 ];
 
 export const SLOT_LABELS: Record<SlotId, string> = {
@@ -26,6 +44,16 @@ export const SLOT_LABELS: Record<SlotId, string> = {
   dock_2: "Dock Posição 2",
   dock_4: "Dock Posição 4",
   dock_5: "Dock Posição 5",
+  left_1: "Gaveta Esquerda 1",
+  left_2: "Gaveta Esquerda 2",
+  left_3: "Gaveta Esquerda 3",
+  left_4: "Gaveta Esquerda 4",
+  left_5: "Gaveta Esquerda 5",
+  right_1: "Gaveta Direita 1",
+  right_2: "Gaveta Direita 2",
+  right_3: "Gaveta Direita 3",
+  right_4: "Gaveta Direita 4",
+  right_5: "Gaveta Direita 5",
 };
 
 export const INSTALLED_APPS_CATALOG: InstalledAppItem[] = [
@@ -202,6 +230,16 @@ export const DEFAULT_LAUNCHER_STATE: LauncherPersistedState = {
     dock_2: { slotId: "dock_2", packageName: "com.android.messaging" },
     dock_4: { slotId: "dock_4", packageName: "com.android.dialer" },
     dock_5: { slotId: "dock_5", packageName: "com.android.chrome" },
+    left_1: { slotId: "left_1", packageName: "com.google.android.apps.maps" },
+    left_2: { slotId: "left_2", packageName: "com.android.calendar" },
+    left_3: { slotId: "left_3", packageName: "com.nossouniverso.notes" },
+    left_4: { slotId: "left_4", packageName: "com.android.documentsui" },
+    left_5: { slotId: "left_5", packageName: null },
+    right_1: { slotId: "right_1", packageName: "com.github.android" },
+    right_2: { slotId: "right_2", packageName: "com.itsaky.androidide" },
+    right_3: { slotId: "right_3", packageName: "com.android.gallery3d" },
+    right_4: { slotId: "right_4", packageName: "com.android.settings" },
+    right_5: { slotId: "right_5", packageName: null },
   },
   iconPack: "nosso-universo",
   wallpaperId: "ref-horizon",

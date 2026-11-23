@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   AlertCircle,
   Battery,
@@ -14,6 +15,7 @@ import {
   RefreshCw,
   Signal,
   Square,
+  Tag,
   Triangle,
   Wifi,
   X,
@@ -26,6 +28,8 @@ import type {
 } from "../types/launcher";
 import {
   INSTALLED_APPS_CATALOG,
+  LEFT_DRAWER_SLOT_IDS,
+  RIGHT_DRAWER_SLOT_IDS,
   SLOT_LABELS,
 } from "../data/launcherCatalog";
 import { isIllustratedIconPack } from "../data/iconPackRegistry";
@@ -42,6 +46,7 @@ interface LauncherPhonePreviewProps {
   onRemoveSlot: (slotId: SlotId) => void;
   onSwapSlots: (a: SlotId, b: SlotId) => void;
   onSetCustomIcon: (slotId: SlotId, dataUrl: string) => void;
+  onRenameSlot: (slotId: SlotId, customLabel: string) => void;
   onLaunchApp: (app: InstalledAppItem) => void;
 }
 
@@ -63,13 +68,17 @@ export function LauncherPhonePreview({
   onRemoveSlot,
   onSwapSlots,
   onSetCustomIcon,
+  onRenameSlot,
   onLaunchApp,
 }: LauncherPhonePreviewProps) {
   const [clockText, setClockText] = useState("12:43");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTargetSlot, setDrawerTargetSlot] = useState<SlotId | null>(null);
+  const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
+  const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
   const [selectedSwapSource, setSelectedSwapSource] = useState<SlotId | null>(null);
   const [draggedSlot, setDraggedSlot] = useState<SlotId | null>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<SlotId | null>(null);
   const [activeAppWindow, setActiveAppWindow] = useState<InstalledAppItem | null>(null);
   const [showCoreUpdatePopover, setShowCoreUpdatePopover] = useState(false);
   const [updatePhase, setUpdatePhase] = useState<
@@ -81,6 +90,16 @@ export function LauncherPhonePreview({
   const [showRecents, setShowRecents] = useState(false);
   const customIconInputRef = useRef<HTMLInputElement>(null);
   const [customIconSlotTarget, setCustomIconSlotTarget] = useState<SlotId | null>(null);
+  const [renameModalSlot, setRenameModalSlot] = useState<SlotId | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const pointerDraggedSlotRef = useRef<SlotId | null>(null);
+  const screenSwipeStartRef = useRef<{ x: number; y: number; localX: number } | null>(null);
+  const screenRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
+
+  const hilmSpring = prefersReducedMotion
+    ? { duration: 0.01 }
+    : { type: "spring" as const, stiffness: 520, damping: 24, mass: 0.68 };
 
   const INSTALLED_VERSION = "1.0.0";
   const INSTALLED_VERSION_CODE = 1;
@@ -139,6 +158,11 @@ export function LauncherPhonePreview({
   }, [state.wallpaperId, state.customWallpaperUrl]);
 
   const handleSlotTap = (slotId: SlotId) => {
+    if (pointerDraggedSlotRef.current === slotId) {
+      pointerDraggedSlotRef.current = null;
+      return;
+    }
+
     const slot = state.slots[slotId];
     const app = slot?.packageName ? appMap.get(slot.packageName) : undefined;
 
@@ -348,6 +372,18 @@ export function LauncherPhonePreview({
     const slot = state.slots[slotId];
     const app = slot?.packageName ? appMap.get(slot.packageName) : undefined;
     const isSwapSelected = selectedSwapSource === slotId;
+    const isBeingDragged = draggedSlot === slotId;
+    const isDropTarget = dragOverSlot === slotId && draggedSlot !== null && draggedSlot !== slotId;
+
+    const plateState = prefersReducedMotion
+      ? "rest"
+      : isBeingDragged
+        ? "dragging"
+        : isDropTarget
+          ? "dropTarget"
+          : isSwapSelected
+            ? "selected"
+            : "rest";
 
     return (
       <div
@@ -355,104 +391,341 @@ export function LauncherPhonePreview({
         draggable={isEditMode}
         onDragStart={() => setDraggedSlot(slotId)}
         onDragOver={(e) => {
-          if (isEditMode) e.preventDefault();
+          if (isEditMode) {
+            e.preventDefault();
+            if (dragOverSlot !== slotId) setDragOverSlot(slotId);
+          }
+        }}
+        onDragLeave={() => {
+          if (dragOverSlot === slotId) setDragOverSlot(null);
         }}
         onDrop={() => {
           if (isEditMode && draggedSlot && draggedSlot !== slotId) {
             onSwapSlots(draggedSlot, slotId);
           }
           setDraggedSlot(null);
+          setDragOverSlot(null);
+        }}
+        onDragEnd={() => {
+          setDraggedSlot(null);
+          setDragOverSlot(null);
         }}
         className="relative group"
       >
-        <button
+        <motion.button
           type="button"
           onClick={() => handleSlotTap(slotId)}
           aria-label={app ? `Abrir ${app.label}` : `Adicionar atalho em ${SLOT_LABELS[slotId]}`}
-          className={`w-full h-[44px] px-3 flex items-center justify-center gap-2 transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
-            isSwapSelected
-              ? "ring-2 ring-amber-400 scale-[1.02]"
-              : isEditMode
-                ? "hover:scale-[1.02]"
-                : "active:scale-[0.97]"
+          drag={!isEditMode && !prefersReducedMotion}
+          dragSnapToOrigin
+          dragElastic={0.18}
+          dragMomentum={false}
+          dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }}
+          onDragStart={() => {
+            if (!isEditMode) {
+              pointerDraggedSlotRef.current = slotId;
+              setDraggedSlot(slotId);
+            }
+          }}
+          onDragEnd={() => {
+            if (!isEditMode) {
+              setDraggedSlot(null);
+              window.setTimeout(() => {
+                if (pointerDraggedSlotRef.current === slotId) {
+                  pointerDraggedSlotRef.current = null;
+                }
+              }, 80);
+            }
+          }}
+          variants={{
+            rest: { scale: 1 },
+            hover: { scale: prefersReducedMotion ? 1 : 1.04 },
+            tap: { scale: prefersReducedMotion ? 1 : 0.91 },
+            dragging: { scale: prefersReducedMotion ? 1 : 1.09 },
+            dropTarget: { scale: prefersReducedMotion ? 1 : 1.06 },
+            selected: { scale: prefersReducedMotion ? 1 : 1.04 },
+          }}
+          initial="rest"
+          animate={plateState}
+          whileHover="hover"
+          whileTap="tap"
+          whileDrag={prefersReducedMotion ? undefined : { scale: 1.1, zIndex: 25 }}
+          transition={hilmSpring}
+          className={`w-full h-[44px] px-3 flex items-center justify-center gap-2 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+            isSwapSelected ? "ring-2 ring-amber-400" : isDropTarget ? "ring-2 ring-cyan-300" : ""
           }`}
           style={{
             backgroundColor: `rgba(8, 14, 24, ${Math.max(0.45, state.panelOpacity / 100)})`,
             clipPath:
               "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
-            boxShadow: isEditMode
-              ? "inset 0 0 0 1.5px rgba(245, 158, 11, 0.85)"
-              : "inset 0 0 0 1.3px rgba(34, 211, 238, 0.72)",
+            boxShadow: isBeingDragged
+              ? "inset 0 0 0 1.8px rgba(34, 211, 238, 0.95), 0 0 16px rgba(34, 211, 238, 0.35)"
+              : isEditMode
+                ? "inset 0 0 0 1.5px rgba(245, 158, 11, 0.85)"
+                : "inset 0 0 0 1.3px rgba(34, 211, 238, 0.72)",
           }}
         >
           {isEditMode && <GripVertical className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
           {app ? (
             <>
-              <AppGlyph
-                app={app}
-                iconPack={state.iconPack}
-                customIconDataUrl={slot.customIconDataUrl}
-                sizeClass={
-                  isIllustratedIconPack(state.iconPack)
-                    ? "w-6 h-6 shrink-0"
-                    : "w-4 h-4 shrink-0"
-                }
-              />
+              <motion.span
+                variants={{
+                  rest: { scale: 1 },
+                  hover: { scale: prefersReducedMotion ? 1 : 1.12 },
+                  tap: { scale: prefersReducedMotion ? 1 : 0.84 },
+                  dragging: { scale: prefersReducedMotion ? 1 : 1.24 },
+                  dropTarget: { scale: prefersReducedMotion ? 1 : 1.15 },
+                  selected: { scale: prefersReducedMotion ? 1 : 1.1 },
+                }}
+                transition={hilmSpring}
+                className="inline-flex items-center justify-center shrink-0"
+              >
+                <AppGlyph
+                  app={app}
+                  iconPack={state.iconPack}
+                  customIconDataUrl={slot.customIconDataUrl}
+                  sizeClass={
+                    isIllustratedIconPack(state.iconPack)
+                      ? "w-6 h-6 shrink-0"
+                      : "w-4 h-4 shrink-0"
+                  }
+                />
+              </motion.span>
               <span className="font-display text-[11px] font-semibold tracking-wider uppercase text-slate-100 truncate">
                 {slot.customLabel || app.label}
               </span>
             </>
           ) : (
-            <span className="flex items-center gap-1 font-display text-[11px] tracking-wider uppercase text-cyan-300/75">
+            <motion.span
+              variants={{
+                rest: { scale: 1 },
+                hover: { scale: prefersReducedMotion ? 1 : 1.08 },
+                tap: { scale: prefersReducedMotion ? 1 : 0.88 },
+                dragging: { scale: prefersReducedMotion ? 1 : 1.14 },
+                dropTarget: { scale: prefersReducedMotion ? 1 : 1.1 },
+                selected: { scale: prefersReducedMotion ? 1 : 1.06 },
+              }}
+              transition={hilmSpring}
+              className="flex items-center gap-1 font-display text-[11px] tracking-wider uppercase text-cyan-300/75"
+            >
               <Plus className="w-3.5 h-3.5" />
               <span>Atalho</span>
-            </span>
+            </motion.span>
           )}
-        </button>
+        </motion.button>
 
         {isEditMode && (
           <div className="absolute -top-2.5 right-0 flex items-center gap-1 z-10">
             {app && (
               <>
-                <button
+                <motion.button
                   type="button"
+                  whileHover={prefersReducedMotion ? undefined : { scale: 1.12 }}
+                  whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
+                  transition={hilmSpring}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRenameDraft(slot?.customLabel || app.label);
+                    setRenameModalSlot(slotId);
+                  }}
+                  title="Renomear atalho"
+                  aria-label="Renomear atalho"
+                  className="w-6 h-6 rounded-full bg-slate-900 border border-slate-400/70 text-slate-200 flex items-center justify-center hover:bg-slate-800 cursor-pointer"
+                >
+                  <Tag className="w-3 h-3" />
+                </motion.button>
+                <motion.button
+                  type="button"
+                  whileHover={prefersReducedMotion ? undefined : { scale: 1.12 }}
+                  whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
+                  transition={hilmSpring}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleCustomIconPick(slotId);
                   }}
                   title="Usar imagem própria como ícone"
                   aria-label="Usar imagem própria como ícone"
-                  className="w-6 h-6 rounded-full bg-slate-900 border border-cyan-400/70 text-cyan-300 flex items-center justify-center hover:bg-slate-800"
+                  className="w-6 h-6 rounded-full bg-slate-900 border border-cyan-400/70 text-cyan-300 flex items-center justify-center hover:bg-slate-800 cursor-pointer"
                 >
                   <ImagePlus className="w-3 h-3" />
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   type="button"
+                  whileHover={prefersReducedMotion ? undefined : { scale: 1.12 }}
+                  whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
+                  transition={hilmSpring}
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemoveSlot(slotId);
                   }}
                   title="Remover atalho da tela inicial"
                   aria-label="Remover atalho da tela inicial"
-                  className="w-6 h-6 rounded-full bg-slate-900 border border-rose-400/80 text-rose-300 flex items-center justify-center hover:bg-rose-950"
+                  className="w-6 h-6 rounded-full bg-slate-900 border border-rose-400/80 text-rose-300 flex items-center justify-center hover:bg-rose-950 cursor-pointer"
                 >
                   <X className="w-3 h-3" />
-                </button>
+                </motion.button>
               </>
             )}
-            <button
+            <motion.button
               type="button"
+              whileHover={prefersReducedMotion ? undefined : { scale: 1.12 }}
+              whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
+              transition={hilmSpring}
               onClick={(e) => {
                 e.stopPropagation();
                 handleOpenDrawerForSlot(slotId);
               }}
               title="Trocar aplicativo"
               aria-label="Trocar aplicativo"
-              className="w-6 h-6 rounded-full bg-slate-900 border border-amber-400/80 text-amber-300 flex items-center justify-center hover:bg-slate-800"
+              className="w-6 h-6 rounded-full bg-slate-900 border border-amber-400/80 text-amber-300 flex items-center justify-center hover:bg-slate-800 cursor-pointer"
             >
               <Pencil className="w-3 h-3" />
-            </button>
+            </motion.button>
           </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSideDrawerSlot = (slotId: SlotId) => {
+    const slot = state.slots[slotId];
+    const app = slot?.packageName ? appMap.get(slot.packageName) : undefined;
+    const isSwapSelected = selectedSwapSource === slotId;
+    const isBeingDragged = draggedSlot === slotId;
+    const isDropTarget = dragOverSlot === slotId && draggedSlot !== null && draggedSlot !== slotId;
+
+    const slotState = prefersReducedMotion
+      ? "rest"
+      : isBeingDragged
+        ? "dragging"
+        : isDropTarget
+          ? "dropTarget"
+          : isSwapSelected
+            ? "selected"
+            : "rest";
+
+    return (
+      <div
+        key={slotId}
+        draggable={isEditMode}
+        onDragStart={() => setDraggedSlot(slotId)}
+        onDragOver={(e) => {
+          if (isEditMode) {
+            e.preventDefault();
+            if (dragOverSlot !== slotId) setDragOverSlot(slotId);
+          }
+        }}
+        onDragLeave={() => {
+          if (dragOverSlot === slotId) setDragOverSlot(null);
+        }}
+        onDrop={() => {
+          if (isEditMode && draggedSlot && draggedSlot !== slotId) {
+            onSwapSlots(draggedSlot, slotId);
+          }
+          setDraggedSlot(null);
+          setDragOverSlot(null);
+        }}
+        onDragEnd={() => {
+          setDraggedSlot(null);
+          setDragOverSlot(null);
+        }}
+        className="relative flex flex-col items-center"
+      >
+        <motion.button
+          type="button"
+          onClick={() => handleSlotTap(slotId)}
+          title={app ? (slot?.customLabel || app.label) : SLOT_LABELS[slotId]}
+          aria-label={app ? `Abrir ${app.label}` : `Adicionar em ${SLOT_LABELS[slotId]}`}
+          drag={!isEditMode && !prefersReducedMotion}
+          dragSnapToOrigin
+          dragElastic={0.22}
+          dragMomentum={false}
+          dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }}
+          onDragStart={() => {
+            if (!isEditMode) {
+              pointerDraggedSlotRef.current = slotId;
+              setDraggedSlot(slotId);
+            }
+          }}
+          onDragEnd={() => {
+            if (!isEditMode) {
+              setDraggedSlot(null);
+              window.setTimeout(() => {
+                if (pointerDraggedSlotRef.current === slotId) {
+                  pointerDraggedSlotRef.current = null;
+                }
+              }, 80);
+            }
+          }}
+          variants={{
+            rest: { scale: 1 },
+            hover: { scale: prefersReducedMotion ? 1 : 1.09 },
+            tap: { scale: prefersReducedMotion ? 1 : 0.85 },
+            dragging: { scale: prefersReducedMotion ? 1 : 1.18 },
+            dropTarget: { scale: prefersReducedMotion ? 1 : 1.12 },
+            selected: { scale: prefersReducedMotion ? 1 : 1.08 },
+          }}
+          initial="rest"
+          animate={slotState}
+          whileHover="hover"
+          whileTap="tap"
+          whileDrag={prefersReducedMotion ? undefined : { scale: 1.2, zIndex: 30 }}
+          transition={hilmSpring}
+          className={`relative w-[42px] h-[42px] rounded-full flex items-center justify-center cursor-pointer bg-transparent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/60 ${
+            isSwapSelected ? "ring-2 ring-amber-400" : isDropTarget ? "ring-1 ring-white/80" : ""
+          }`}
+        >
+          <svg viewBox="0 0 48 48" className="absolute inset-0 w-full h-full pointer-events-none">
+            <circle
+              cx="24"
+              cy="24"
+              r="21"
+              fill="none"
+              stroke={isEditMode ? "#F59E0B" : "rgba(255, 255, 255, 0.24)"}
+              strokeWidth="1.2"
+              strokeDasharray="18 6"
+            />
+          </svg>
+          {app ? (
+            <motion.span
+              variants={{
+                rest: { scale: 1 },
+                hover: { scale: prefersReducedMotion ? 1 : 1.14 },
+                tap: { scale: prefersReducedMotion ? 1 : 0.82 },
+                dragging: { scale: prefersReducedMotion ? 1 : 1.24 },
+                dropTarget: { scale: prefersReducedMotion ? 1 : 1.15 },
+                selected: { scale: prefersReducedMotion ? 1 : 1.1 },
+              }}
+              transition={hilmSpring}
+              className="relative z-10 inline-flex items-center justify-center"
+            >
+              <AppGlyph
+                app={app}
+                iconPack={state.iconPack}
+                customIconDataUrl={slot.customIconDataUrl}
+                sizeClass={isIllustratedIconPack(state.iconPack) ? "w-6 h-6" : "w-4 h-4"}
+              />
+            </motion.span>
+          ) : (
+            <Plus className="w-3.5 h-3.5 text-slate-200/45 relative z-10" />
+          )}
+        </motion.button>
+
+        {isEditMode && app && (
+          <motion.button
+            type="button"
+            whileHover={prefersReducedMotion ? undefined : { scale: 1.14 }}
+            whileTap={prefersReducedMotion ? undefined : { scale: 0.84 }}
+            transition={hilmSpring}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemoveSlot(slotId);
+            }}
+            aria-label={`Remover ${app.label}`}
+            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-900 border border-rose-400/80 text-rose-300 flex items-center justify-center z-20 cursor-pointer"
+          >
+            <X className="w-2.5 h-2.5" />
+          </motion.button>
         )}
       </div>
     );
@@ -462,6 +735,18 @@ export function LauncherPhonePreview({
     const slot = state.slots[slotId];
     const app = slot?.packageName ? appMap.get(slot.packageName) : undefined;
     const isSwapSelected = selectedSwapSource === slotId;
+    const isBeingDragged = draggedSlot === slotId;
+    const isDropTarget = dragOverSlot === slotId && draggedSlot !== null && draggedSlot !== slotId;
+
+    const dockState = prefersReducedMotion
+      ? "rest"
+      : isBeingDragged
+        ? "dragging"
+        : isDropTarget
+          ? "dropTarget"
+          : isSwapSelected
+            ? "selected"
+            : "rest";
 
     return (
       <div
@@ -469,27 +754,72 @@ export function LauncherPhonePreview({
         draggable={isEditMode}
         onDragStart={() => setDraggedSlot(slotId)}
         onDragOver={(e) => {
-          if (isEditMode) e.preventDefault();
+          if (isEditMode) {
+            e.preventDefault();
+            if (dragOverSlot !== slotId) setDragOverSlot(slotId);
+          }
+        }}
+        onDragLeave={() => {
+          if (dragOverSlot === slotId) setDragOverSlot(null);
         }}
         onDrop={() => {
           if (isEditMode && draggedSlot && draggedSlot !== slotId) {
             onSwapSlots(draggedSlot, slotId);
           }
           setDraggedSlot(null);
+          setDragOverSlot(null);
+        }}
+        onDragEnd={() => {
+          setDraggedSlot(null);
+          setDragOverSlot(null);
         }}
         className="relative"
       >
-        <button
+        <motion.button
           type="button"
           onClick={() => handleSlotTap(slotId)}
           aria-label={app ? `Abrir ${app.label}` : `Adicionar no ${SLOT_LABELS[slotId]}`}
-          className={`relative w-[50px] h-[50px] rounded-full flex items-center justify-center transition-transform duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
-            isSwapSelected
-              ? "ring-2 ring-amber-400 scale-105"
-              : "active:scale-95 hover:scale-105"
+          drag={!isEditMode && !prefersReducedMotion}
+          dragSnapToOrigin
+          dragElastic={0.22}
+          dragMomentum={false}
+          dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }}
+          onDragStart={() => {
+            if (!isEditMode) {
+              pointerDraggedSlotRef.current = slotId;
+              setDraggedSlot(slotId);
+            }
+          }}
+          onDragEnd={() => {
+            if (!isEditMode) {
+              setDraggedSlot(null);
+              window.setTimeout(() => {
+                if (pointerDraggedSlotRef.current === slotId) {
+                  pointerDraggedSlotRef.current = null;
+                }
+              }, 80);
+            }
+          }}
+          variants={{
+            rest: { scale: 1 },
+            hover: { scale: prefersReducedMotion ? 1 : 1.09 },
+            tap: { scale: prefersReducedMotion ? 1 : 0.86 },
+            dragging: { scale: prefersReducedMotion ? 1 : 1.18 },
+            dropTarget: { scale: prefersReducedMotion ? 1 : 1.12 },
+            selected: { scale: prefersReducedMotion ? 1 : 1.08 },
+          }}
+          initial="rest"
+          animate={dockState}
+          whileHover="hover"
+          whileTap="tap"
+          whileDrag={prefersReducedMotion ? undefined : { scale: 1.2, zIndex: 25 }}
+          transition={hilmSpring}
+          className={`relative w-[50px] h-[50px] rounded-full flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+            isSwapSelected ? "ring-2 ring-amber-400" : isDropTarget ? "ring-2 ring-cyan-300" : ""
           }`}
           style={{
             backgroundColor: `rgba(8, 14, 23, ${Math.max(0.55, state.panelOpacity / 100)})`,
+            boxShadow: isBeingDragged ? "0 0 18px rgba(34, 211, 238, 0.45)" : undefined,
           }}
         >
           <svg viewBox="0 0 56 56" className="absolute inset-0 w-full h-full pointer-events-none">
@@ -514,33 +844,62 @@ export function LauncherPhonePreview({
             />
           </svg>
           {app ? (
-            <AppGlyph
-              app={app}
-              iconPack={state.iconPack}
-              customIconDataUrl={slot.customIconDataUrl}
-              sizeClass={
-                isIllustratedIconPack(state.iconPack)
-                  ? "w-8 h-8 relative z-10"
-                  : "w-5 h-5 relative z-10"
-              }
-            />
+            <motion.span
+              variants={{
+                rest: { scale: 1 },
+                hover: { scale: prefersReducedMotion ? 1 : 1.14 },
+                tap: { scale: prefersReducedMotion ? 1 : 0.82 },
+                dragging: { scale: prefersReducedMotion ? 1 : 1.24 },
+                dropTarget: { scale: prefersReducedMotion ? 1 : 1.15 },
+                selected: { scale: prefersReducedMotion ? 1 : 1.1 },
+              }}
+              transition={hilmSpring}
+              className="relative z-10 inline-flex items-center justify-center"
+            >
+              <AppGlyph
+                app={app}
+                iconPack={state.iconPack}
+                customIconDataUrl={slot.customIconDataUrl}
+                sizeClass={
+                  isIllustratedIconPack(state.iconPack)
+                    ? "w-8 h-8"
+                    : "w-5 h-5"
+                }
+              />
+            </motion.span>
           ) : (
-            <Plus className="w-4 h-4 text-cyan-300/75 relative z-10" />
+            <motion.span
+              variants={{
+                rest: { scale: 1 },
+                hover: { scale: prefersReducedMotion ? 1 : 1.18 },
+                tap: { scale: prefersReducedMotion ? 1 : 0.82 },
+                dragging: { scale: prefersReducedMotion ? 1 : 1.22 },
+                dropTarget: { scale: prefersReducedMotion ? 1 : 1.16 },
+                selected: { scale: prefersReducedMotion ? 1 : 1.1 },
+              }}
+              transition={hilmSpring}
+              className="relative z-10 inline-flex items-center justify-center"
+            >
+              <Plus className="w-4 h-4 text-cyan-300/75" />
+            </motion.span>
           )}
-        </button>
+        </motion.button>
 
         {isEditMode && app && (
-          <button
+          <motion.button
             type="button"
+            whileHover={prefersReducedMotion ? undefined : { scale: 1.14 }}
+            whileTap={prefersReducedMotion ? undefined : { scale: 0.84 }}
+            transition={hilmSpring}
             onClick={(e) => {
               e.stopPropagation();
               onRemoveSlot(slotId);
             }}
             aria-label={`Remover ${app.label} do dock`}
-            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-slate-900 border border-rose-400/80 text-rose-300 flex items-center justify-center z-20"
+            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-slate-900 border border-rose-400/80 text-rose-300 flex items-center justify-center z-20 cursor-pointer"
           >
             <X className="w-3 h-3" />
-          </button>
+          </motion.button>
         )}
       </div>
     );
@@ -558,6 +917,34 @@ export function LauncherPhonePreview({
 
       {/* Screen Container */}
       <div
+        ref={screenRef}
+        onPointerDown={(e) => {
+          if (drawerOpen || showRecents || activeAppWindow || renameModalSlot) return;
+          const rect = screenRef.current?.getBoundingClientRect();
+          const localX = rect ? e.clientX - rect.left : e.clientX;
+          screenSwipeStartRef.current = { x: e.clientX, y: e.clientY, localX };
+        }}
+        onPointerUp={(e) => {
+          const start = screenSwipeStartRef.current;
+          screenSwipeStartRef.current = null;
+          if (!start || drawerOpen || showRecents || activeAppWindow || renameModalSlot) return;
+          const rect = screenRef.current?.getBoundingClientRect();
+          const width = rect?.width || 358;
+          const dx = e.clientX - start.x;
+          const dy = e.clientY - start.y;
+
+          if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+            if (dx > 0) {
+              if (rightDrawerOpen) setRightDrawerOpen(false);
+              else if (start.localX < width * 0.35) setLeftDrawerOpen(true);
+            } else {
+              if (leftDrawerOpen) setLeftDrawerOpen(false);
+              else if (start.localX > width * 0.65) setRightDrawerOpen(true);
+            }
+          } else if (dy < -65 && Math.abs(dy) > Math.abs(dx) * 1.4 && !isEditMode) {
+            handleOpenDrawerForSlot(null);
+          }
+        }}
         className="relative w-full h-full rounded-[26px] overflow-hidden flex flex-col justify-between"
         style={wallpaperStyle}
       >
@@ -599,10 +986,59 @@ export function LauncherPhonePreview({
           </div>
         )}
 
-        {/* 2. Central Núcleo HILM (Replaces original sphere cleanly) */}
+        {/* 2. Central Núcleo HILM (Sempre livre e visível mesmo com as gavetas laterais abertas) */}
         <div className="relative z-10 flex-1 flex items-center justify-center pt-5">
           <HilmCore onClick={handleToggleCoreUpdatePopover} />
         </div>
+
+        {/* Transparent Hit-Zones directly over the Existing HUD Side Rails */}
+        <button
+          type="button"
+          onClick={() => setLeftDrawerOpen((v) => !v)}
+          aria-label={leftDrawerOpen ? "Recolher gaveta lateral esquerda" : "Abrir gaveta lateral esquerda"}
+          title={leftDrawerOpen ? "Recolher gaveta esquerda" : "Abrir gaveta esquerda (5 atalhos)"}
+          className="absolute left-0 top-[19%] h-[34%] w-8 z-20 bg-transparent border-0 cursor-pointer focus-visible:outline-none"
+        />
+
+        <button
+          type="button"
+          onClick={() => setRightDrawerOpen((v) => !v)}
+          aria-label={rightDrawerOpen ? "Recolher gaveta lateral direita" : "Abrir gaveta lateral direita"}
+          title={rightDrawerOpen ? "Recolher gaveta direita" : "Abrir gaveta direita (5 atalhos)"}
+          className="absolute right-0 top-[19%] h-[34%] w-8 z-20 bg-transparent border-0 cursor-pointer focus-visible:outline-none"
+        />
+
+        {/* Retractable Left Transparent Wing (5 slots emerging from the existing left rail) */}
+        <AnimatePresence>
+          {leftDrawerOpen && (
+            <motion.aside
+              aria-label="Gaveta lateral esquerda"
+              initial={prefersReducedMotion ? { opacity: 1 } : { x: -46, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { x: -46, opacity: 0 }}
+              transition={hilmSpring}
+              className="absolute left-[18px] top-[19.5%] z-25 w-[44px] bg-transparent flex flex-col items-center gap-2"
+            >
+              {LEFT_DRAWER_SLOT_IDS.map((slotId) => renderSideDrawerSlot(slotId))}
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
+        {/* Retractable Right Transparent Wing (5 slots emerging from the existing right rail) */}
+        <AnimatePresence>
+          {rightDrawerOpen && (
+            <motion.aside
+              aria-label="Gaveta lateral direita"
+              initial={prefersReducedMotion ? { opacity: 1 } : { x: 46, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { x: 46, opacity: 0 }}
+              transition={hilmSpring}
+              className="absolute right-[18px] top-[19.5%] z-25 w-[44px] bg-transparent flex flex-col items-center gap-2"
+            >
+              {RIGHT_DRAWER_SLOT_IDS.map((slotId) => renderSideDrawerSlot(slotId))}
+            </motion.aside>
+          )}
+        </AnimatePresence>
 
         {/* 3. Lower 2x2 HUD Shortcut Plates + Central Hub Edit Toggle */}
         <div className="relative z-20 px-6 pb-4">
@@ -610,37 +1046,43 @@ export function LauncherPhonePreview({
             {PLATE_SLOTS.map((slotId) => renderPlateSlot(slotId))}
 
             {/* Central Hexagonal Hub Node (Edit Mode / Manage Shortcuts) */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedSwapSource(null);
-                onToggleEditMode(!isEditMode);
-              }}
-              title={isEditMode ? "Concluir edição de atalhos" : "Editar e reorganizar atalhos"}
-              aria-label={isEditMode ? "Concluir edição de atalhos" : "Editar e reorganizar atalhos"}
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 transition-transform active:scale-95"
-            >
-              <svg viewBox="0 0 44 44" className="w-full h-full">
-                <polygon
-                  points="22,3 37,12 37,32 22,41 7,32 7,12"
-                  fill="rgba(8, 14, 24, 0.9)"
-                  stroke={isEditMode ? "#F59E0B" : "#22D3EE"}
-                  strokeWidth="1.6"
-                />
-                <polygon
-                  points="22,9 32,15 32,29 22,35 12,29 12,15"
-                  fill="none"
-                  stroke="#94A3B8"
-                  strokeWidth="1"
-                />
-                <circle
-                  cx="22"
-                  cy="22"
-                  r="4"
-                  fill={isEditMode ? "#F59E0B" : "#22D3EE"}
-                />
-              </svg>
-            </button>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11">
+              <motion.button
+                type="button"
+                onClick={() => {
+                  setSelectedSwapSource(null);
+                  onToggleEditMode(!isEditMode);
+                }}
+                title={isEditMode ? "Concluir edição de atalhos" : "Editar e reorganizar atalhos"}
+                aria-label={isEditMode ? "Concluir edição de atalhos" : "Editar e reorganizar atalhos"}
+                animate={{ scale: !prefersReducedMotion && isEditMode ? 1.08 : 1 }}
+                whileHover={prefersReducedMotion ? undefined : { scale: 1.14 }}
+                whileTap={prefersReducedMotion ? undefined : { scale: 0.86 }}
+                transition={hilmSpring}
+                className="w-full h-full flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-full"
+              >
+                <svg viewBox="0 0 44 44" className="w-full h-full">
+                  <polygon
+                    points="22,3 37,12 37,32 22,41 7,32 7,12"
+                    fill="rgba(8, 14, 24, 0.9)"
+                    stroke={isEditMode ? "#F59E0B" : "#22D3EE"}
+                    strokeWidth="1.6"
+                  />
+                  <polygon
+                    points="22,9 32,15 32,29 22,35 12,29 12,15"
+                    fill="none"
+                    stroke="#94A3B8"
+                    strokeWidth="1"
+                  />
+                  <circle
+                    cx="22"
+                    cy="22"
+                    r="4"
+                    fill={isEditMode ? "#F59E0B" : "#22D3EE"}
+                  />
+                </svg>
+              </motion.button>
+            </div>
           </div>
         </div>
 
@@ -649,12 +1091,15 @@ export function LauncherPhonePreview({
           {SIDE_DOCK_LEFT.map((slotId) => renderDockSlot(slotId))}
 
           {/* Center Dock Button — Opens App Drawer */}
-          <button
+          <motion.button
             type="button"
             onClick={() => handleOpenDrawerForSlot(null)}
             aria-label="Abrir gaveta de aplicativos instalados"
             title="Abrir gaveta de aplicativos"
-            className="relative w-[62px] h-[62px] rounded-full flex items-center justify-center bg-[#070D17]/90 cursor-pointer transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+            whileHover={prefersReducedMotion ? undefined : { scale: 1.1 }}
+            whileTap={prefersReducedMotion ? undefined : { scale: 0.88 }}
+            transition={hilmSpring}
+            className="relative w-[62px] h-[62px] rounded-full flex items-center justify-center bg-[#070D17]/90 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
           >
             <svg viewBox="0 0 68 68" className="w-full h-full">
               <circle
@@ -683,7 +1128,7 @@ export function LauncherPhonePreview({
               />
               <polygon points="34,26 40,36 28,36" fill="#22D3EE" />
             </svg>
-          </button>
+          </motion.button>
 
           {SIDE_DOCK_RIGHT.map((slotId) => renderDockSlot(slotId))}
         </div>
@@ -693,11 +1138,15 @@ export function LauncherPhonePreview({
           <button
             type="button"
             onClick={() => {
-              if (activeAppWindow) setActiveAppWindow(null);
+              if (renameModalSlot) setRenameModalSlot(null);
+              else if (activeAppWindow) setActiveAppWindow(null);
               else if (drawerOpen) setDrawerOpen(false);
               else if (showRecents) setShowRecents(false);
               else if (showCoreUpdatePopover && updatePhase !== "checking" && updatePhase !== "downloading") {
                 setShowCoreUpdatePopover(false);
+              } else if (leftDrawerOpen || rightDrawerOpen) {
+                setLeftDrawerOpen(false);
+                setRightDrawerOpen(false);
               } else if (isEditMode) onToggleEditMode(false);
             }}
             aria-label="Voltar"
@@ -708,9 +1157,12 @@ export function LauncherPhonePreview({
           <button
             type="button"
             onClick={() => {
+              setRenameModalSlot(null);
               setActiveAppWindow(null);
               setDrawerOpen(false);
               setShowRecents(false);
+              setLeftDrawerOpen(false);
+              setRightDrawerOpen(false);
               if (updatePhase !== "checking" && updatePhase !== "downloading") {
                 setShowCoreUpdatePopover(false);
               }
@@ -725,6 +1177,7 @@ export function LauncherPhonePreview({
           <button
             type="button"
             onClick={() => {
+              setRenameModalSlot(null);
               setActiveAppWindow(null);
               setDrawerOpen(false);
               if (updatePhase !== "checking" && updatePhase !== "downloading") {
@@ -740,6 +1193,50 @@ export function LauncherPhonePreview({
         </div>
 
         {/* Overlays inside Phone Screen */}
+        {renameModalSlot && (
+          <div className="absolute inset-x-6 top-[230px] z-40 rounded-xl bg-[#070C15]/95 border border-cyan-400/60 p-3.5 backdrop-blur-md shadow-2xl shadow-black/80 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="font-display text-[11px] font-semibold tracking-wider text-cyan-300 uppercase">
+                Renomear Atalho
+              </span>
+              <button
+                type="button"
+                onClick={() => setRenameModalSlot(null)}
+                aria-label="Cancelar renomeação"
+                className="text-slate-400 hover:text-cyan-300 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={renameDraft}
+              onChange={(e) => setRenameDraft(e.target.value)}
+              placeholder="Nome personalizado..."
+              className="w-full h-9 px-2.5 rounded-lg bg-[#0D1422] border border-slate-700 text-xs text-slate-100 focus:outline-none focus:border-cyan-400"
+            />
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRenameModalSlot(null)}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-[11px] text-slate-300 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onRenameSlot(renameModalSlot, renameDraft);
+                  setRenameModalSlot(null);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 font-semibold text-[11px] cursor-pointer"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        )}
+
         {drawerOpen && (
           <AppDrawerModal
             apps={INSTALLED_APPS_CATALOG}
@@ -771,6 +1268,8 @@ export function LauncherPhonePreview({
                   "dock_2",
                   "dock_4",
                   "dock_5",
+                  ...LEFT_DRAWER_SLOT_IDS,
+                  ...RIGHT_DRAWER_SLOT_IDS,
                 ] as SlotId[]
               ).find((id) => !state.slots[id]?.packageName);
               const target = emptySlot || "plate_top_left";

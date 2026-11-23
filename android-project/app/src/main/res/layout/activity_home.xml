@@ -102,11 +102,16 @@
         <Button
             android:id="@+id/btnUpdateAction"
             android:layout_width="match_parent"
-            android:layout_height="38dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:backgroundTint="#164E63"
+            android:gravity="center"
             android:insetTop="0dp"
             android:insetBottom="0dp"
+            android:minHeight="40dp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            android:singleLine="false"
             android:text="@string/update_action_check"
             android:textAllCaps="false"
             android:textColor="@color/hud_text_primary"
@@ -265,166 +270,124 @@
             android:layout_marginHorizontal="6dp" />
     </LinearLayout>
 
-    <!-- Left Retractable Edge Handle -->
-    <TextView
+    <!-- Transparent Hit-Zone over Left Existing HUD Rail -->
+    <View
         android:id="@+id/btnLeftDrawerHandle"
-        android:layout_width="24dp"
-        android:layout_height="76dp"
-        android:background="@drawable/bg_hud_wing_handle_left"
+        android:layout_width="32dp"
+        android:layout_height="240dp"
+        android:background="@android:color/transparent"
         android:clickable="true"
         android:contentDescription="@string/left_drawer_toggle_desc"
-        android:elevation="6dp"
         android:focusable="true"
-        android:gravity="center"
-        android:text="›"
-        android:textColor="@color/hud_cyan"
-        android:textSize="18sp"
-        android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="@id/hilmCoreView"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@id/hilmCoreView" />
 
-    <!-- Right Retractable Edge Handle -->
-    <TextView
+    <!-- Transparent Hit-Zone over Right Existing HUD Rail -->
+    <View
         android:id="@+id/btnRightDrawerHandle"
-        android:layout_width="24dp"
-        android:layout_height="76dp"
-        android:background="@drawable/bg_hud_wing_handle_right"
+        android:layout_width="32dp"
+        android:layout_height="240dp"
+        android:background="@android:color/transparent"
         android:clickable="true"
         android:contentDescription="@string/right_drawer_toggle_desc"
-        android:elevation="6dp"
         android:focusable="true"
-        android:gravity="center"
-        android:text="‹"
-        android:textColor="@color/hud_amber"
-        android:textSize="18sp"
-        android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="@id/hilmCoreView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/hilmCoreView" />
 
-    <!-- Left 5-Slot Retractable HUD Wing (leaves central HILM nucleus unobstructed) -->
+    <!-- Left 5-Slot Transparent Drawer (emerges directly from the existing left rail) -->
     <LinearLayout
         android:id="@+id/leftSideDrawer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="6dp"
-        android:background="@drawable/bg_hud_wing"
+        android:layout_marginStart="18dp"
+        android:background="@android:color/transparent"
         android:clickable="true"
-        android:elevation="10dp"
+        android:elevation="0dp"
         android:focusable="true"
         android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:paddingHorizontal="5dp"
-        android:paddingVertical="7dp"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/platesContainer"
+        app:layout_constraintBottom_toBottomOf="@id/hilmCoreView"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.52">
-
-        <TextView
-            android:id="@+id/btnCloseLeftDrawer"
-            android:layout_width="40dp"
-            android:layout_height="22dp"
-            android:contentDescription="@string/close_label"
-            android:gravity="center"
-            android:text="‹"
-            android:textColor="@color/hud_cyan"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+        app:layout_constraintTop_toTopOf="@id/hilmCoreView">
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/leftSlot1"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="4dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/leftSlot2"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="5dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginTop="6dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/leftSlot3"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="5dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginTop="6dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/leftSlot4"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="5dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginTop="6dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/leftSlot5"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="5dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginTop="6dp" />
     </LinearLayout>
 
-    <!-- Right 5-Slot Retractable HUD Wing (leaves central HILM nucleus unobstructed) -->
+    <!-- Right 5-Slot Transparent Drawer (emerges directly from the existing right rail) -->
     <LinearLayout
         android:id="@+id/rightSideDrawer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="6dp"
-        android:background="@drawable/bg_hud_wing"
+        android:layout_marginEnd="18dp"
+        android:background="@android:color/transparent"
         android:clickable="true"
-        android:elevation="10dp"
+        android:elevation="0dp"
         android:focusable="true"
         android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:paddingHorizontal="5dp"
-        android:paddingVertical="7dp"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/platesContainer"
+        app:layout_constraintBottom_toBottomOf="@id/hilmCoreView"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.52">
-
-        <TextView
-            android:id="@+id/btnCloseRightDrawer"
-            android:layout_width="40dp"
-            android:layout_height="22dp"
-            android:contentDescription="@string/close_label"
-            android:gravity="center"
-            android:text="›"
-            android:textColor="@color/hud_amber"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+        app:layout_constraintTop_toTopOf="@id/hilmCoreView">
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/rightSlot1"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="4dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/rightSlot2"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="5dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginTop="6dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/rightSlot3"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="5dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginTop="6dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/rightSlot4"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="5dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginTop="6dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/rightSlot5"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="5dp" />
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginTop="6dp" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

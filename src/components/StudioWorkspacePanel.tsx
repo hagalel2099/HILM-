@@ -10,6 +10,7 @@ import {
   Pencil,
   RotateCcw,
   Sliders,
+  Upload,
 } from "lucide-react";
 import type {
   AndroidProjectTreeResponse,
@@ -37,6 +38,7 @@ interface StudioWorkspacePanelProps {
   onSelectIconPack: (pack: IconPackId) => void;
   onSelectWallpaper: (wallpaperId: WallpaperId, customUrl?: string) => void;
   onChangeOpacity: (opacity: number) => void;
+  onImportState: (imported: Partial<LauncherPersistedState>) => void;
   onResetState: () => void;
 }
 
@@ -49,8 +51,10 @@ export function StudioWorkspacePanel({
   onSelectIconPack,
   onSelectWallpaper,
   onChangeOpacity,
+  onImportState,
   onResetState,
 }: StudioWorkspacePanelProps) {
+  const [layoutTransferStatus, setLayoutTransferStatus] = useState<string | null>(null);
   const [treeData, setTreeData] = useState<AndroidProjectTreeResponse | null>(null);
   const [treeError, setTreeError] = useState<string | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string>(
@@ -116,6 +120,50 @@ export function StudioWorkspacePanel({
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleExportLayoutJson = () => {
+    const payload = {
+      schema: "nosso_universo_layout_v1",
+      exportedAt: new Date().toISOString(),
+      iconPack: state.iconPack,
+      wallpaperId: state.wallpaperId,
+      panelOpacity: state.panelOpacity,
+      slots: state.slots,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "nosso-universo-backup.json";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    setLayoutTransferStatus("Backup .json exportado com sucesso.");
+  };
+
+  const handleImportLayoutJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result || "")) as Partial<LauncherPersistedState>;
+        if (!parsed || typeof parsed !== "object" || !parsed.slots) {
+          setLayoutTransferStatus("Arquivo JSON inválido para backup do launcher.");
+          return;
+        }
+        onImportState(parsed);
+        setLayoutTransferStatus("Layout restaurado a partir do arquivo .json.");
+      } catch {
+        setLayoutTransferStatus("Não foi possível ler o arquivo .json selecionado.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -273,15 +321,41 @@ export function StudioWorkspacePanel({
                     Salva automaticamente no navegador e espelhada em <code className="text-cyan-300">ShortcutStorage.kt</code>.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={onResetState}
-                  className="px-3 py-2 rounded-lg bg-[#0D1523] border border-slate-700 hover:border-amber-400/50 text-xs font-medium text-amber-300 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Restaurar Padrão</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportLayoutJson}
+                    className="px-3 py-2 rounded-lg bg-[#0D1523] border border-slate-700 hover:border-cyan-400/50 text-xs font-medium text-cyan-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5 text-cyan-300" />
+                    <span>Exportar .JSON</span>
+                  </button>
+                  <label className="px-3 py-2 rounded-lg bg-[#0D1523] border border-slate-700 hover:border-cyan-400/50 text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0">
+                    <Upload className="w-3.5 h-3.5 text-cyan-300" />
+                    <span>Importar .JSON</span>
+                    <input
+                      type="file"
+                      accept=".json,application/json"
+                      className="hidden"
+                      onChange={handleImportLayoutJson}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={onResetState}
+                    className="px-3 py-2 rounded-lg bg-[#0D1523] border border-slate-700 hover:border-amber-400/50 text-xs font-medium text-amber-300 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Restaurar Padrão</span>
+                  </button>
+                </div>
               </div>
+
+              {layoutTransferStatus && (
+                <div className="px-3.5 py-2 rounded-lg bg-cyan-950/30 border border-cyan-500/30 text-xs text-cyan-200">
+                  {layoutTransferStatus}
+                </div>
+              )}
 
               <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0A101A]">
                 <table className="w-full text-left text-xs">
