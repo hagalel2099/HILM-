@@ -71,7 +71,7 @@ export function AppGlyph({
 
   const colorStyle = (() => {
     if (isObsidianFallback) {
-      return { color: "#C69458" };
+      return { color: "#FFB020" };
     }
     if (isCyberpunkFallback) {
       return { color: "#F472B6" };
@@ -98,7 +98,7 @@ export function AppGlyph({
   const props = {
     className: illustratedFallback
       ? isObsidianFallback
-        ? "w-[54%] h-[54%] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+        ? "relative z-10 w-[54%] h-[54%] drop-shadow-[0_0_6px_rgba(255,140,26,0.75)]"
         : isCyberpunkFallback
           ? "w-[56%] h-[56%] drop-shadow-[0_0_7px_rgba(236,72,153,0.9)]"
           : isTronFallback
@@ -150,9 +150,24 @@ export function AppGlyph({
   if (isObsidianFallback) {
     return (
       <span
-        className={`${sizeClass} relative rounded-[20%] bg-gradient-to-br from-[#232730] via-[#0E1015] to-[#050608] border border-[#7A5630]/85 shadow-[inset_0_1px_2px_rgba(255,255,255,0.14),inset_0_-2px_4px_rgba(0,0,0,0.85),0_4px_10px_rgba(0,0,0,0.75)] flex items-center justify-center shrink-0 overflow-hidden`}
+        className={`${sizeClass} relative rounded-[20%] bg-gradient-to-br from-[#16181F] via-[#07080B] to-[#030406] border border-[#FF9E1B]/55 shadow-[inset_0_1px_2px_rgba(255,176,32,0.28),inset_0_-2px_6px_rgba(234,88,12,0.32),0_4px_12px_rgba(0,0,0,0.85)] flex items-center justify-center shrink-0 overflow-hidden`}
       >
-        <span className="pointer-events-none absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_5px_rgba(234,88,12,0.85)]" />
+        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_55%,rgba(255,140,26,0.22),transparent_68%)]" />
+        <svg
+          viewBox="0 0 40 40"
+          className="pointer-events-none absolute inset-0 w-full h-full opacity-85"
+          aria-hidden="true"
+        >
+          <path
+            d="M3 10 L11 14 L14 19 M37 29 L29 25 L26 20 M12 37 L15 30 L19 28"
+            fill="none"
+            stroke="#FF9E1B"
+            strokeWidth="0.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="pointer-events-none absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-300 shadow-[0_0_8px_2px_rgba(255,138,0,0.95)]" />
         {glyphNode}
       </span>
     );

@@ -1704,16 +1704,16 @@ class IconPackManager(
     }
 
     /**
-     * Converts any unmapped native or future third-party app icon into the OBSIDIAN CORE aesthetic:
-     * faceted volcanic black obsidian stone artifact, graphite chamfered bevels, brushed dark bronze
-     * inlay trim, small restrained amber/volcanic-orange core node, and sculpted bronze symbol.
+     * Converts any unmapped native or future third-party app icon into the refined OBSIDIAN CORE
+     * aesthetic: deep pitch-black faceted volcanic obsidian stone, glowing incandescent amber core
+     * depth, fine glowing volcanic energy fissures escaping from inside, and warm edge reflections.
      */
     private fun renderUnifiedObsidianCoreIcon(
         cacheIdentity: String,
         fallback: Drawable
     ): Drawable {
         val size = 192
-        val cacheKey = "obsidian_core_auto_v1:$cacheIdentity#$size"
+        val cacheKey = "obsidian_core_auto_v2:$cacheIdentity#$size"
         bitmapCache.get(cacheKey)?.let { cached ->
             return BitmapDrawable(context.resources, cached)
         }
@@ -1740,20 +1740,20 @@ class IconPackManager(
         val chamfer = size * 0.19f
         val stonePath = buildChamferedOctagonPath(outerRect, chamfer)
 
-        // 1. Subtle physical stone weight shadow + 3D lower slab depth
+        // 1. Heavy volcanic slab shadow + 3D stone depth base
         val backRect = RectF(outerRect.left + 2.5f, outerRect.top + 5f, outerRect.right + 2.5f, outerRect.bottom + 5f)
         val backPath = buildChamferedOctagonPath(backRect, chamfer)
         val backShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(175, 0, 0, 0)
-            maskFilter = BlurMaskFilter(5f, BlurMaskFilter.Blur.NORMAL)
+            color = Color.argb(195, 0, 0, 0)
+            maskFilter = BlurMaskFilter(5.5f, BlurMaskFilter.Blur.NORMAL)
         }
         canvas.drawPath(backPath, backShadowPaint)
         val backSlabPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(12, 14, 19)
+            color = Color.rgb(7, 8, 11)
         }
         canvas.drawPath(backPath, backSlabPaint)
 
-        // 2. Faceted graphite chamfer bevel exterior
+        // 2. Faceted dark graphite-obsidian chamfer bevel exterior catching warm ember edge bounce
         val bevelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
                 outerRect.left,
@@ -1761,17 +1761,17 @@ class IconPackManager(
                 outerRect.right,
                 outerRect.bottom,
                 intArrayOf(
-                    Color.rgb(52, 58, 70),
-                    Color.rgb(24, 28, 36),
-                    Color.rgb(9, 11, 15)
+                    Color.rgb(44, 39, 36),
+                    Color.rgb(17, 19, 24),
+                    Color.rgb(5, 6, 8)
                 ),
-                floatArrayOf(0f, 0.48f, 1f),
+                floatArrayOf(0f, 0.45f, 1f),
                 Shader.TileMode.CLAMP
             )
         }
         canvas.drawPath(stonePath, bevelPaint)
 
-        // 3. Recessed volcanic black obsidian core face inside beveled facets
+        // 3. Recessed deep pitch-black volcanic obsidian core face inside faceted bevels
         val faceInset = size * 0.06f
         val faceRect = RectF(
             outerRect.left + faceInset,
@@ -1788,59 +1788,120 @@ class IconPackManager(
                 faceRect.right,
                 faceRect.bottom,
                 intArrayOf(
-                    Color.rgb(22, 25, 31),
-                    Color.rgb(10, 12, 16),
-                    Color.rgb(5, 6, 8)
+                    Color.rgb(16, 18, 22),
+                    Color.rgb(7, 8, 11),
+                    Color.rgb(3, 4, 5)
                 ),
-                floatArrayOf(0f, 0.45f, 1f),
+                floatArrayOf(0f, 0.46f, 1f),
                 Shader.TileMode.CLAMP
             )
         }
         canvas.drawPath(facePath, obsidianFacePaint)
 
-        // Controlled diagonal specular sheen across polished volcanic stone
+        // Subsurface volcanic amber internal core aura pulsing behind the symbol
         canvas.save()
         canvas.clipPath(facePath)
+        val internalCoreGlow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                faceRect.centerX(),
+                faceRect.centerY() + size * 0.02f,
+                faceRect.width() * 0.56f,
+                intArrayOf(
+                    Color.argb(95, 255, 158, 27),
+                    Color.argb(46, 234, 88, 12),
+                    Color.argb(0, 124, 45, 18)
+                ),
+                floatArrayOf(0f, 0.48f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(faceRect, internalCoreGlow)
+
+        // Fine jagged volcanic hairline energy fissures seeded deterministically per app
+        val seed = (cacheIdentity.hashCode() and 0x7FFFFFFF)
+        val fissurePath = Path().apply {
+            val topX = faceRect.left + faceRect.width() * (0.24f + ((seed % 5) * 0.07f))
+            moveTo(topX, faceRect.top)
+            lineTo(topX + size * 0.045f, faceRect.top + size * 0.09f)
+            lineTo(topX + size * 0.015f, faceRect.top + size * 0.16f)
+
+            val rightY = faceRect.top + faceRect.height() * (0.30f + (((seed / 7) % 4) * 0.08f))
+            moveTo(faceRect.right, rightY)
+            lineTo(faceRect.right - size * 0.09f, rightY + size * 0.035f)
+            lineTo(faceRect.right - size * 0.15f, rightY + size * 0.01f)
+
+            val botX = faceRect.left + faceRect.width() * (0.28f + (((seed / 13) % 4) * 0.08f))
+            moveTo(botX, faceRect.bottom)
+            lineTo(botX - size * 0.035f, faceRect.bottom - size * 0.095f)
+            lineTo(botX + size * 0.025f, faceRect.bottom - size * 0.155f)
+        }
+        val fissureGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            strokeWidth = 4.2f
+            color = Color.argb(170, 234, 88, 12)
+            maskFilter = BlurMaskFilter(4f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawPath(fissurePath, fissureGlowPaint)
+        val fissureCorePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            strokeWidth = 1.55f
+            color = Color.parseColor("#FFCC66")
+        }
+        canvas.drawPath(fissurePath, fissureCorePaint)
+
+        // Subtle warm volcanic reflection sweep across polished obsidian facets
         val sheenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
                 faceRect.left,
                 faceRect.top,
-                faceRect.centerX() + size * 0.08f,
-                faceRect.centerY() + size * 0.08f,
+                faceRect.centerX() + size * 0.12f,
+                faceRect.centerY() + size * 0.12f,
                 intArrayOf(
-                    Color.argb(36, 255, 255, 255),
-                    Color.argb(10, 180, 195, 215),
-                    Color.argb(0, 255, 255, 255)
+                    Color.argb(38, 255, 214, 153),
+                    Color.argb(12, 245, 158, 11),
+                    Color.argb(0, 0, 0, 0)
                 ),
-                floatArrayOf(0f, 0.55f, 1f),
+                floatArrayOf(0f, 0.52f, 1f),
                 Shader.TileMode.CLAMP
             )
         }
         canvas.drawRect(faceRect, sheenPaint)
         canvas.restore()
 
-        // 4. Brushed dark bronze metallic inlay frame around the obsidian face
-        val bronzeRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        // 4. Warm incandescent amber inner seam glow along beveled perimeter
+        val seamAuraPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 3.2f
+            strokeWidth = 3.8f
+            color = Color.argb(115, 249, 115, 22)
+            maskFilter = BlurMaskFilter(3.5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawPath(facePath, seamAuraPaint)
+
+        val amberBevelRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.4f
             shader = LinearGradient(
                 faceRect.left,
                 faceRect.top,
                 faceRect.right,
                 faceRect.bottom,
                 intArrayOf(
-                    Color.parseColor("#B4834D"),
-                    Color.parseColor("#7A5630"),
-                    Color.parseColor("#47321D"),
-                    Color.parseColor("#9A6E3E")
+                    Color.parseColor("#FFB020"),
+                    Color.parseColor("#C2410C"),
+                    Color.parseColor("#57240A"),
+                    Color.parseColor("#FF9E1B")
                 ),
-                floatArrayOf(0f, 0.34f, 0.72f, 1f),
+                floatArrayOf(0f, 0.34f, 0.70f, 1f),
                 Shader.TileMode.CLAMP
             )
         }
-        canvas.drawPath(facePath, bronzeRimPaint)
+        canvas.drawPath(facePath, amberBevelRimPaint)
 
-        // 5. Render foreground symbol sculpted in brushed bronze OR framed third-party logo
+        // 5. Render foreground symbol glowing with incandescent volcanic amber energy
         val prepared = prepareForegroundSymbol(fallback, 128)
         if (prepared.isIsolatedSilhouette) {
             drawSculptedObsidianBronzeSymbol(canvas, prepared.bitmap, size)
@@ -1851,12 +1912,12 @@ class IconPackManager(
             prepared.bitmap.recycle()
         }
 
-        // 6. Small restrained recessed glowing amber / volcanic-orange energy core jewel
+        // 6. Active incandescent volcanic core node set into lower-right facet
         val coreCx = faceRect.right - size * 0.115f
         val coreCy = faceRect.bottom - size * 0.115f
-        val coreBezelR = size * 0.044f
+        val coreBezelR = size * 0.048f
         val bezelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#5C4024")
+            color = Color.rgb(24, 16, 12)
         }
         canvas.drawCircle(coreCx, coreCy, coreBezelR, bezelPaint)
 
@@ -1864,45 +1925,49 @@ class IconPackManager(
             shader = RadialGradient(
                 coreCx,
                 coreCy,
-                coreBezelR * 1.45f,
+                coreBezelR * 2.15f,
                 intArrayOf(
-                    Color.argb(145, 245, 158, 11),
-                    Color.argb(70, 234, 88, 12),
+                    Color.argb(215, 255, 176, 32),
+                    Color.argb(115, 249, 115, 22),
                     Color.argb(0, 234, 88, 12)
+                ),
+                floatArrayOf(0f, 0.48f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(coreCx, coreCy, coreBezelR * 2.15f, coreGlowPaint)
+
+        val coreJewelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                coreCx - coreBezelR * 0.16f,
+                coreCy - coreBezelR * 0.16f,
+                coreBezelR * 0.72f,
+                intArrayOf(
+                    Color.parseColor("#FFF4C2"),
+                    Color.parseColor("#FFB020"),
+                    Color.parseColor("#EA580C")
                 ),
                 floatArrayOf(0f, 0.52f, 1f),
                 Shader.TileMode.CLAMP
             )
         }
-        canvas.drawCircle(coreCx, coreCy, coreBezelR * 1.45f, coreGlowPaint)
+        canvas.drawCircle(coreCx, coreCy, coreBezelR * 0.68f, coreJewelPaint)
 
-        val coreJewelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = RadialGradient(
-                coreCx - coreBezelR * 0.2f,
-                coreCy - coreBezelR * 0.2f,
-                coreBezelR * 0.65f,
-                intArrayOf(
-                    Color.parseColor("#FDE68A"),
-                    Color.parseColor("#F59E0B"),
-                    Color.parseColor("#EA580C")
-                ),
-                floatArrayOf(0f, 0.55f, 1f),
-                Shader.TileMode.CLAMP
-            )
-        }
-        canvas.drawCircle(coreCx, coreCy, coreBezelR * 0.62f, coreJewelPaint)
-
-        // Subtle crisp top-left stone bevel highlight
+        // Warm amber-lit catchlight along chamfered outer stone edge
         val edgeHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 1.4f
+            strokeWidth = 1.6f
             shader = LinearGradient(
                 outerRect.left,
                 outerRect.top,
                 outerRect.right,
                 outerRect.bottom,
-                Color.argb(95, 226, 232, 240),
-                Color.argb(18, 15, 23, 42),
+                intArrayOf(
+                    Color.argb(155, 255, 198, 112),
+                    Color.argb(45, 234, 88, 12),
+                    Color.argb(90, 255, 176, 32)
+                ),
+                floatArrayOf(0f, 0.52f, 1f),
                 Shader.TileMode.CLAMP
             )
         }
@@ -1925,15 +1990,15 @@ class IconPackManager(
         symbolBmp: Bitmap,
         canvasSize: Int
     ) {
-        val drawSize = (canvasSize * 0.53f).toInt()
+        val drawSize = (canvasSize * 0.54f).toInt()
         val offset = (canvasSize - drawSize) / 2f
         val destRect = RectF(offset, offset - 1f, offset + drawSize, offset + drawSize - 1f)
 
         val alphaMask = symbolBmp.extractAlpha()
 
-        // Carved stone shadow behind raised bronze emblem
+        // Deep carved obsidian cavity shadow behind incandescent symbol
         val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            color = Color.argb(230, 0, 0, 0)
+            color = Color.argb(240, 0, 0, 0)
             maskFilter = BlurMaskFilter(5f, BlurMaskFilter.Blur.NORMAL)
         }
         canvas.drawBitmap(
@@ -1943,26 +2008,21 @@ class IconPackManager(
             shadowPaint
         )
 
-        // Restrained warm amber energy undertone beneath symbol edge
-        val emberUnderPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            color = Color.argb(95, 234, 88, 12)
-            maskFilter = BlurMaskFilter(4f, BlurMaskFilter.Blur.NORMAL)
+        // Intense volcanic amber core bloom escaping from beneath symbol edges
+        val amberAuraPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(195, 255, 128, 16)
+            maskFilter = BlurMaskFilter(6.5f, BlurMaskFilter.Blur.NORMAL)
         }
-        canvas.drawBitmap(
-            alphaMask,
-            null,
-            RectF(destRect.left + 1.5f, destRect.top + 1.5f, destRect.right + 1.5f, destRect.bottom + 1.5f),
-            emberUnderPaint
-        )
+        canvas.drawBitmap(alphaMask, null, destRect, amberAuraPaint)
 
-        // Sculpted dark bronze + graphite relief preserving internal symbol details
+        // Sculpted incandescent amber energy core preserving internal glyph shading
         val sculpted = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
         val sCanvas = Canvas(sculpted)
         val lumaMatrix = ColorMatrix(
             floatArrayOf(
-                0.24f, 0.44f, 0.12f, 0f, 88f,
-                0.18f, 0.34f, 0.10f, 0f, 64f,
-                0.12f, 0.22f, 0.08f, 0f, 40f,
+                0.30f, 0.56f, 0.14f, 0f, 130f,
+                0.20f, 0.36f, 0.10f, 0f, 70f,
+                0.08f, 0.14f, 0.04f, 0f, 12f,
                 0f, 0f, 0f, 1f, 0f
             )
         )
@@ -1971,7 +2031,7 @@ class IconPackManager(
         }
         sCanvas.drawBitmap(symbolBmp, null, RectF(0f, 0f, drawSize.toFloat(), drawSize.toFloat()), basePaint)
 
-        val bronzeFinishPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val incandescentFinishPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
             shader = LinearGradient(
                 0f,
@@ -1979,25 +2039,25 @@ class IconPackManager(
                 drawSize.toFloat(),
                 drawSize.toFloat(),
                 intArrayOf(
-                    Color.argb(175, 224, 178, 118),
-                    Color.argb(155, 168, 118, 66),
-                    Color.argb(165, 92, 64, 38),
-                    Color.argb(165, 196, 144, 86)
+                    Color.argb(210, 255, 232, 163),
+                    Color.argb(195, 255, 176, 32),
+                    Color.argb(190, 234, 88, 12),
+                    Color.argb(205, 255, 198, 75)
                 ),
-                floatArrayOf(0f, 0.34f, 0.68f, 1f),
+                floatArrayOf(0f, 0.35f, 0.72f, 1f),
                 Shader.TileMode.CLAMP
             )
         }
-        sCanvas.drawRect(0f, 0f, drawSize.toFloat(), drawSize.toFloat(), bronzeFinishPaint)
+        sCanvas.drawRect(0f, 0f, drawSize.toFloat(), drawSize.toFloat(), incandescentFinishPaint)
 
-        // Crisp subtle top-left bevel catchlight
+        // Crisp hot-amber upper rim catchlight
         val bevelHighlight = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            color = Color.argb(120, 245, 210, 160)
+            color = Color.argb(145, 255, 224, 150)
         }
         canvas.drawBitmap(
             alphaMask,
             null,
-            RectF(destRect.left - 1f, destRect.top - 1f, destRect.right - 1f, destRect.bottom - 1f),
+            RectF(destRect.left - 0.8f, destRect.top - 0.8f, destRect.right - 0.8f, destRect.bottom - 0.8f),
             bevelHighlight
         )
         canvas.drawBitmap(sculpted, null, destRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
@@ -2016,11 +2076,19 @@ class IconPackManager(
         val innerChamfer = canvasSize * 0.10f
         val clipPath = buildChamferedOctagonPath(innerRect, innerChamfer)
 
+        val wellAuraPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 5f
+            color = Color.argb(145, 249, 115, 22)
+            maskFilter = BlurMaskFilter(4f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawPath(clipPath, wellAuraPaint)
+
         canvas.save()
         canvas.clipPath(clipPath)
-        val mutedToneMatrix = ColorMatrix().apply { setSaturation(0.76f) }
+        val warmContrastMatrix = ColorMatrix().apply { setSaturation(0.84f) }
         val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            colorFilter = ColorMatrixColorFilter(mutedToneMatrix)
+            colorFilter = ColorMatrixColorFilter(warmContrastMatrix)
         }
         canvas.drawBitmap(artworkBmp, null, innerRect, artPaint)
         canvas.restore()
@@ -2028,7 +2096,15 @@ class IconPackManager(
         val wellBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 2.4f
-            color = Color.parseColor("#8A6238")
+            shader = LinearGradient(
+                innerRect.left,
+                innerRect.top,
+                innerRect.right,
+                innerRect.bottom,
+                Color.parseColor("#FFB020"),
+                Color.parseColor("#EA580C"),
+                Shader.TileMode.CLAMP
+            )
         }
         canvas.drawPath(clipPath, wellBorderPaint)
     }
