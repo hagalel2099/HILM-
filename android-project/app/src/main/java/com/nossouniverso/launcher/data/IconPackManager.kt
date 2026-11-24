@@ -76,7 +76,7 @@ class IconPackManager(
         get() = File(context.filesDir, "imported_icon_packs")
 
     private val renderDiskCacheDir: File
-        get() = File(context.cacheDir, "titanium_liquid_cache_v1")
+        get() = File(context.cacheDir, "hilm_icon_cache_v3")
 
     private val bitmapCache: LruCache<String, Bitmap> = object : LruCache<String, Bitmap>(
         ((Runtime.getRuntime().maxMemory() / 1024L).toInt() / 16).coerceIn(2048, 8192)
@@ -92,6 +92,7 @@ class IconPackManager(
         loadAllManagedPacks().values
             .sortedWith(
                 compareBy<ParsedPack> { it.info.kind != IconPackKind.IMPORTED_PACK }
+                    .thenBy { it.info.id != IconPackInfo.STYLE_HILM_ARTIFACTS }
                     .thenBy { it.info.title.lowercase() }
             )
             .forEach { packs.add(it.info) }
@@ -166,6 +167,7 @@ class IconPackManager(
     fun getSelectedPackInfo(): IconPackInfo {
         val selectedId = storage.getSelectedIconPackId()
         return getAvailableIconPacks().firstOrNull { it.id == selectedId }
+            ?: getAvailableIconPacks().firstOrNull { it.id == IconPackInfo.STYLE_HILM_ARTIFACTS }
             ?: getAvailableIconPacks().firstOrNull { it.id == IconPackInfo.STYLE_NOSSO_UNIVERSO }
             ?: IconPackInfo(
                 id = IconPackInfo.STYLE_SYSTEM_DEFAULT,
@@ -368,7 +370,7 @@ class IconPackManager(
         val deleted = dir.deleteRecursively()
         if (deleted) {
             if (storage.getSelectedIconPackId() == packId) {
-                storage.setSelectedIconPackId(IconPackInfo.STYLE_NOSSO_UNIVERSO)
+                storage.setSelectedIconPackId(IconPackInfo.STYLE_HILM_ARTIFACTS)
             }
             clearCache()
         }
@@ -412,6 +414,12 @@ class IconPackManager(
     ): Drawable {
         return when {
             packId == IconPackInfo.STYLE_SYSTEM_DEFAULT -> fallback
+            packId == IconPackInfo.LEGACY_STYLE_HILM_ARTIFACTS -> resolveFromManagedPack(
+                IconPackInfo.STYLE_HILM_ARTIFACTS,
+                packageName,
+                activityName,
+                fallback
+            )
             packId == IconPackInfo.STYLE_NOSSO_UNIVERSO -> applyHudCyanTint(fallback)
             packId == IconPackInfo.STYLE_MONOCHROME_HUD -> applyMonochromeSilver(fallback)
             packId.startsWith(IconPackInfo.ASSET_PACK_PREFIX) ||
@@ -447,15 +455,387 @@ class IconPackManager(
                 ?.let { return it }
         }
 
-        // Automatically sculpt ANY unmapped / future third-party app into unified Titanium Liquid style
+        // Automatically sculpt ANY unmapped / future third-party app into unified HILM style
         return when (parsed.info.fallbackStyle.lowercase()) {
             "none", "original", "system" -> fallback
             "hud_cyan" -> applyHudCyanTint(fallback)
             "monochrome" -> applyMonochromeSilver(fallback)
+            "hilm_artifacts" -> renderHilmArtifactIcon(
+                packageName = appPackage,
+                activityName = activityName,
+                fallback = fallback
+            )
             else -> renderUnifiedTitaniumLiquidIcon(
                 cacheIdentity = "$packId:$normalizedPkg/$normalizedAct",
                 fallback = fallback
             )
+        }
+    }
+
+    private enum class ArtifactArchetype(val baseFileName: String) {
+        OPTICAL_LENS("base_optical_lens.png"),
+        ACOUSTIC_WAVES("base_acoustic_waves.png"),
+        GLASS_PLANES("base_glass_planes.png"),
+        COMMUNICATION_PULSES("base_communication_pulses.png"),
+        ORBITAL_GLASS_ORB("base_orbital_glass_orb.png"),
+        PRECISION_MECHANICS("base_precision_mechanics.png")
+    }
+
+    private fun classifyAppArtifact(packageName: String, activityName: String): ArtifactArchetype {
+        val id = "$packageName/$activityName".lowercase()
+        return when {
+            listOf(
+                "camera", "gcam", "cam", "lens", "scanner", "lightroom", "vsco",
+                "capcut", "youtube", "netflix", "twitch", "prime", "disney", "video"
+            ).any { id.contains(it) } -> ArtifactArchetype.OPTICAL_LENS
+
+            listOf(
+                "music", "spotify", "deezer", "tidal", "soundcloud", "podcast",
+                "shazam", "audio", "radio", "recorder", "bandlab", "sound"
+            ).any { id.contains(it) } -> ArtifactArchetype.ACOUSTIC_WAVES
+
+            listOf(
+                "gallery", "galeria", "photos", "album", "pinterest", "canva",
+                "figma", "notes", "keep", "notion", "obsidian", "docs", "drive",
+                "files", "documentsui", "myfiles", "snapseed"
+            ).any { id.contains(it) } -> ArtifactArchetype.GLASS_PLANES
+
+            listOf(
+                "message", "mensagens", "mms", "sms", "whatsapp", "telegram",
+                "discord", "slack", "teams", "signal", "messenger", "instagram",
+                "facebook", "twitter", "threads", "reddit", "tiktok", "dialer",
+                "phone", "contacts", "gmail", "outlook", "mail"
+            ).any { id.contains(it) } -> ArtifactArchetype.COMMUNICATION_PULSES
+
+            listOf(
+                "browser", "chrome", "firefox", "brave", "opera", "edge",
+                "duckduckgo", "maps", "waze", "uber", "99", "moovit", "earth",
+                "weather", "clima", "booking", "airbnb", "compass", "vpn"
+            ).any { id.contains(it) } -> ArtifactArchetype.ORBITAL_GLASS_ORB
+
+            listOf(
+                "settings", "configuracoes", "github", "gitlab", "androidide",
+                "termux", "vscode", "calculator", "clock", "alarm", "calendar",
+                "vending", "playstore", "nubank", "inter", "itau", "bradesco",
+                "santander", "mercadopago", "picpay", "paypal", "wallet", "bank",
+                "pix", "steam", "game"
+            ).any { id.contains(it) } -> ArtifactArchetype.PRECISION_MECHANICS
+
+            else -> {
+                val values = ArtifactArchetype.values()
+                values[abs(packageName.hashCode()) % values.size]
+            }
+        }
+    }
+
+    private fun loadArtifactBaseBitmap(archetype: ArtifactArchetype, targetSize: Int): Bitmap? {
+        val assetPath = "icon_packs/hilm_artifacts/bases/${archetype.baseFileName}"
+        val cacheKey = "hilm_base:$assetPath#$targetSize"
+        bitmapCache.get(cacheKey)?.let { cached ->
+            if (!cached.isRecycled) return cached
+        }
+        return try {
+            val decoded = context.assets.open(assetPath).use { stream ->
+                BitmapFactory.decodeStream(stream)
+            } ?: return null
+            val scaled = if (decoded.width != targetSize || decoded.height != targetSize) {
+                Bitmap.createScaledBitmap(decoded, targetSize, targetSize, true).also {
+                    if (it !== decoded) decoded.recycle()
+                }
+            } else {
+                decoded
+            }
+            bitmapCache.put(cacheKey, scaled)
+            scaled
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Universal HILM 3D Artifact renderer for EVERY unmapped third-party Android app:
+     * composites the preserved colorful app symbol directly over a photorealistic 3D CGI
+     * sculptural base (optical glass lens, volumetric acoustic waves, layered glass planes,
+     * orbital glass orb, or precision titanium mechanics) with real depth shadows and zero square cards.
+     */
+    private fun renderHilmArtifactIcon(
+        packageName: String,
+        activityName: String,
+        fallback: Drawable
+    ): Drawable {
+        val size = 224
+        val normalizedPkg = packageName.lowercase()
+        val normalizedAct = activityName.lowercase()
+        val cacheKey = "hilm_artifact_cgi_v3:$normalizedPkg/$normalizedAct#$size"
+        bitmapCache.get(cacheKey)?.let { cached ->
+            return BitmapDrawable(context.resources, cached)
+        }
+
+        val diskFile = diskCacheFileForKey(cacheKey)
+        if (diskFile.exists()) {
+            try {
+                FileInputStream(diskFile).use { stream ->
+                    BitmapFactory.decodeStream(stream)?.let { decoded ->
+                        bitmapCache.put(cacheKey, decoded)
+                        return BitmapDrawable(context.resources, decoded)
+                    }
+                }
+            } catch (_: Exception) {
+                // Re-render cleanly
+            }
+        }
+
+        val archetype = classifyAppArtifact(normalizedPkg, normalizedAct)
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        val cx = size / 2f
+        val cy = size / 2f
+
+        // 1. Real photorealistic 3D CGI sculptural base (pre-rendered RGBA 256px asset)
+        val baseBitmap = loadArtifactBaseBitmap(archetype, size)
+        if (baseBitmap != null && !baseBitmap.isRecycled) {
+            canvas.drawBitmap(
+                baseBitmap,
+                null,
+                RectF(0f, 0f, size.toFloat(), size.toFloat()),
+                Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            )
+        }
+
+        // 2. Soft dark central optical vignette on wave bases so third-party icons pop sharply
+        if (archetype == ArtifactArchetype.ACOUSTIC_WAVES ||
+            archetype == ArtifactArchetype.COMMUNICATION_PULSES
+        ) {
+            val cushionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = RadialGradient(
+                    cx,
+                    cy,
+                    size * 0.34f,
+                    intArrayOf(
+                        Color.argb(195, 5, 9, 18),
+                        Color.argb(120, 6, 12, 24),
+                        Color.argb(0, 6, 12, 24)
+                    ),
+                    floatArrayOf(0f, 0.55f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            canvas.drawCircle(cx, cy, size * 0.34f, cushionPaint)
+        }
+
+        // 3. Extract & composite full-color recognizable app symbol (preserving colors + shape)
+        val prepared = prepareColorfulForegroundSymbol(fallback, 148)
+        drawPreservedColorfulSymbol(canvas, prepared, size, archetype)
+        if (!prepared.bitmap.isRecycled) {
+            prepared.bitmap.recycle()
+        }
+
+        bitmapCache.put(cacheKey, out)
+        try {
+            renderDiskCacheDir.mkdirs()
+            FileOutputStream(diskFile).use { fos ->
+                out.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+        } catch (_: Exception) {
+            // Disk cache write is best-effort
+        }
+        return BitmapDrawable(context.resources, out)
+    }
+
+    private fun prepareColorfulForegroundSymbol(drawable: Drawable, targetSize: Int): PreparedSymbol {
+        var brandColor: Int? = null
+        val raw: Bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && drawable is AdaptiveIconDrawable) {
+            val fg = drawable.foreground
+            val bg = drawable.background
+            if (fg != null) {
+                val bmp = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
+                val c = Canvas(bmp)
+                val pad = (targetSize * 0.19f).toInt()
+                fg.setBounds(-pad, -pad, targetSize + pad, targetSize + pad)
+                fg.draw(c)
+                if (bg != null && isLowSaturationBitmap(bmp)) {
+                    brandColor = sampleDominantBrandColor(bg)
+                }
+                bmp
+            } else {
+                drawableToBitmap(drawable, targetSize)
+            }
+        } else {
+            drawableToBitmap(drawable, targetSize)
+        }
+
+        val transparentRatio = countTransparentPixels(raw).toFloat() / (raw.width * raw.height).toFloat()
+        val isolated = if (transparentRatio >= 0.14f) {
+            val trimmed = trimTransparentToSquare(raw, targetSize)
+            if (trimmed !== raw) raw.recycle()
+            PreparedSymbol(trimmed, true, brandColor)
+        } else {
+            val stripped = stripUniformCornerBackground(raw)
+            val postRatio = countTransparentPixels(stripped).toFloat() / (stripped.width * stripped.height).toFloat()
+            if (postRatio in 0.16f..0.94f) {
+                if (stripped !== raw) raw.recycle()
+                val trimmed = trimTransparentToSquare(stripped, targetSize)
+                if (trimmed !== stripped) stripped.recycle()
+                PreparedSymbol(trimmed, true, brandColor)
+            } else {
+                if (stripped !== raw) stripped.recycle()
+                PreparedSymbol(raw, false, brandColor)
+            }
+        }
+
+        // If adaptive icon had a white glyph over a colored background (e.g. WhatsApp, YouTube, Nubank),
+        // weave a tight contour-hugging brand color halo/tint behind the white symbol (NO square plate!)
+        val extractedBrand = isolated.brandColor
+        if (isolated.isIsolatedSilhouette && extractedBrand != null) {
+            val tinted = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
+            val tc = Canvas(tinted)
+            val mask = isolated.bitmap.extractAlpha()
+            val haloPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                color = extractedBrand
+                maskFilter = BlurMaskFilter(9f, BlurMaskFilter.Blur.NORMAL)
+            }
+            tc.drawBitmap(mask, 0f, 0f, haloPaint)
+
+            val crispBackingPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                colorFilter = PorterDuffColorFilter(blendTowardsWhite(extractedBrand, 0.22f), PorterDuff.Mode.SRC_IN)
+            }
+            // Subtle crisp brand contour slightly behind foreground glyph
+            val expandedRect = RectF(-2.5f, -2.5f, targetSize + 2.5f, targetSize + 2.5f)
+            tc.drawBitmap(isolated.bitmap, null, expandedRect, crispBackingPaint)
+            tc.drawBitmap(isolated.bitmap, 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+            mask.recycle()
+            if (!isolated.bitmap.isRecycled) isolated.bitmap.recycle()
+            return PreparedSymbol(tinted, true, extractedBrand)
+        }
+
+        return isolated
+    }
+
+    private fun isLowSaturationBitmap(bmp: Bitmap): Boolean {
+        val w = bmp.width
+        val h = bmp.height
+        val step = max(1, w / 18)
+        val hsv = FloatArray(3)
+        var opaqueSamples = 0
+        var satSum = 0f
+        var y = 0
+        while (y < h) {
+            var x = 0
+            while (x < w) {
+                val px = bmp.getPixel(x, y)
+                if (Color.alpha(px) > 120) {
+                    Color.colorToHSV(px, hsv)
+                    satSum += hsv[1]
+                    opaqueSamples++
+                }
+                x += step
+            }
+            y += step
+        }
+        if (opaqueSamples == 0) return false
+        return (satSum / opaqueSamples) < 0.20f
+    }
+
+    private fun sampleDominantBrandColor(bg: Drawable): Int? {
+        val sample = drawableToBitmap(bg, 48)
+        val hsv = FloatArray(3)
+        var bestScore = -1f
+        var bestColor: Int? = null
+        for (y in 8 until 40 step 4) {
+            for (x in 8 until 40 step 4) {
+                val px = sample.getPixel(x, y)
+                if (Color.alpha(px) < 180) continue
+                Color.colorToHSV(px, hsv)
+                val score = hsv[1] * (0.4f + hsv[2] * 0.6f)
+                if (hsv[1] > 0.22f && score > bestScore) {
+                    bestScore = score
+                    bestColor = Color.rgb(Color.red(px), Color.green(px), Color.blue(px))
+                }
+            }
+        }
+        sample.recycle()
+        return bestColor
+    }
+
+    private fun blendTowardsWhite(color: Int, ratio: Float): Int {
+        val r = (Color.red(color) + (255 - Color.red(color)) * ratio).toInt().coerceIn(0, 255)
+        val g = (Color.green(color) + (255 - Color.green(color)) * ratio).toInt().coerceIn(0, 255)
+        val b = (Color.blue(color) + (255 - Color.blue(color)) * ratio).toInt().coerceIn(0, 255)
+        return Color.rgb(r, g, b)
+    }
+
+    private fun drawPreservedColorfulSymbol(
+        canvas: Canvas,
+        prepared: PreparedSymbol,
+        canvasSize: Int,
+        archetype: ArtifactArchetype
+    ) {
+        val symbolScale = when (archetype) {
+            ArtifactArchetype.OPTICAL_LENS -> 0.44f
+            ArtifactArchetype.ORBITAL_GLASS_ORB -> 0.48f
+            else -> 0.54f
+        }
+        val drawSize = (canvasSize * symbolScale).toInt()
+        val shiftX = if (archetype == ArtifactArchetype.OPTICAL_LENS) canvasSize * 0.065f else 0f
+        val offset = (canvasSize - drawSize) / 2f
+        val destRect = RectF(offset + shiftX, offset, offset + shiftX + drawSize, offset + drawSize)
+
+        if (prepared.isIsolatedSilhouette) {
+            val mask = prepared.bitmap.extractAlpha()
+            val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                color = Color.argb(190, 2, 6, 14)
+                maskFilter = BlurMaskFilter(7f, BlurMaskFilter.Blur.NORMAL)
+            }
+            canvas.drawBitmap(
+                mask,
+                null,
+                RectF(destRect.left + 3f, destRect.top + 6f, destRect.right + 3f, destRect.bottom + 6f),
+                shadowPaint
+            )
+            mask.recycle()
+            canvas.drawBitmap(
+                prepared.bitmap,
+                null,
+                destRect,
+                Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            )
+        } else {
+            // Non-isolated full-bleed legacy bitmap: clip into organic bevelled circular optical aperture (never a square tile)
+            val cx = canvasSize / 2f + shiftX
+            val cy = canvasSize / 2f
+            val r = drawSize * 0.48f
+            val aperture = Path().apply { addCircle(cx, cy, r, Path.Direction.CW) }
+
+            val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.argb(180, 2, 6, 14)
+                maskFilter = BlurMaskFilter(7f, BlurMaskFilter.Blur.NORMAL)
+            }
+            canvas.drawCircle(cx + 2.5f, cy + 5f, r, shadowPaint)
+
+            canvas.save()
+            canvas.clipPath(aperture)
+            canvas.drawBitmap(
+                prepared.bitmap,
+                null,
+                destRect,
+                Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            )
+            canvas.restore()
+
+            val glassRim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 2.2f
+                shader = LinearGradient(
+                    cx - r,
+                    cy - r,
+                    cx + r,
+                    cy + r,
+                    Color.argb(195, 255, 255, 255),
+                    Color.argb(110, 34, 211, 238),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            canvas.drawCircle(cx, cy, r, glassRim)
         }
     }
 
@@ -652,7 +1032,8 @@ class IconPackManager(
 
     private data class PreparedSymbol(
         val bitmap: Bitmap,
-        val isIsolatedSilhouette: Boolean
+        val isIsolatedSilhouette: Boolean,
+        val brandColor: Int? = null
     )
 
     private fun prepareForegroundSymbol(drawable: Drawable, targetSize: Int): PreparedSymbol {

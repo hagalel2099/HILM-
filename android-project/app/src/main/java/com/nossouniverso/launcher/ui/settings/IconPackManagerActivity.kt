@@ -160,7 +160,7 @@ class IconPackManagerActivity : AppCompatActivity() {
         val activePack = packs.firstOrNull { it.id == selectedId }
         txtActivePackSummary.text = getString(
             R.string.active_icon_pack_format,
-            activePack?.title ?: "Nosso Universo Padrão"
+            activePack?.title ?: "HILM Artefatos 3D (Universal)"
         )
         btnRestoreOriginalIcons.isEnabled = selectedId != IconPackInfo.STYLE_SYSTEM_DEFAULT
         adapter.submit(packs, selectedId)

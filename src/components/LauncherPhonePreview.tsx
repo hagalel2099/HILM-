@@ -32,7 +32,7 @@ import {
   RIGHT_DRAWER_SLOT_IDS,
   SLOT_LABELS,
 } from "../data/launcherCatalog";
-import { isIllustratedIconPack } from "../data/iconPackRegistry";
+import { usesExpandedGlyphScale } from "../data/iconPackRegistry";
 import { AppGlyph } from "./AppGlyph";
 import { AppDrawerModal } from "./AppDrawerModal";
 import { HilmCore } from "./HilmCore";
@@ -100,6 +100,10 @@ export function LauncherPhonePreview({
   const hilmSpring = prefersReducedMotion
     ? { duration: 0.01 }
     : { type: "spring" as const, stiffness: 520, damping: 24, mass: 0.68 };
+
+  const drawerSlideTransition = prefersReducedMotion
+    ? { duration: 0.01 }
+    : { type: "spring" as const, stiffness: 210, damping: 24, mass: 0.88 };
 
   const INSTALLED_VERSION = "1.0.0";
   const INSTALLED_VERSION_CODE = 1;
@@ -485,7 +489,7 @@ export function LauncherPhonePreview({
                   iconPack={state.iconPack}
                   customIconDataUrl={slot.customIconDataUrl}
                   sizeClass={
-                    isIllustratedIconPack(state.iconPack)
+                    usesExpandedGlyphScale(state.iconPack)
                       ? "w-6 h-6 shrink-0"
                       : "w-4 h-4 shrink-0"
                   }
@@ -671,7 +675,7 @@ export function LauncherPhonePreview({
           whileTap="tap"
           whileDrag={prefersReducedMotion ? undefined : { scale: 1.2, zIndex: 30 }}
           transition={hilmSpring}
-          className={`relative w-[42px] h-[42px] rounded-full flex items-center justify-center cursor-pointer bg-transparent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/60 ${
+          className={`relative w-[48px] h-[48px] rounded-full flex items-center justify-center cursor-pointer bg-transparent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/60 ${
             isSwapSelected ? "ring-2 ring-amber-400" : isDropTarget ? "ring-1 ring-white/80" : ""
           }`}
         >
@@ -679,7 +683,7 @@ export function LauncherPhonePreview({
             <circle
               cx="24"
               cy="24"
-              r="21"
+              r="21.5"
               fill="none"
               stroke={isEditMode ? "#F59E0B" : "rgba(255, 255, 255, 0.24)"}
               strokeWidth="1.2"
@@ -703,11 +707,11 @@ export function LauncherPhonePreview({
                 app={app}
                 iconPack={state.iconPack}
                 customIconDataUrl={slot.customIconDataUrl}
-                sizeClass={isIllustratedIconPack(state.iconPack) ? "w-6 h-6" : "w-4 h-4"}
+                sizeClass={usesExpandedGlyphScale(state.iconPack) ? "w-8 h-8" : "w-6 h-6"}
               />
             </motion.span>
           ) : (
-            <Plus className="w-3.5 h-3.5 text-slate-200/45 relative z-10" />
+            <Plus className="w-4 h-4 text-slate-200/45 relative z-10" />
           )}
         </motion.button>
 
@@ -861,7 +865,7 @@ export function LauncherPhonePreview({
                 iconPack={state.iconPack}
                 customIconDataUrl={slot.customIconDataUrl}
                 sizeClass={
-                  isIllustratedIconPack(state.iconPack)
+                  usesExpandedGlyphScale(state.iconPack)
                     ? "w-8 h-8"
                     : "w-5 h-5"
                 }
@@ -1008,32 +1012,34 @@ export function LauncherPhonePreview({
           className="absolute right-0 top-[19%] h-[34%] w-8 z-20 bg-transparent border-0 cursor-pointer focus-visible:outline-none"
         />
 
-        {/* Retractable Left Transparent Wing (5 slots emerging from the existing left rail) */}
+        {/* Retractable Left Transparent Wing (5 slots emerging smoothly from the existing left rail) */}
         <AnimatePresence>
           {leftDrawerOpen && (
             <motion.aside
+              key="left-side-drawer"
               aria-label="Gaveta lateral esquerda"
-              initial={prefersReducedMotion ? { opacity: 1 } : { x: -46, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={prefersReducedMotion ? { opacity: 0 } : { x: -46, opacity: 0 }}
-              transition={hilmSpring}
-              className="absolute left-[18px] top-[19.5%] z-25 w-[44px] bg-transparent flex flex-col items-center gap-2"
+              initial={prefersReducedMotion ? { opacity: 1 } : { x: -88, opacity: 0, scale: 0.9 }}
+              animate={{ x: 0, opacity: 1, scale: 1 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { x: -88, opacity: 0, scale: 0.9 }}
+              transition={drawerSlideTransition}
+              className="absolute left-[16px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
             >
               {LEFT_DRAWER_SLOT_IDS.map((slotId) => renderSideDrawerSlot(slotId))}
             </motion.aside>
           )}
         </AnimatePresence>
 
-        {/* Retractable Right Transparent Wing (5 slots emerging from the existing right rail) */}
+        {/* Retractable Right Transparent Wing (5 slots emerging smoothly from the existing right rail) */}
         <AnimatePresence>
           {rightDrawerOpen && (
             <motion.aside
+              key="right-side-drawer"
               aria-label="Gaveta lateral direita"
-              initial={prefersReducedMotion ? { opacity: 1 } : { x: 46, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={prefersReducedMotion ? { opacity: 0 } : { x: 46, opacity: 0 }}
-              transition={hilmSpring}
-              className="absolute right-[18px] top-[19.5%] z-25 w-[44px] bg-transparent flex flex-col items-center gap-2"
+              initial={prefersReducedMotion ? { opacity: 1 } : { x: 88, opacity: 0, scale: 0.9 }}
+              animate={{ x: 0, opacity: 1, scale: 1 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { x: 88, opacity: 0, scale: 0.9 }}
+              transition={drawerSlideTransition}
+              className="absolute right-[16px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
             >
               {RIGHT_DRAWER_SLOT_IDS.map((slotId) => renderSideDrawerSlot(slotId))}
             </motion.aside>
@@ -1415,7 +1421,11 @@ export function LauncherPhonePreview({
                     className="w-full p-3 rounded-xl bg-[#0B121E] border border-slate-800 hover:border-cyan-400/50 flex items-center gap-3 text-left transition-colors"
                   >
                     <div className="w-10 h-10 rounded-lg bg-[#06090F] border border-cyan-500/30 flex items-center justify-center shrink-0">
-                      <AppGlyph app={app} iconPack={state.iconPack} sizeClass="w-5 h-5" />
+                      <AppGlyph
+                        app={app}
+                        iconPack={state.iconPack}
+                        sizeClass={usesExpandedGlyphScale(state.iconPack) ? "w-8 h-8" : "w-5 h-5"}
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-semibold text-slate-100 truncate">
@@ -1453,7 +1463,7 @@ export function LauncherPhonePreview({
                 <AppGlyph
                   app={activeAppWindow}
                   iconPack={state.iconPack}
-                  sizeClass={isIllustratedIconPack(state.iconPack) ? "w-12 h-12" : "w-8 h-8"}
+                  sizeClass={usesExpandedGlyphScale(state.iconPack) ? "w-12 h-12" : "w-8 h-8"}
                 />
               </div>
               <div>

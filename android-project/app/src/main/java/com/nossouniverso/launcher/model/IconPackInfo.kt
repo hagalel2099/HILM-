@@ -31,6 +31,8 @@ data class IconPackInfo(
     val iconCount: Int = 0
 ) {
     companion object {
+        const val STYLE_HILM_ARTIFACTS = "asset_pack:hilm_artifacts"
+        const val LEGACY_STYLE_HILM_ARTIFACTS = "builtin_hilm_artifacts"
         const val STYLE_NOSSO_UNIVERSO = "builtin_nosso_universo"
         const val STYLE_MONOCHROME_HUD = "builtin_monochrome_hud"
         const val STYLE_SYSTEM_DEFAULT = "builtin_system_default"

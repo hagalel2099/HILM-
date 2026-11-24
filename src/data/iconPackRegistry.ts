@@ -6,6 +6,7 @@ import type {
   InstalledAppItem,
 } from "../types/launcher";
 import titaniumLiquidManifest from "../../public/assets/icon-packs/titanium-liquid/manifest.json";
+import hilmArtifactsManifest from "../../public/assets/icon-packs/hilm-artifacts/manifest.json";
 
 interface RawManifest {
   id?: string;
@@ -37,6 +38,10 @@ function buildIllustratedDescriptor(
 }
 
 export const ICON_PACK_REGISTRY: IconPackDescriptor[] = [
+  buildIllustratedDescriptor(
+    hilmArtifactsManifest as RawManifest,
+    "/assets/icon-packs/hilm-artifacts"
+  ),
   buildIllustratedDescriptor(
     titaniumLiquidManifest as RawManifest,
     "/assets/icon-packs/titanium-liquid"
@@ -98,12 +103,20 @@ export function getIconPackDescriptor(packId: IconPackId): IconPackDescriptor {
   if (runtime) return runtime.descriptor;
   return (
     ICON_PACK_REGISTRY.find((pack) => pack.id === packId) ||
-    ICON_PACK_REGISTRY[1]
+    ICON_PACK_REGISTRY[0]
   );
 }
 
 export function isIllustratedIconPack(packId: IconPackId): boolean {
   return getIconPackDescriptor(packId).kind === "illustrated";
+}
+
+export function isArtifactIconPack(packId: IconPackId): boolean {
+  return packId === "hilm-artifacts";
+}
+
+export function usesExpandedGlyphScale(packId: IconPackId): boolean {
+  return isIllustratedIconPack(packId) || isArtifactIconPack(packId);
 }
 
 function resolvePackEntryUrl(
@@ -211,6 +224,11 @@ const DEFAULT_KEY_TO_ICON_KEY: Record<string, string> = {
   instagram: "instagram",
   youtube: "youtube",
   spotify: "music",
+  music: "music",
+  musica: "music",
+  discord: "discord",
+  nubank: "bank",
+  bank: "bank",
   gallery: "image",
   galeria: "image",
   maps: "map",
@@ -225,6 +243,14 @@ const DEFAULT_KEY_TO_ICON_KEY: Record<string, string> = {
   androidide: "terminal",
   settings: "settings",
   configuracoes: "settings",
+  contacts: "contacts",
+  contatos: "contacts",
+  gmail: "mail",
+  playstore: "store",
+  calculator: "calculator",
+  calculadora: "calculator",
+  clock: "clock",
+  relogio: "clock",
 };
 
 export async function importIconPackFromZipFile(

@@ -189,6 +189,7 @@ class ShortcutStorage(context: Context) {
             val importedPack = root.optString("iconPack")
             if (importedPack.isNotBlank()) {
                 val mappedPack = when (importedPack) {
+                    "hilm-artifacts", IconPackInfo.LEGACY_STYLE_HILM_ARTIFACTS -> IconPackInfo.STYLE_HILM_ARTIFACTS
                     "titanium-liquid" -> IconPackInfo.ASSET_PACK_PREFIX + "titanium_liquid"
                     "nosso-universo" -> IconPackInfo.STYLE_NOSSO_UNIVERSO
                     "monochrome-hud" -> IconPackInfo.STYLE_MONOCHROME_HUD
@@ -204,8 +205,13 @@ class ShortcutStorage(context: Context) {
     }
 
     fun getSelectedIconPackId(): String {
-        return prefs.getString(KEY_ICON_PACK, IconPackInfo.STYLE_NOSSO_UNIVERSO)
-            ?: IconPackInfo.STYLE_NOSSO_UNIVERSO
+        val raw = prefs.getString(KEY_ICON_PACK, IconPackInfo.STYLE_HILM_ARTIFACTS)
+            ?: IconPackInfo.STYLE_HILM_ARTIFACTS
+        return if (raw == IconPackInfo.LEGACY_STYLE_HILM_ARTIFACTS || raw == "hilm-artifacts") {
+            IconPackInfo.STYLE_HILM_ARTIFACTS
+        } else {
+            raw
+        }
     }
 
     fun setSelectedIconPackId(id: String) {

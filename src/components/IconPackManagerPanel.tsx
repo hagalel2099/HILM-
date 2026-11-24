@@ -17,6 +17,7 @@ import {
   getPackAllIconEntries,
   getPackPreviewUrls,
   importIconPackFromZipFile,
+  isArtifactIconPack,
   isRuntimeImportedPack,
   removeRuntimeImportedPack,
 } from "../data/iconPackRegistry";
@@ -28,7 +29,14 @@ interface IconPackManagerPanelProps {
   onSelectIconPack: (packId: IconPackId) => void;
 }
 
-const SAMPLE_APPS_FOR_HUD = INSTALLED_APPS_CATALOG.slice(0, 6);
+const SAMPLE_APPS_FOR_HUD = [
+  INSTALLED_APPS_CATALOG.find((a) => a.packageName === "com.android.camera2"),
+  INSTALLED_APPS_CATALOG.find((a) => a.packageName === "com.spotify.music"),
+  INSTALLED_APPS_CATALOG.find((a) => a.packageName === "com.whatsapp"),
+  INSTALLED_APPS_CATALOG.find((a) => a.packageName === "com.android.chrome"),
+  INSTALLED_APPS_CATALOG.find((a) => a.packageName === "com.instagram.android"),
+  INSTALLED_APPS_CATALOG.find((a) => a.packageName === "com.android.settings"),
+].filter((item): item is (typeof INSTALLED_APPS_CATALOG)[number] => Boolean(item));
 
 export function IconPackManagerPanel({
   activePackId,
@@ -80,7 +88,7 @@ export function IconPackManagerPanel({
   const handleRemoveImported = (packId: IconPackId) => {
     removeRuntimeImportedPack(packId);
     if (activePackId === packId) {
-      onSelectIconPack("nosso-universo");
+      onSelectIconPack("hilm-artifacts");
     }
     setVersionTick((t) => t + 1);
   };
@@ -188,7 +196,7 @@ export function IconPackManagerPanel({
                 {/* Visual Icon Strip Preview */}
                 <div className="rounded-lg bg-[#060910] border border-slate-800/90 px-3 py-2.5 flex items-center gap-2.5 overflow-x-auto hud-scroll">
                   {pack.kind === "illustrated" ? (
-                    illustratedThumbs.slice(0, 6).map((thumb) => (
+                    illustratedThumbs.slice(0, 8).map((thumb) => (
                       <img
                         key={thumb.key}
                         src={thumb.url}
@@ -197,6 +205,20 @@ export function IconPackManagerPanel({
                         referrerPolicy="no-referrer"
                         className="w-10 h-10 object-contain shrink-0 drop-shadow-[0_4px_10px_rgba(34,211,238,0.2)]"
                       />
+                    ))
+                  ) : isArtifactIconPack(pack.id) ? (
+                    SAMPLE_APPS_FOR_HUD.map((sampleApp) => (
+                      <div
+                        key={sampleApp.packageName}
+                        title={sampleApp.label}
+                        className="w-10 h-10 flex items-center justify-center shrink-0"
+                      >
+                        <AppGlyph
+                          app={sampleApp}
+                          iconPack={pack.id}
+                          sizeClass="w-10 h-10"
+                        />
+                      </div>
                     ))
                   ) : (
                     SAMPLE_APPS_FOR_HUD.map((sampleApp) => (
@@ -334,11 +356,19 @@ export function IconPackManagerPanel({
                       key={app.packageName}
                       className="rounded-xl border border-slate-800 bg-[#060A12] p-3 flex flex-col items-center gap-2"
                     >
-                      <div className="w-12 h-12 rounded-xl bg-[#0C1322] border border-slate-800 flex items-center justify-center">
+                      <div
+                        className={
+                          isArtifactIconPack(inspectingPack.id)
+                            ? "w-14 h-14 flex items-center justify-center"
+                            : "w-12 h-12 rounded-xl bg-[#0C1322] border border-slate-800 flex items-center justify-center"
+                        }
+                      >
                         <AppGlyph
                           app={app}
                           iconPack={inspectingPack.id}
-                          sizeClass="w-6 h-6"
+                          sizeClass={
+                            isArtifactIconPack(inspectingPack.id) ? "w-12 h-12" : "w-6 h-6"
+                          }
                         />
                       </div>
                       <span className="text-[11px] text-slate-200 text-center truncate w-full">

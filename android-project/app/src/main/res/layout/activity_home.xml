@@ -301,7 +301,7 @@
         android:id="@+id/leftSideDrawer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="18dp"
+        android:layout_marginStart="16dp"
         android:background="@android:color/transparent"
         android:clickable="true"
         android:elevation="0dp"
@@ -315,32 +315,32 @@
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/leftSlot1"
-            android:layout_width="42dp"
-            android:layout_height="42dp" />
+            android:layout_width="48dp"
+            android:layout_height="48dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/leftSlot2"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:layout_marginTop="6dp" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="5dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/leftSlot3"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:layout_marginTop="6dp" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="5dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/leftSlot4"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:layout_marginTop="6dp" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="5dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/leftSlot5"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:layout_marginTop="6dp" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="5dp" />
     </LinearLayout>
 
     <!-- Right 5-Slot Transparent Drawer (emerges directly from the existing right rail) -->
@@ -348,7 +348,7 @@
         android:id="@+id/rightSideDrawer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="18dp"
+        android:layout_marginEnd="16dp"
         android:background="@android:color/transparent"
         android:clickable="true"
         android:elevation="0dp"
@@ -362,32 +362,32 @@
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/rightSlot1"
-            android:layout_width="42dp"
-            android:layout_height="42dp" />
+            android:layout_width="48dp"
+            android:layout_height="48dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/rightSlot2"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:layout_marginTop="6dp" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="5dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/rightSlot3"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:layout_marginTop="6dp" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="5dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/rightSlot4"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:layout_marginTop="6dp" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="5dp" />
 
         <com.nossouniverso.launcher.ui.views.HudDockSlotView
             android:id="@+id/rightSlot5"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:layout_marginTop="6dp" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="5dp" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

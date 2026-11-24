@@ -122,7 +122,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
         val activePack = packs.firstOrNull { it.id == currentId }
         txtSettingsActivePack.text = getString(
             R.string.active_icon_pack_format,
-            activePack?.title ?: "Nosso Universo Padrão"
+            activePack?.title ?: "HILM Artefatos 3D (Universal)"
         )
 
         radioIconPacks.setOnCheckedChangeListener(null)

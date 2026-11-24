@@ -178,6 +178,22 @@ export const INSTALLED_APPS_CATALOG: InstalledAppItem[] = [
     iconKey: "terminal",
   },
   {
+    packageName: "com.discord",
+    activityName: "com.discord.main.MainActivity",
+    label: "Discord",
+    category: "Social",
+    accentHex: "#5865F2",
+    iconKey: "discord",
+  },
+  {
+    packageName: "com.nu.production",
+    activityName: "com.nu.production.MainActivity",
+    label: "Nubank",
+    category: "Finanças",
+    accentHex: "#820AD1",
+    iconKey: "bank",
+  },
+  {
     packageName: "com.android.settings",
     activityName: "com.android.settings.Settings",
     label: "Ajustes",
@@ -241,7 +257,7 @@ export const DEFAULT_LAUNCHER_STATE: LauncherPersistedState = {
     right_4: { slotId: "right_4", packageName: "com.android.settings" },
     right_5: { slotId: "right_5", packageName: null },
   },
-  iconPack: "nosso-universo",
+  iconPack: "hilm-artifacts",
   wallpaperId: "ref-horizon",
   panelOpacity: 78,
   recentPackages: [

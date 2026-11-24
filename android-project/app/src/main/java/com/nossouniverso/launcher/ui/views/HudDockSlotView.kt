@@ -49,6 +49,8 @@ class HudDockSlotView @JvmOverloads constructor(
     var transparentHudMode: Boolean = false
         set(value) {
             field = value
+            val pad = ((if (value) 4.5f else 9f) * density).toInt()
+            iconView.setPadding(pad, pad, pad, pad)
             invalidate()
         }
 

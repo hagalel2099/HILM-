@@ -1,0 +1,285 @@
+{
+  "id": "hilm-artifacts",
+  "name": "HILM Artefatos 3D (Universal)",
+  "subtitle": "Esculturas 3D em vidro óptico, metal escuro e luz volumétrica com os ícones originais preservados para apps nativos e de terceiros.",
+  "author": "HILM Studio",
+  "version": "1.0.0",
+  "format": "png-rgba-256",
+  "fallbackStyle": "hilm_artifacts",
+  "previewIcons": [
+    "camera",
+    "music",
+    "gallery",
+    "messages",
+    "browser",
+    "settings",
+    "whatsapp",
+    "spotify",
+    "instagram",
+    "youtube",
+    "discord",
+    "nubank"
+  ],
+  "icons": [
+    {
+      "key": "camera",
+      "label": "Câmera",
+      "file": "camera.png",
+      "iconKeys": ["camera"],
+      "packages": [
+        "com.android.camera",
+        "com.android.camera2",
+        "com.google.android.GoogleCamera",
+        "com.sec.android.app.camera",
+        "com.motorola.camera3",
+        "com.oneplus.camera"
+      ],
+      "keywords": ["camera"]
+    },
+    {
+      "key": "spotify",
+      "label": "Spotify",
+      "file": "spotify.png",
+      "packages": ["com.spotify.music"],
+      "keywords": ["spotify"]
+    },
+    {
+      "key": "music",
+      "label": "Música",
+      "file": "music.png",
+      "iconKeys": ["music"],
+      "packages": [
+        "com.google.android.apps.youtube.music",
+        "com.sec.android.app.music",
+        "com.miui.player",
+        "deezer.android.app",
+        "com.aspiro.tidal"
+      ],
+      "keywords": ["music", "musica", "deezer", "tidal", "audio"]
+    },
+    {
+      "key": "gallery",
+      "label": "Galeria",
+      "file": "gallery.png",
+      "iconKeys": ["image"],
+      "packages": [
+        "com.android.gallery3d",
+        "com.google.android.apps.photos",
+        "com.sec.android.gallery3d",
+        "com.miui.gallery"
+      ],
+      "keywords": ["gallery", "photos", "galeria"]
+    },
+    {
+      "key": "messages",
+      "label": "Mensagens",
+      "file": "messages.png",
+      "iconKeys": ["message"],
+      "packages": [
+        "com.android.messaging",
+        "com.google.android.apps.messaging",
+        "com.samsung.android.messaging",
+        "com.android.mms"
+      ],
+      "keywords": ["messaging", "mms", "sms", "mensagens"]
+    },
+    {
+      "key": "browser",
+      "label": "Navegador",
+      "file": "browser.png",
+      "iconKeys": ["globe"],
+      "packages": [
+        "com.android.chrome",
+        "com.sec.android.app.sbrowser",
+        "org.mozilla.firefox",
+        "com.brave.browser",
+        "com.opera.browser",
+        "com.microsoft.emmx"
+      ],
+      "keywords": ["chrome", "browser", "firefox", "opera", "brave"]
+    },
+    {
+      "key": "settings",
+      "label": "Configurações",
+      "file": "settings.png",
+      "iconKeys": ["settings"],
+      "packages": ["com.android.settings"],
+      "keywords": ["settings", "ajustes", "configuracoes"]
+    },
+    {
+      "key": "whatsapp",
+      "label": "WhatsApp",
+      "file": "whatsapp.png",
+      "iconKeys": ["chat"],
+      "packages": ["com.whatsapp", "com.whatsapp.w4b"],
+      "keywords": ["whatsapp"]
+    },
+    {
+      "key": "instagram",
+      "label": "Instagram",
+      "file": "instagram.png",
+      "iconKeys": ["instagram"],
+      "packages": ["com.instagram.android", "com.instagram.lite"],
+      "keywords": ["instagram"]
+    },
+    {
+      "key": "youtube",
+      "label": "YouTube",
+      "file": "youtube.png",
+      "iconKeys": ["youtube"],
+      "packages": [
+        "com.google.android.youtube",
+        "com.vanced.android.youtube",
+        "app.revanced.android.youtube"
+      ],
+      "keywords": ["youtube"]
+    },
+    {
+      "key": "discord",
+      "label": "Discord",
+      "file": "discord.png",
+      "iconKeys": ["discord"],
+      "packages": ["com.discord"],
+      "keywords": ["discord"]
+    },
+    {
+      "key": "nubank",
+      "label": "Nubank",
+      "file": "nubank.png",
+      "iconKeys": ["bank"],
+      "packages": ["com.nu.production"],
+      "keywords": ["nubank", "nu.production"]
+    },
+    {
+      "key": "phone",
+      "label": "Telefone",
+      "file": "phone.png",
+      "iconKeys": ["phone"],
+      "packages": [
+        "com.android.dialer",
+        "com.google.android.dialer",
+        "com.samsung.android.dialer",
+        "com.asus.dialer"
+      ],
+      "keywords": ["dialer", "phone", "telefone"]
+    },
+    {
+      "key": "contacts",
+      "label": "Contatos",
+      "file": "contacts.png",
+      "iconKeys": ["contacts"],
+      "packages": [
+        "com.android.contacts",
+        "com.google.android.contacts",
+        "com.samsung.android.app.contacts"
+      ],
+      "keywords": ["contacts", "contatos"]
+    },
+    {
+      "key": "calendar",
+      "label": "Calendário",
+      "file": "calendar.png",
+      "iconKeys": ["calendar"],
+      "packages": [
+        "com.android.calendar",
+        "com.google.android.calendar",
+        "com.samsung.android.calendar"
+      ],
+      "keywords": ["calendar", "calendario"]
+    },
+    {
+      "key": "notes",
+      "label": "Notas",
+      "file": "notes.png",
+      "iconKeys": ["notes"],
+      "packages": [
+        "com.nossouniverso.notes",
+        "com.google.android.keep",
+        "com.samsung.android.app.notes"
+      ],
+      "keywords": ["notes", "keep", "notas"]
+    },
+    {
+      "key": "files",
+      "label": "Arquivos",
+      "file": "files.png",
+      "iconKeys": ["folder"],
+      "packages": [
+        "com.android.documentsui",
+        "com.google.android.apps.nbu.files",
+        "com.sec.android.app.myfiles",
+        "com.mi.android.globalFileexplorer"
+      ],
+      "keywords": ["documentsui", "files", "myfiles", "arquivos"]
+    },
+    {
+      "key": "calculator",
+      "label": "Calculadora",
+      "file": "calculator.png",
+      "iconKeys": ["calculator"],
+      "packages": [
+        "com.android.calculator2",
+        "com.google.android.calculator",
+        "com.sec.android.app.popupcalculator",
+        "com.miui.calculator"
+      ],
+      "keywords": ["calculator", "calculadora"]
+    },
+    {
+      "key": "gmail",
+      "label": "Gmail",
+      "file": "gmail.png",
+      "iconKeys": ["mail"],
+      "packages": [
+        "com.google.android.gm",
+        "com.samsung.android.email.provider",
+        "com.microsoft.office.outlook"
+      ],
+      "keywords": ["gmail", "email", "mail"]
+    },
+    {
+      "key": "maps",
+      "label": "Mapas",
+      "file": "maps.png",
+      "iconKeys": ["map"],
+      "packages": ["com.google.android.apps.maps", "com.waze"],
+      "keywords": ["maps", "waze", "mapas"]
+    },
+    {
+      "key": "playstore",
+      "label": "Play Store",
+      "file": "playstore.png",
+      "iconKeys": ["store"],
+      "packages": ["com.android.vending"],
+      "keywords": ["vending", "playstore"]
+    },
+    {
+      "key": "github",
+      "label": "GitHub",
+      "file": "github.png",
+      "iconKeys": ["code"],
+      "packages": ["com.github.android"],
+      "keywords": ["github"]
+    },
+    {
+      "key": "androidide",
+      "label": "AndroidIDE",
+      "file": "androidide.png",
+      "iconKeys": ["terminal"],
+      "packages": ["com.itsaky.androidide", "com.termux"],
+      "keywords": ["androidide", "termux"]
+    },
+    {
+      "key": "clock",
+      "label": "Relógio",
+      "file": "clock.png",
+      "iconKeys": ["clock"],
+      "packages": [
+        "com.android.deskclock",
+        "com.google.android.deskclock",
+        "com.sec.android.app.clockpackage"
+      ],
+      "keywords": ["deskclock", "clock", "alarm", "relogio"]
+    }
+  ]
+}

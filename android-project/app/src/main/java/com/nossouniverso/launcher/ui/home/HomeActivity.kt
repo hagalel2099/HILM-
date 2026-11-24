@@ -455,7 +455,7 @@ class HomeActivity : AppCompatActivity() {
     private fun setSideDrawerOpen(isLeft: Boolean, open: Boolean, animate: Boolean = true) {
         if (isLeft) isLeftDrawerOpen = open else isRightDrawerOpen = open
         val drawer = if (isLeft) leftSideDrawer else rightSideDrawer
-        val offsetPx = (if (isLeft) -48f else 48f) * resources.displayMetrics.density
+        val offsetPx = (if (isLeft) -84f else 84f) * resources.displayMetrics.density
 
         drawer.animate().cancel()
         if (open) {
@@ -468,8 +468,8 @@ class HomeActivity : AppCompatActivity() {
                 drawer.animate()
                     .alpha(1f)
                     .translationX(0f)
-                    .setDuration(220L)
-                    .setInterpolator(OvershootInterpolator(1.05f))
+                    .setDuration(300L)
+                    .setInterpolator(OvershootInterpolator(0.95f))
                     .start()
             } else {
                 drawer.alpha = 1f
@@ -480,8 +480,8 @@ class HomeActivity : AppCompatActivity() {
                 drawer.animate()
                     .alpha(0f)
                     .translationX(offsetPx)
-                    .setDuration(170L)
-                    .setInterpolator(DecelerateInterpolator())
+                    .setDuration(240L)
+                    .setInterpolator(DecelerateInterpolator(1.4f))
                     .withEndAction {
                         drawer.visibility = View.GONE
                     }

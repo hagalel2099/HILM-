@@ -19,6 +19,7 @@ export type SlotId =
   | "right_5";
 
 export type BuiltInIconPackId =
+  | "hilm-artifacts"
   | "titanium-liquid"
   | "nosso-universo"
   | "monochrome-hud"

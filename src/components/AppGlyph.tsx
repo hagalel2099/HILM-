@@ -18,9 +18,11 @@ import {
 } from "lucide-react";
 import type { IconPackId, InstalledAppItem } from "../types/launcher";
 import {
+  isArtifactIconPack,
   isIllustratedIconPack,
   resolveIllustratedIconUrl,
 } from "../data/iconPackRegistry";
+import { HilmArtifactGlyph } from "./HilmArtifactGlyph";
 
 interface AppGlyphProps {
   app: InstalledAppItem;
@@ -53,9 +55,13 @@ export function AppGlyph({
         src={illustratedUrl}
         alt={app.label}
         referrerPolicy="no-referrer"
-        className={`${sizeClass} object-contain`}
+        className={`${sizeClass} object-contain drop-shadow-[0_4px_10px_rgba(2,6,18,0.65)]`}
       />
     );
+  }
+
+  if (isArtifactIconPack(iconPack)) {
+    return <HilmArtifactGlyph app={app} sizeClass={sizeClass} />;
   }
 
   const illustratedFallback = isIllustratedIconPack(iconPack);
