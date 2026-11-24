@@ -1249,13 +1249,13 @@ export function LauncherPhonePreview({
           <HilmCore status={coreStatus} onClick={handleToggleCoreUpdatePopover} />
         </div>
 
-        {/* Transparent Hit-Zones directly over the Existing HUD Side Rails */}
+        {/* Transparent Hit-Zone directly over the Existing HUD Side Rails */}
         <button
           type="button"
           onClick={() => setLeftDrawerOpen((v) => !v)}
           aria-label={leftDrawerOpen ? "Recolher gaveta lateral esquerda" : "Abrir gaveta lateral esquerda"}
           title={leftDrawerOpen ? "Recolher gaveta esquerda" : "Abrir gaveta esquerda (5 atalhos)"}
-          className="absolute left-0 top-[19%] h-[34%] w-8 z-20 bg-transparent border-0 cursor-pointer focus-visible:outline-none"
+          className="absolute left-0 top-[19%] h-[34%] w-9 z-30 bg-transparent border-0 cursor-pointer focus-visible:outline-none"
         />
 
         <button
@@ -1263,7 +1263,7 @@ export function LauncherPhonePreview({
           onClick={() => setRightDrawerOpen((v) => !v)}
           aria-label={rightDrawerOpen ? "Recolher gaveta lateral direita" : "Abrir gaveta lateral direita"}
           title={rightDrawerOpen ? "Recolher gaveta direita" : "Abrir gaveta direita (5 atalhos)"}
-          className="absolute right-0 top-[19%] h-[34%] w-8 z-20 bg-transparent border-0 cursor-pointer focus-visible:outline-none"
+          className="absolute right-0 top-[19%] h-[34%] w-9 z-30 bg-transparent border-0 cursor-pointer focus-visible:outline-none"
         />
 
         {/* Retractable Left Transparent Wing (5 slots emerging smoothly from the existing left rail) */}
@@ -1277,7 +1277,7 @@ export function LauncherPhonePreview({
               exit={leftDrawerMotion.exit}
               transition={leftDrawerMotion.transition}
               style={{ transformOrigin: "left center" }}
-              className="absolute left-[16px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
+              className="absolute left-[42px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
             >
               {LEFT_DRAWER_SLOT_IDS.map((slotId, idx) => renderSideDrawerSlot(slotId, idx))}
             </motion.aside>
@@ -1295,7 +1295,7 @@ export function LauncherPhonePreview({
               exit={rightDrawerMotion.exit}
               transition={rightDrawerMotion.transition}
               style={{ transformOrigin: "right center" }}
-              className="absolute right-[16px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
+              className="absolute right-[42px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
             >
               {RIGHT_DRAWER_SLOT_IDS.map((slotId, idx) => renderSideDrawerSlot(slotId, idx))}
             </motion.aside>

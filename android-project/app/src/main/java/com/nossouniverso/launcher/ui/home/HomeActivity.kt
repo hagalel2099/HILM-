@@ -305,7 +305,7 @@ class HomeActivity : AppCompatActivity() {
                             setSideDrawerOpen(isLeft = true, open = true)
                             true
                         }
-                        isLeftDrawerOpen && gestureStartX <= 140f * density && dx < -horizThresh && absDx > absDy * 1.3f -> {
+                        isLeftDrawerOpen && gestureStartX <= 160f * density && dx < -horizThresh && absDx > absDy * 1.3f -> {
                             setSideDrawerOpen(isLeft = true, open = false)
                             true
                         }
@@ -313,7 +313,7 @@ class HomeActivity : AppCompatActivity() {
                             setSideDrawerOpen(isLeft = false, open = true)
                             true
                         }
-                        isRightDrawerOpen && gestureStartX >= rootW - 140f * density && dx > horizThresh && absDx > absDy * 1.3f -> {
+                        isRightDrawerOpen && gestureStartX >= rootW - 160f * density && dx > horizThresh && absDx > absDy * 1.3f -> {
                             setSideDrawerOpen(isLeft = false, open = false)
                             true
                         }

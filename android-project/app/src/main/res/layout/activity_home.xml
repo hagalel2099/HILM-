@@ -273,7 +273,7 @@
     <!-- Transparent Hit-Zone over Left Existing HUD Rail -->
     <View
         android:id="@+id/btnLeftDrawerHandle"
-        android:layout_width="32dp"
+        android:layout_width="36dp"
         android:layout_height="240dp"
         android:background="@android:color/transparent"
         android:clickable="true"
@@ -286,7 +286,7 @@
     <!-- Transparent Hit-Zone over Right Existing HUD Rail -->
     <View
         android:id="@+id/btnRightDrawerHandle"
-        android:layout_width="32dp"
+        android:layout_width="36dp"
         android:layout_height="240dp"
         android:background="@android:color/transparent"
         android:clickable="true"
@@ -301,7 +301,7 @@
         android:id="@+id/leftSideDrawer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
+        android:layout_marginStart="42dp"
         android:background="@android:color/transparent"
         android:clickable="true"
         android:elevation="0dp"
@@ -348,7 +348,7 @@
         android:id="@+id/rightSideDrawer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
+        android:layout_marginEnd="42dp"
         android:background="@android:color/transparent"
         android:clickable="true"
         android:elevation="0dp"

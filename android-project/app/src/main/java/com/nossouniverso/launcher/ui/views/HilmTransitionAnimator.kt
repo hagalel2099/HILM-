@@ -324,7 +324,7 @@ object HilmTransitionAnimator {
         cancelRunning(drawer)
         val clean = config.sanitized()
         val density = drawer.resources.displayMetrics.density
-        val slideOffset = (if (isLeft) -84f else 84f) * density
+        val slideOffset = (if (isLeft) -98f else 98f) * density
 
         if (!shouldAnimate(drawer.context, clean)) {
             resetVisualState(drawer)
