@@ -56,6 +56,20 @@ export type WallpaperId =
   | "solar-nebula"
   | "custom";
 
+export type TransitionEffectId =
+  | "portal"
+  | "digital-disintegration"
+  | "light-sweep"
+  | "dimensional-slide"
+  | "energy-dissolve"
+  | "classic";
+
+export interface TransitionConfig {
+  enabled: boolean;
+  effect: TransitionEffectId;
+  durationMs: number;
+}
+
 export interface InstalledAppItem {
   packageName: string;
   activityName: string;
@@ -79,6 +93,7 @@ export interface LauncherPersistedState {
   customWallpaperUrl?: string;
   panelOpacity: number;
   recentPackages: string[];
+  transition: TransitionConfig;
 }
 
 export interface AndroidProjectFile {

@@ -13,7 +13,7 @@ interface AppDrawerModalProps {
   iconPack: IconPackId;
   targetSlot: SlotId | null;
   onClose: () => void;
-  onSelectApp: (app: InstalledAppItem) => void;
+  onSelectApp: (app: InstalledAppItem, originElement?: HTMLElement | null) => void;
   onPinToSlot?: (app: InstalledAppItem) => void;
 }
 
@@ -117,10 +117,14 @@ export function AppDrawerModal({
               >
                 <button
                   type="button"
-                  onClick={() => onSelectApp(app)}
-                  className="w-full flex flex-col items-center gap-1.5 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
+                  onClick={(e) => {
+                    const iconEl = e.currentTarget.querySelector<HTMLElement>("[data-portal-glyph]");
+                    onSelectApp(app, iconEl ?? e.currentTarget);
+                  }}
+                  className="w-full flex flex-col items-center gap-1.5 min-h-[44px] active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg cursor-pointer"
                 >
                   <div
+                    data-portal-glyph="true"
                     className={
                       isArtifactIconPack(iconPack)
                         ? "w-12 h-12 flex items-center justify-center"

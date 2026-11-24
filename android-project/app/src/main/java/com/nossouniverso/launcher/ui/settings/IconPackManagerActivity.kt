@@ -26,6 +26,7 @@ import com.nossouniverso.launcher.R
 import com.nossouniverso.launcher.model.IconPackInfo
 import com.nossouniverso.launcher.model.IconPackKind
 import com.nossouniverso.launcher.model.IconPackPreviewItem
+import com.nossouniverso.launcher.ui.views.HilmTransitionAnimator
 import java.util.concurrent.Executors
 
 class IconPackManagerActivity : AppCompatActivity() {
@@ -106,6 +107,14 @@ class IconPackManagerActivity : AppCompatActivity() {
     override fun onDestroy() {
         ioExecutor.shutdownNow()
         super.onDestroy()
+    }
+
+    override fun finish() {
+        super.finish()
+        HilmTransitionAnimator.applyActivityExitTransition(
+            this,
+            app.shortcutStorage.getTransitionConfig()
+        )
     }
 
     private fun importZipFromUri(uri: Uri) {

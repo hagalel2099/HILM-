@@ -3,6 +3,7 @@ import type {
   InstalledAppItem,
   LauncherPersistedState,
   SlotId,
+  TransitionEffectId,
 } from "../types/launcher";
 import { ICON_PACK_REGISTRY } from "./iconPackRegistry";
 
@@ -236,6 +237,43 @@ export const WALLPAPERS = [
   },
 ];
 
+export const TRANSITION_EFFECTS: {
+  id: TransitionEffectId;
+  name: string;
+  description: string;
+}[] = [
+  {
+    id: "portal",
+    name: "Portal holográfico",
+    description: "Expansão em camadas concêntricas com profundidade e brilho ciano/laranja.",
+  },
+  {
+    id: "digital-disintegration",
+    name: "Desintegração digital",
+    description: "Elementos se desfazem e se recompõem em micro-partículas luminosas.",
+  },
+  {
+    id: "light-sweep",
+    name: "Varredura de luz",
+    description: "Uma faixa luminosa direcional revela ou recolhe a nova superfície.",
+  },
+  {
+    id: "dimensional-slide",
+    name: "Deslizamento dimensional",
+    description: "A interface entra e recua com inclinação em perspectiva e profundidade.",
+  },
+  {
+    id: "energy-dissolve",
+    name: "Dissolução energética",
+    description: "A interface se dissolve e reaparece suavemente com onda harmônica sutil.",
+  },
+  {
+    id: "classic",
+    name: "Transição clássica",
+    description: "Alternativa simples, direta e ultra leve para máxima fluidez.",
+  },
+];
+
 export const DEFAULT_LAUNCHER_STATE: LauncherPersistedState = {
   slots: {
     plate_top_left: { slotId: "plate_top_left", packageName: "com.whatsapp" },
@@ -265,6 +303,11 @@ export const DEFAULT_LAUNCHER_STATE: LauncherPersistedState = {
     "com.google.android.youtube",
     "com.spotify.music",
   ],
+  transition: {
+    enabled: true,
+    effect: "portal",
+    durationMs: 280,
+  },
 };
 
 export const HILM_NODES = [

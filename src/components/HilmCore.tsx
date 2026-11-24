@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 
+export type HilmCoreStatus = "nominal" | "syncing" | "alert" | "resolved";
+
 interface HilmCoreProps {
+  status?: HilmCoreStatus;
   onClick?: () => void;
 }
 
@@ -226,7 +229,7 @@ function sampleSingleOrbTrail(
  * Núcleo HILM preservado integralmente sobre o papel de parede, com Íris, Luna e Maya
  * em órbitas elípticas compactas, inclinadas, independentes e com cruzamentos 3D suaves.
  */
-export function HilmCore({ onClick }: HilmCoreProps) {
+export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const coreImgRef = useRef<HTMLImageElement | null>(null);
 
@@ -579,11 +582,21 @@ export function HilmCore({ onClick }: HilmCoreProps) {
       type="button"
       onClick={onClick}
       aria-label="Núcleo HILM — Íris, Luna e Maya em órbitas 3D independentes"
+      data-hilm-status={status}
       className="relative flex items-center justify-center w-[214px] h-[214px] bg-transparent border-0 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 rounded-full cursor-pointer transition-transform duration-150 active:scale-[0.98]"
     >
+      <span
+        aria-hidden="true"
+        className="hud-breathe-core pointer-events-none absolute w-[132px] h-[132px] rounded-full"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.22) 0%, rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.06) 56%, transparent 74%)",
+          border: "1px solid rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.24)",
+        }}
+      />
       <canvas
         ref={canvasRef}
-        className="w-[214px] h-[214px] pointer-events-none select-none"
+        className="relative z-10 w-[214px] h-[214px] pointer-events-none select-none"
       />
     </button>
   );

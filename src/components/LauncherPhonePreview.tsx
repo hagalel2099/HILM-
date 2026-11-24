@@ -35,7 +35,16 @@ import {
 import { usesExpandedGlyphScale } from "../data/iconPackRegistry";
 import { AppGlyph } from "./AppGlyph";
 import { AppDrawerModal } from "./AppDrawerModal";
-import { HilmCore } from "./HilmCore";
+import { HilmCore, type HilmCoreStatus } from "./HilmCore";
+import {
+  HilmPortalOverlay,
+  type HilmPortalLaunchState,
+  type HilmPortalOrigin,
+} from "./HilmPortalOverlay";
+import {
+  getHilmAppWindowMotion,
+  getHilmSurfaceMotion,
+} from "./HilmTransitionPreview";
 import { HudSvgFrame } from "./HudSvgFrame";
 
 interface LauncherPhonePreviewProps {
@@ -80,6 +89,8 @@ export function LauncherPhonePreview({
   const [draggedSlot, setDraggedSlot] = useState<SlotId | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<SlotId | null>(null);
   const [activeAppWindow, setActiveAppWindow] = useState<InstalledAppItem | null>(null);
+  const [portalLaunch, setPortalLaunch] = useState<HilmPortalLaunchState | null>(null);
+  const [portalWindowOrigin, setPortalWindowOrigin] = useState<HilmPortalOrigin | null>(null);
   const [showCoreUpdatePopover, setShowCoreUpdatePopover] = useState(false);
   const [updatePhase, setUpdatePhase] = useState<
     "idle" | "checking" | "up_to_date" | "available" | "downloading" | "downloaded" | "error"
@@ -95,15 +106,67 @@ export function LauncherPhonePreview({
   const pointerDraggedSlotRef = useRef<SlotId | null>(null);
   const screenSwipeStartRef = useRef<{ x: number; y: number; localX: number } | null>(null);
   const screenRef = useRef<HTMLDivElement>(null);
-  const prefersReducedMotion = useReducedMotion();
+  const portalLaunchTimerRef = useRef<number | null>(null);
+  const portalCleanupTimerRef = useRef<number | null>(null);
+  const portalSeqRef = useRef(0);
+  const prefersReducedMotion = Boolean(useReducedMotion());
+  const effectiveTransitionsEnabled = state.transition.enabled && !prefersReducedMotion;
 
-  const hilmSpring = prefersReducedMotion
+  const coreStatus: HilmCoreStatus = useMemo(() => {
+    if (
+      portalLaunch !== null ||
+      updatePhase === "checking" ||
+      updatePhase === "downloading"
+    ) {
+      return "syncing";
+    }
+    if (isEditMode || updatePhase === "available" || updatePhase === "error") {
+      return "alert";
+    }
+    if (updatePhase === "up_to_date" || updatePhase === "downloaded") {
+      return "resolved";
+    }
+    return "nominal";
+  }, [portalLaunch, updatePhase, isEditMode]);
+
+  const statusPrimaryStroke =
+    coreStatus === "alert"
+      ? "#F59E0B"
+      : coreStatus === "resolved"
+        ? "#34D399"
+        : coreStatus === "syncing"
+          ? "#38BDF8"
+          : "#22D3EE";
+
+  const hilmSpring = !effectiveTransitionsEnabled
     ? { duration: 0.01 }
     : { type: "spring" as const, stiffness: 520, damping: 24, mass: 0.68 };
 
-  const drawerSlideTransition = prefersReducedMotion
-    ? { duration: 0.01 }
-    : { type: "spring" as const, stiffness: 210, damping: 24, mass: 0.88 };
+  const leftDrawerMotion = getHilmSurfaceMotion(
+    "left-drawer",
+    state.transition,
+    prefersReducedMotion
+  );
+  const rightDrawerMotion = getHilmSurfaceMotion(
+    "right-drawer",
+    state.transition,
+    prefersReducedMotion
+  );
+  const appDrawerMotion = getHilmSurfaceMotion(
+    "app-drawer",
+    state.transition,
+    prefersReducedMotion
+  );
+  const recentsMotion = getHilmSurfaceMotion(
+    "recents",
+    state.transition,
+    prefersReducedMotion
+  );
+  const popoverMotion = getHilmSurfaceMotion(
+    "popover",
+    state.transition,
+    prefersReducedMotion
+  );
 
   const INSTALLED_VERSION = "1.0.0";
   const INSTALLED_VERSION_CODE = 1;
@@ -161,7 +224,100 @@ export function LauncherPhonePreview({
     }
   }, [state.wallpaperId, state.customWallpaperUrl]);
 
-  const handleSlotTap = (slotId: SlotId) => {
+  const clearPortalTimers = () => {
+    if (portalLaunchTimerRef.current !== null) {
+      window.clearTimeout(portalLaunchTimerRef.current);
+      portalLaunchTimerRef.current = null;
+    }
+    if (portalCleanupTimerRef.current !== null) {
+      window.clearTimeout(portalCleanupTimerRef.current);
+      portalCleanupTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearPortalTimers();
+    };
+  }, []);
+
+  const measureOriginInScreen = (originEl?: HTMLElement | null): HilmPortalOrigin => {
+    const screenRect = screenRef.current?.getBoundingClientRect();
+    if (!screenRect) {
+      return { x: 179, y: 380, size: 32 };
+    }
+    if (!originEl) {
+      return {
+        x: screenRect.width / 2,
+        y: screenRect.height / 2,
+        size: 36,
+      };
+    }
+    const elRect = originEl.getBoundingClientRect();
+    return {
+      x: elRect.left - screenRect.left + elRect.width / 2,
+      y: elRect.top - screenRect.top + elRect.height / 2,
+      size: Math.min(elRect.width, elRect.height) || 32,
+    };
+  };
+
+  const launchAppWithPortal = (
+    app: InstalledAppItem,
+    originEl?: HTMLElement | null,
+    customIconDataUrl?: string,
+    onWindowOpen?: () => void
+  ) => {
+    clearPortalTimers();
+    onLaunchApp(app);
+
+    if (!effectiveTransitionsEnabled) {
+      setPortalLaunch(null);
+      setPortalWindowOrigin(null);
+      onWindowOpen?.();
+      setActiveAppWindow(app);
+      return;
+    }
+
+    const origin = measureOriginInScreen(originEl);
+    portalSeqRef.current += 1;
+    const seq = portalSeqRef.current;
+
+    const launchDelay =
+      state.transition.effect === "classic"
+        ? 0
+        : Math.max(60, Math.min(130, Math.round(state.transition.durationMs * 0.32)));
+    const cleanupDelay = Math.max(260, state.transition.durationMs + 110);
+
+    setPortalWindowOrigin(origin);
+    setPortalLaunch({
+      key: seq,
+      app,
+      origin,
+      customIconDataUrl,
+      effect: state.transition.effect,
+      durationMs: state.transition.durationMs,
+    });
+
+    if (launchDelay === 0) {
+      onWindowOpen?.();
+      setActiveAppWindow(app);
+    } else {
+      portalLaunchTimerRef.current = window.setTimeout(() => {
+        if (portalSeqRef.current !== seq) return;
+        onWindowOpen?.();
+        setActiveAppWindow(app);
+        portalLaunchTimerRef.current = null;
+      }, launchDelay);
+    }
+
+    portalCleanupTimerRef.current = window.setTimeout(() => {
+      if (portalSeqRef.current !== seq) return;
+      setPortalLaunch(null);
+      portalCleanupTimerRef.current = null;
+    }, cleanupDelay);
+  };
+
+  const handleSlotTap = (slotId: SlotId, originEl?: HTMLElement | null) => {
     if (pointerDraggedSlotRef.current === slotId) {
       pointerDraggedSlotRef.current = null;
       return;
@@ -190,8 +346,7 @@ export function LauncherPhonePreview({
       return;
     }
 
-    onLaunchApp(app);
-    setActiveAppWindow(app);
+    launchAppWithPortal(app, originEl, slot.customIconDataUrl);
   };
 
   const handleOpenDrawerForSlot = (slotId: SlotId | null) => {
@@ -418,7 +573,10 @@ export function LauncherPhonePreview({
       >
         <motion.button
           type="button"
-          onClick={() => handleSlotTap(slotId)}
+          onClick={(e) => {
+            const glyphEl = e.currentTarget.querySelector<HTMLElement>("[data-portal-glyph]");
+            handleSlotTap(slotId, glyphEl ?? e.currentTarget);
+          }}
           aria-label={app ? `Abrir ${app.label}` : `Adicionar atalho em ${SLOT_LABELS[slotId]}`}
           drag={!isEditMode && !prefersReducedMotion}
           dragSnapToOrigin
@@ -455,7 +613,7 @@ export function LauncherPhonePreview({
           whileTap="tap"
           whileDrag={prefersReducedMotion ? undefined : { scale: 1.1, zIndex: 25 }}
           transition={hilmSpring}
-          className={`w-full h-[44px] px-3 flex items-center justify-center gap-2 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+          className={`relative w-full h-[44px] px-3 flex items-center justify-center gap-2 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
             isSwapSelected ? "ring-2 ring-amber-400" : isDropTarget ? "ring-2 ring-cyan-300" : ""
           }`}
           style={{
@@ -466,10 +624,20 @@ export function LauncherPhonePreview({
               ? "inset 0 0 0 1.8px rgba(34, 211, 238, 0.95), 0 0 16px rgba(34, 211, 238, 0.35)"
               : isEditMode
                 ? "inset 0 0 0 1.5px rgba(245, 158, 11, 0.85)"
-                : "inset 0 0 0 1.3px rgba(34, 211, 238, 0.72)",
+                : "inset 0 0 0 1.2px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.55)",
           }}
         >
-          {isEditMode && <GripVertical className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+          <span
+            aria-hidden="true"
+            className="hud-breathe-plate pointer-events-none absolute inset-0"
+            style={{
+              animationDelay: `${-0.3 * PLATE_SLOTS.indexOf(slotId)}s`,
+              clipPath:
+                "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
+              boxShadow: "inset 0 0 0 1.4px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.82)",
+            }}
+          />
+          {isEditMode && <GripVertical className="w-3.5 h-3.5 text-amber-400 shrink-0 relative z-10" />}
           {app ? (
             <>
               <motion.span
@@ -482,6 +650,7 @@ export function LauncherPhonePreview({
                   selected: { scale: prefersReducedMotion ? 1 : 1.1 },
                 }}
                 transition={hilmSpring}
+                data-portal-glyph="true"
                 className="inline-flex items-center justify-center shrink-0"
               >
                 <AppGlyph
@@ -637,7 +806,10 @@ export function LauncherPhonePreview({
       >
         <motion.button
           type="button"
-          onClick={() => handleSlotTap(slotId)}
+          onClick={(e) => {
+            const glyphEl = e.currentTarget.querySelector<HTMLElement>("[data-portal-glyph]");
+            handleSlotTap(slotId, glyphEl ?? e.currentTarget);
+          }}
           title={app ? (slot?.customLabel || app.label) : SLOT_LABELS[slotId]}
           aria-label={app ? `Abrir ${app.label}` : `Adicionar em ${SLOT_LABELS[slotId]}`}
           drag={!isEditMode && !prefersReducedMotion}
@@ -679,13 +851,17 @@ export function LauncherPhonePreview({
             isSwapSelected ? "ring-2 ring-amber-400" : isDropTarget ? "ring-1 ring-white/80" : ""
           }`}
         >
-          <svg viewBox="0 0 48 48" className="absolute inset-0 w-full h-full pointer-events-none">
+          <svg
+            viewBox="0 0 48 48"
+            className="hud-breathe-ring absolute inset-0 w-full h-full pointer-events-none"
+            style={{ animationDelay: "-0.5s" }}
+          >
             <circle
               cx="24"
               cy="24"
               r="21.5"
               fill="none"
-              stroke={isEditMode ? "#F59E0B" : "rgba(255, 255, 255, 0.24)"}
+              stroke={isEditMode ? "#F59E0B" : "rgba(255, 255, 255, 0.28)"}
               strokeWidth="1.2"
               strokeDasharray="18 6"
             />
@@ -701,6 +877,7 @@ export function LauncherPhonePreview({
                 selected: { scale: prefersReducedMotion ? 1 : 1.1 },
               }}
               transition={hilmSpring}
+              data-portal-glyph="true"
               className="relative z-10 inline-flex items-center justify-center"
             >
               <AppGlyph
@@ -781,7 +958,10 @@ export function LauncherPhonePreview({
       >
         <motion.button
           type="button"
-          onClick={() => handleSlotTap(slotId)}
+          onClick={(e) => {
+            const glyphEl = e.currentTarget.querySelector<HTMLElement>("[data-portal-glyph]");
+            handleSlotTap(slotId, glyphEl ?? e.currentTarget);
+          }}
           aria-label={app ? `Abrir ${app.label}` : `Adicionar no ${SLOT_LABELS[slotId]}`}
           drag={!isEditMode && !prefersReducedMotion}
           dragSnapToOrigin
@@ -826,13 +1006,17 @@ export function LauncherPhonePreview({
             boxShadow: isBeingDragged ? "0 0 18px rgba(34, 211, 238, 0.45)" : undefined,
           }}
         >
-          <svg viewBox="0 0 56 56" className="absolute inset-0 w-full h-full pointer-events-none">
+          <svg
+            viewBox="0 0 56 56"
+            className="hud-breathe-ring absolute inset-0 w-full h-full pointer-events-none"
+            style={{ animationDelay: slotId === "dock_1" || slotId === "dock_5" ? "-0.8s" : "-0.4s" }}
+          >
             <circle
               cx="28"
               cy="28"
               r="25"
               fill="none"
-              stroke={isEditMode ? "#F59E0B" : "#22D3EE"}
+              stroke={statusPrimaryStroke}
               strokeWidth="1.7"
               strokeDasharray="24 6"
             />
@@ -858,6 +1042,7 @@ export function LauncherPhonePreview({
                 selected: { scale: prefersReducedMotion ? 1 : 1.1 },
               }}
               transition={hilmSpring}
+              data-portal-glyph="true"
               className="relative z-10 inline-flex items-center justify-center"
             >
               <AppGlyph
@@ -949,11 +1134,12 @@ export function LauncherPhonePreview({
             handleOpenDrawerForSlot(null);
           }
         }}
+        data-hilm-status={coreStatus}
         className="relative w-full h-full rounded-[26px] overflow-hidden flex flex-col justify-between"
         style={wallpaperStyle}
       >
         {/* Reference 1 Vector HUD Frame (Clock removed, wallpaper 100% unaltered) */}
-        <HudSvgFrame />
+        <HudSvgFrame status={coreStatus} />
 
         {/* 1. Native Android Status Bar (Preserved!) */}
         <div className="relative z-20 flex items-center justify-between px-4 pt-2 pb-1 text-[11px] font-medium text-slate-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
@@ -969,30 +1155,39 @@ export function LauncherPhonePreview({
         </div>
 
         {/* Edit Mode Contextual Pill-Free Bar */}
-        {isEditMode && (
-          <div className="relative z-20 mx-5 mt-3 px-3 py-1.5 rounded-lg bg-[#09101B]/95 border border-amber-400/70 flex items-center justify-between gap-2">
-            <span className="text-[11px] text-amber-200 leading-tight">
-              {selectedSwapSource
-                ? "Toque em outro espaço para trocar de lugar"
-                : "Arraste ou toque para trocar/editar atalhos"}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedSwapSource(null);
-                onToggleEditMode(false);
-              }}
-              className="px-2 py-1 rounded bg-cyan-500 text-slate-950 text-[11px] font-semibold whitespace-nowrap shrink-0 flex items-center gap-1"
+        <AnimatePresence>
+          {isEditMode && (
+            <motion.div
+              key="edit-mode-bar"
+              initial={popoverMotion.initial}
+              animate={popoverMotion.animate}
+              exit={popoverMotion.exit}
+              transition={popoverMotion.transition}
+              className="relative z-20 mx-5 mt-3 px-3 py-1.5 rounded-lg bg-[#09101B]/95 border border-amber-400/70 flex items-center justify-between gap-2"
             >
-              <Check className="w-3 h-3" />
-              <span>Concluir</span>
-            </button>
-          </div>
-        )}
+              <span className="text-[11px] text-amber-200 leading-tight">
+                {selectedSwapSource
+                  ? "Toque em outro espaço para trocar de lugar"
+                  : "Arraste ou toque para trocar/editar atalhos"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSwapSource(null);
+                  onToggleEditMode(false);
+                }}
+                className="px-2 py-1 rounded bg-cyan-500 text-slate-950 text-[11px] font-semibold whitespace-nowrap shrink-0 flex items-center gap-1"
+              >
+                <Check className="w-3 h-3" />
+                <span>Concluir</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* 2. Central Núcleo HILM (Sempre livre e visível mesmo com as gavetas laterais abertas) */}
         <div className="relative z-10 flex-1 flex items-center justify-center pt-5">
-          <HilmCore onClick={handleToggleCoreUpdatePopover} />
+          <HilmCore status={coreStatus} onClick={handleToggleCoreUpdatePopover} />
         </div>
 
         {/* Transparent Hit-Zones directly over the Existing HUD Side Rails */}
@@ -1016,12 +1211,13 @@ export function LauncherPhonePreview({
         <AnimatePresence>
           {leftDrawerOpen && (
             <motion.aside
-              key="left-side-drawer"
+              key={`left-side-drawer-${state.transition.effect}`}
               aria-label="Gaveta lateral esquerda"
-              initial={prefersReducedMotion ? { opacity: 1 } : { x: -88, opacity: 0, scale: 0.9 }}
-              animate={{ x: 0, opacity: 1, scale: 1 }}
-              exit={prefersReducedMotion ? { opacity: 0 } : { x: -88, opacity: 0, scale: 0.9 }}
-              transition={drawerSlideTransition}
+              initial={leftDrawerMotion.initial}
+              animate={leftDrawerMotion.animate}
+              exit={leftDrawerMotion.exit}
+              transition={leftDrawerMotion.transition}
+              style={{ transformOrigin: "left center" }}
               className="absolute left-[16px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
             >
               {LEFT_DRAWER_SLOT_IDS.map((slotId) => renderSideDrawerSlot(slotId))}
@@ -1033,12 +1229,13 @@ export function LauncherPhonePreview({
         <AnimatePresence>
           {rightDrawerOpen && (
             <motion.aside
-              key="right-side-drawer"
+              key={`right-side-drawer-${state.transition.effect}`}
               aria-label="Gaveta lateral direita"
-              initial={prefersReducedMotion ? { opacity: 1 } : { x: 88, opacity: 0, scale: 0.9 }}
-              animate={{ x: 0, opacity: 1, scale: 1 }}
-              exit={prefersReducedMotion ? { opacity: 0 } : { x: 88, opacity: 0, scale: 0.9 }}
-              transition={drawerSlideTransition}
+              initial={rightDrawerMotion.initial}
+              animate={rightDrawerMotion.animate}
+              exit={rightDrawerMotion.exit}
+              transition={rightDrawerMotion.transition}
+              style={{ transformOrigin: "right center" }}
               className="absolute right-[16px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
             >
               {RIGHT_DRAWER_SLOT_IDS.map((slotId) => renderSideDrawerSlot(slotId))}
@@ -1067,11 +1264,11 @@ export function LauncherPhonePreview({
                 transition={hilmSpring}
                 className="w-full h-full flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-full"
               >
-                <svg viewBox="0 0 44 44" className="w-full h-full">
+                <svg viewBox="0 0 44 44" className="hud-breathe-ring w-full h-full">
                   <polygon
                     points="22,3 37,12 37,32 22,41 7,32 7,12"
                     fill="rgba(8, 14, 24, 0.9)"
-                    stroke={isEditMode ? "#F59E0B" : "#22D3EE"}
+                    stroke={statusPrimaryStroke}
                     strokeWidth="1.6"
                   />
                   <polygon
@@ -1084,7 +1281,7 @@ export function LauncherPhonePreview({
                     cx="22"
                     cy="22"
                     r="4"
-                    fill={isEditMode ? "#F59E0B" : "#22D3EE"}
+                    fill={statusPrimaryStroke}
                   />
                 </svg>
               </motion.button>
@@ -1107,13 +1304,13 @@ export function LauncherPhonePreview({
             transition={hilmSpring}
             className="relative w-[62px] h-[62px] rounded-full flex items-center justify-center bg-[#070D17]/90 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
           >
-            <svg viewBox="0 0 68 68" className="w-full h-full">
+            <svg viewBox="0 0 68 68" className="hud-breathe-ring w-full h-full">
               <circle
                 cx="34"
                 cy="34"
                 r="30"
                 fill="none"
-                stroke="#22D3EE"
+                stroke={statusPrimaryStroke}
                 strokeWidth="2"
                 strokeDasharray="28 8"
               />
@@ -1132,7 +1329,7 @@ export function LauncherPhonePreview({
                 stroke="#CBD5E1"
                 strokeWidth="1.4"
               />
-              <polygon points="34,26 40,36 28,36" fill="#22D3EE" />
+              <polygon points="34,26 40,36 28,36" fill={statusPrimaryStroke} />
             </svg>
           </motion.button>
 
@@ -1144,6 +1341,8 @@ export function LauncherPhonePreview({
           <button
             type="button"
             onClick={() => {
+              clearPortalTimers();
+              setPortalLaunch(null);
               if (renameModalSlot) setRenameModalSlot(null);
               else if (activeAppWindow) setActiveAppWindow(null);
               else if (drawerOpen) setDrawerOpen(false);
@@ -1163,6 +1362,8 @@ export function LauncherPhonePreview({
           <button
             type="button"
             onClick={() => {
+              clearPortalTimers();
+              setPortalLaunch(null);
               setRenameModalSlot(null);
               setActiveAppWindow(null);
               setDrawerOpen(false);
@@ -1183,6 +1384,8 @@ export function LauncherPhonePreview({
           <button
             type="button"
             onClick={() => {
+              clearPortalTimers();
+              setPortalLaunch(null);
               setRenameModalSlot(null);
               setActiveAppWindow(null);
               setDrawerOpen(false);
@@ -1243,50 +1446,69 @@ export function LauncherPhonePreview({
           </div>
         )}
 
-        {drawerOpen && (
-          <AppDrawerModal
-            apps={INSTALLED_APPS_CATALOG}
-            iconPack={state.iconPack}
-            targetSlot={drawerTargetSlot}
-            onClose={() => {
-              setDrawerOpen(false);
-              setDrawerTargetSlot(null);
-            }}
-            onSelectApp={(app) => {
-              if (drawerTargetSlot) {
-                onAssignSlot(drawerTargetSlot, app.packageName);
-                setDrawerOpen(false);
-                setDrawerTargetSlot(null);
-              } else {
-                onLaunchApp(app);
-                setDrawerOpen(false);
-                setActiveAppWindow(app);
-              }
-            }}
-            onPinToSlot={(app) => {
-              const emptySlot = (
-                [
-                  "plate_top_left",
-                  "plate_top_right",
-                  "plate_bottom_left",
-                  "plate_bottom_right",
-                  "dock_1",
-                  "dock_2",
-                  "dock_4",
-                  "dock_5",
-                  ...LEFT_DRAWER_SLOT_IDS,
-                  ...RIGHT_DRAWER_SLOT_IDS,
-                ] as SlotId[]
-              ).find((id) => !state.slots[id]?.packageName);
-              const target = emptySlot || "plate_top_left";
-              onAssignSlot(target, app.packageName);
-              setDrawerOpen(false);
-            }}
-          />
-        )}
+        <AnimatePresence>
+          {drawerOpen && (
+            <motion.div
+              key="app-drawer-overlay"
+              initial={appDrawerMotion.initial}
+              animate={appDrawerMotion.animate}
+              exit={appDrawerMotion.exit}
+              transition={appDrawerMotion.transition}
+              className="absolute inset-0 z-30"
+            >
+              <AppDrawerModal
+                apps={INSTALLED_APPS_CATALOG}
+                iconPack={state.iconPack}
+                targetSlot={drawerTargetSlot}
+                onClose={() => {
+                  setDrawerOpen(false);
+                  setDrawerTargetSlot(null);
+                }}
+                onSelectApp={(app, originEl) => {
+                  if (drawerTargetSlot) {
+                    onAssignSlot(drawerTargetSlot, app.packageName);
+                    setDrawerOpen(false);
+                    setDrawerTargetSlot(null);
+                  } else {
+                    launchAppWithPortal(app, originEl, undefined, () => {
+                      setDrawerOpen(false);
+                    });
+                  }
+                }}
+                onPinToSlot={(app) => {
+                  const emptySlot = (
+                    [
+                      "plate_top_left",
+                      "plate_top_right",
+                      "plate_bottom_left",
+                      "plate_bottom_right",
+                      "dock_1",
+                      "dock_2",
+                      "dock_4",
+                      "dock_5",
+                      ...LEFT_DRAWER_SLOT_IDS,
+                      ...RIGHT_DRAWER_SLOT_IDS,
+                    ] as SlotId[]
+                  ).find((id) => !state.slots[id]?.packageName);
+                  const target = emptySlot || "plate_top_left";
+                  onAssignSlot(target, app.packageName);
+                  setDrawerOpen(false);
+                }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Compact Update Popover (exclusively triggered by tapping the central HILM nucleus) */}
-        {showCoreUpdatePopover && (
-          <div className="absolute inset-x-6 top-[382px] z-30 rounded-xl bg-[#070C15]/95 border border-cyan-400/50 px-3.5 py-2.5 backdrop-blur-md shadow-2xl shadow-black/80">
+        <AnimatePresence>
+          {showCoreUpdatePopover && (
+            <motion.div
+              key="core-update-popover"
+              initial={popoverMotion.initial}
+              animate={popoverMotion.animate}
+              exit={popoverMotion.exit}
+              transition={popoverMotion.transition}
+              className="absolute inset-x-6 top-[382px] z-30 rounded-xl bg-[#070C15]/95 border border-cyan-400/50 px-3.5 py-2.5 backdrop-blur-md shadow-2xl shadow-black/80"
+            >
             <div className="flex items-center justify-between gap-2">
               <span className="font-display text-[11px] font-semibold tracking-wider text-cyan-300 uppercase">
                 Central Nosso Universo
@@ -1388,11 +1610,20 @@ export function LauncherPhonePreview({
                 </button>
               )}
             </div>
-          </div>
-        )}
+          </motion.div>
+          )}
+        </AnimatePresence>
         {/* Recent Apps Overlay */}
-        {showRecents && (
-          <div className="absolute inset-0 bottom-10 z-30 bg-[#05080F]/92 backdrop-blur-md p-4 flex flex-col">
+        <AnimatePresence>
+          {showRecents && (
+            <motion.div
+              key="recent-apps-overlay"
+              initial={recentsMotion.initial}
+              animate={recentsMotion.animate}
+              exit={recentsMotion.exit}
+              transition={recentsMotion.transition}
+              className="absolute inset-0 bottom-10 z-30 bg-[#05080F]/92 backdrop-blur-md p-4 flex flex-col"
+            >
             <div className="flex items-center justify-between pt-6 pb-3 border-b border-slate-800">
               <h4 className="font-display text-sm font-semibold text-cyan-300">
                 Aplicativos Recentes
@@ -1413,14 +1644,18 @@ export function LauncherPhonePreview({
                   <button
                     key={pkg}
                     type="button"
-                    onClick={() => {
-                      setShowRecents(false);
-                      onLaunchApp(app);
-                      setActiveAppWindow(app);
+                    onClick={(e) => {
+                      const glyphEl = e.currentTarget.querySelector<HTMLElement>("[data-portal-glyph]");
+                      launchAppWithPortal(app, glyphEl ?? e.currentTarget, undefined, () => {
+                        setShowRecents(false);
+                      });
                     }}
-                    className="w-full p-3 rounded-xl bg-[#0B121E] border border-slate-800 hover:border-cyan-400/50 flex items-center gap-3 text-left transition-colors"
+                    className="w-full p-3 rounded-xl bg-[#0B121E] border border-slate-800 hover:border-cyan-400/50 active:scale-[0.98] flex items-center gap-3 text-left transition-all cursor-pointer"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-[#06090F] border border-cyan-500/30 flex items-center justify-center shrink-0">
+                    <div
+                      data-portal-glyph="true"
+                      className="w-10 h-10 rounded-lg bg-[#06090F] border border-cyan-500/30 flex items-center justify-center shrink-0"
+                    >
                       <AppGlyph
                         app={app}
                         iconPack={state.iconPack}
@@ -1439,61 +1674,89 @@ export function LauncherPhonePreview({
                 );
               })}
             </div>
-          </div>
-        )}
+          </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Simulated Launch Intent Feedback Screen inside Phone */}
-        {activeAppWindow && (
-          <div className="absolute inset-0 bottom-10 z-30 bg-[#060B13]/96 backdrop-blur-md flex flex-col justify-between p-5 pt-10">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono-tabular text-cyan-300">
-                Intent Nativo Android
-              </span>
+        {/* Simulated Launch Intent Feedback Screen emerging via active HILM transition */}
+        <AnimatePresence>
+          {activeAppWindow && (() => {
+            const originX = portalWindowOrigin?.x ?? 179;
+            const originY = portalWindowOrigin?.y ?? 380;
+            const winMotion = getHilmAppWindowMotion(
+              state.transition.effect,
+              state.transition.enabled,
+              state.transition.durationMs,
+              originX,
+              originY,
+              prefersReducedMotion
+            );
+            return (
+            <motion.div
+              key={`app-window-${activeAppWindow.packageName}`}
+              initial={winMotion.initial}
+              animate={winMotion.animate}
+              exit={winMotion.exit}
+              transition={winMotion.transition}
+              style={{
+                transformOrigin: `${originX}px ${originY}px`,
+              }}
+              className="absolute inset-0 bottom-10 z-30 bg-[#060B13]/96 backdrop-blur-md flex flex-col justify-between p-5 pt-10"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono-tabular text-cyan-300">
+                  Intent Nativo Android
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveAppWindow(null)}
+                  className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-cyan-300 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex flex-col items-center text-center space-y-3 my-auto">
+                <div className="w-16 h-16 rounded-2xl bg-[#0C1422] border border-cyan-400/40 flex items-center justify-center">
+                  <AppGlyph
+                    app={activeAppWindow}
+                    iconPack={state.iconPack}
+                    sizeClass={usesExpandedGlyphScale(state.iconPack) ? "w-12 h-12" : "w-8 h-8"}
+                  />
+                </div>
+                <div>
+                  <h4 className="font-display text-lg font-semibold text-slate-100">
+                    {activeAppWindow.label}
+                  </h4>
+                  <p className="text-xs font-mono-tabular text-slate-400 mt-1 break-all">
+                    {activeAppWindow.packageName}
+                  </p>
+                </div>
+                <div className="w-full rounded-xl bg-[#0A101B] border border-slate-800 p-3 text-left text-[11px] font-mono-tabular text-slate-300 space-y-1">
+                  <div>ACTION_MAIN · CATEGORY_LAUNCHER</div>
+                  <div className="text-cyan-300/90 break-all">
+                    {activeAppWindow.activityName}
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed max-w-[260px]">
+                  No dispositivo Android, o método <code className="text-cyan-300">AppRepository.launchApp()</code> inicia diretamente este aplicativo via <code className="text-cyan-300">PackageManager</code>.
+                </p>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setActiveAppWindow(null)}
-                className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-cyan-300"
+                className="w-full h-11 rounded-xl bg-cyan-500 text-slate-950 font-semibold text-xs hover:bg-cyan-400 transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                Voltar à Tela Inicial
               </button>
-            </div>
+            </motion.div>
+            );
+          })()}
+        </AnimatePresence>
 
-            <div className="flex flex-col items-center text-center space-y-3 my-auto">
-              <div className="w-16 h-16 rounded-2xl bg-[#0C1422] border border-cyan-400/40 flex items-center justify-center">
-                <AppGlyph
-                  app={activeAppWindow}
-                  iconPack={state.iconPack}
-                  sizeClass={usesExpandedGlyphScale(state.iconPack) ? "w-12 h-12" : "w-8 h-8"}
-                />
-              </div>
-              <div>
-                <h4 className="font-display text-lg font-semibold text-slate-100">
-                  {activeAppWindow.label}
-                </h4>
-                <p className="text-xs font-mono-tabular text-slate-400 mt-1 break-all">
-                  {activeAppWindow.packageName}
-                </p>
-              </div>
-              <div className="w-full rounded-xl bg-[#0A101B] border border-slate-800 p-3 text-left text-[11px] font-mono-tabular text-slate-300 space-y-1">
-                <div>ACTION_MAIN · CATEGORY_LAUNCHER</div>
-                <div className="text-cyan-300/90 break-all">
-                  {activeAppWindow.activityName}
-                </div>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-[260px]">
-                No dispositivo Android, o método <code className="text-cyan-300">AppRepository.launchApp()</code> inicia diretamente este aplicativo via <code className="text-cyan-300">PackageManager</code>.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setActiveAppWindow(null)}
-              className="w-full h-11 rounded-xl bg-cyan-500 text-slate-950 font-semibold text-xs hover:bg-cyan-400 transition-colors"
-            >
-              Voltar à Tela Inicial
-            </button>
-          </div>
-        )}
+        {/* HILM Portal Holographic Expansion Layer */}
+        <HilmPortalOverlay launch={portalLaunch} iconPack={state.iconPack} />
       </div>
     </div>
   );

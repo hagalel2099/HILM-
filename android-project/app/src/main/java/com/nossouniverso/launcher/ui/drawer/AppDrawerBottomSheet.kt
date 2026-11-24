@@ -1,6 +1,7 @@
 package com.nossouniverso.launcher.ui.drawer
 
 import android.annotation.SuppressLint
+import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -12,6 +13,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -25,14 +27,22 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.nossouniverso.launcher.R
 import com.nossouniverso.launcher.model.AppInfo
+import com.nossouniverso.launcher.model.HilmTransitionConfig
+import com.nossouniverso.launcher.ui.views.HilmPortalOverlayView
+import com.nossouniverso.launcher.ui.views.HilmTransitionAnimator
 
 class AppDrawerBottomSheet(
     private val title: String,
     private val apps: List<AppInfo>,
     private val recentApps: List<AppInfo> = emptyList(),
-    private val onSelectApp: (AppInfo) -> Unit,
+    private val isLaunchMode: Boolean = false,
+    private val transitionConfig: HilmTransitionConfig = HilmTransitionConfig(),
+    private val onSelectApp: (AppInfo, View) -> Unit,
     private val onPinShortcut: ((AppInfo) -> Unit)? = null
 ) : BottomSheetDialogFragment() {
+
+    private var portalOverlay: HilmPortalOverlayView? = null
+    private var isLaunching: Boolean = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -60,11 +70,35 @@ class AppDrawerBottomSheet(
         behavior.isFitToContents = true
         behavior.skipCollapsed = true
         behavior.state = BottomSheetBehavior.STATE_EXPANDED
+
+        if (isLaunchMode && portalOverlay == null) {
+            val decor = bottomSheetDialog.window?.decorView as? ViewGroup
+            if (decor != null) {
+                val overlay = HilmPortalOverlayView(requireContext()).apply {
+                    elevation = 32f * resources.displayMetrics.density
+                }
+                decor.addView(
+                    overlay,
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                )
+                portalOverlay = overlay
+            }
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        HilmTransitionAnimator.animatePanelVisibility(
+            panel = view,
+            show = true,
+            config = transitionConfig,
+            fromTop = false
+        )
 
         val titleView = view.findViewById<TextView>(R.id.txtDrawerTitle)
         val searchEdit = view.findViewById<EditText>(R.id.editSearchApps)
@@ -84,10 +118,7 @@ class AppDrawerBottomSheet(
 
         if (hasRecents) {
             val recentAdapter = AppAdapter(
-                onAppClick = { app ->
-                    onSelectApp(app)
-                    dismiss()
-                },
+                onAppClick = { app, anchorView -> handleAppSelection(app, anchorView) },
                 onAppLongClick = { app -> showAppContextMenu(app) },
                 itemLayoutResId = R.layout.item_app_drawer_recent
             )
@@ -98,10 +129,7 @@ class AppDrawerBottomSheet(
         }
 
         val adapter = AppAdapter(
-            onAppClick = { app ->
-                onSelectApp(app)
-                dismiss()
-            },
+            onAppClick = { app, anchorView -> handleAppSelection(app, anchorView) },
             onAppLongClick = { app -> showAppContextMenu(app) }
         )
         recycler.layoutManager = GridLayoutManager(requireContext(), 4)
@@ -163,6 +191,57 @@ class AppDrawerBottomSheet(
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
+    }
+
+    private fun handleAppSelection(app: AppInfo, anchorView: View) {
+        if (!isLaunchMode) {
+            onSelectApp(app, anchorView)
+            dismiss()
+            return
+        }
+        if (isLaunching) return
+        isLaunching = true
+
+        val overlay = portalOverlay
+        val ctx = context
+        if (overlay == null || ctx == null || !HilmTransitionAnimator.shouldAnimate(ctx, transitionConfig)) {
+            onSelectApp(app, anchorView)
+            dismissAllowingStateLoss()
+            return
+        }
+
+        overlay.playLaunchTransition(
+            originView = anchorView,
+            iconDrawable = app.icon,
+            config = transitionConfig,
+            onLaunch = {
+                if (isAdded) {
+                    onSelectApp(app, anchorView)
+                    dismissAllowingStateLoss()
+                }
+            },
+            onFinished = {
+                isLaunching = false
+            }
+        )
+    }
+
+    override fun onDismiss(dialog: DialogInterface) {
+        cleanupPortalOverlay()
+        super.onDismiss(dialog)
+    }
+
+    override fun onDestroyView() {
+        cleanupPortalOverlay()
+        super.onDestroyView()
+    }
+
+    private fun cleanupPortalOverlay() {
+        isLaunching = false
+        val overlay = portalOverlay ?: return
+        portalOverlay = null
+        overlay.cancelPortal()
+        (overlay.parent as? ViewGroup)?.removeView(overlay)
     }
 
     private fun showAppContextMenu(app: AppInfo) {

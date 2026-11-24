@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
-import { DEFAULT_LAUNCHER_STATE } from "./data/launcherCatalog";
+import { DEFAULT_LAUNCHER_STATE, TRANSITION_EFFECTS } from "./data/launcherCatalog";
 import type {
   IconPackId,
   InstalledAppItem,
   LauncherPersistedState,
   SlotId,
+  TransitionConfig,
+  TransitionEffectId,
   WallpaperId,
 } from "./types/launcher";
 import { LauncherPhonePreview } from "./components/LauncherPhonePreview";
@@ -15,6 +17,26 @@ import {
 } from "./components/StudioWorkspacePanel";
 
 const STORAGE_KEY = "nosso_universo_launcher_state_v1";
+const VALID_TRANSITION_EFFECTS = new Set<TransitionEffectId>(
+  TRANSITION_EFFECTS.map((item) => item.id)
+);
+
+function normalizeTransitionConfig(
+  raw?: Partial<TransitionConfig> | null,
+  fallback: TransitionConfig = DEFAULT_LAUNCHER_STATE.transition
+): TransitionConfig {
+  if (!raw || typeof raw !== "object") return fallback;
+  const effect =
+    raw.effect && VALID_TRANSITION_EFFECTS.has(raw.effect)
+      ? raw.effect
+      : fallback.effect;
+  const durationMs =
+    typeof raw.durationMs === "number" && Number.isFinite(raw.durationMs)
+      ? Math.max(180, Math.min(600, Math.round(raw.durationMs)))
+      : fallback.durationMs;
+  const enabled = typeof raw.enabled === "boolean" ? raw.enabled : fallback.enabled;
+  return { enabled, effect, durationMs };
+}
 
 function loadInitialState(): LauncherPersistedState {
   try {
@@ -33,6 +55,7 @@ function loadInitialState(): LauncherPersistedState {
       recentPackages: Array.isArray(parsed.recentPackages)
         ? parsed.recentPackages
         : DEFAULT_LAUNCHER_STATE.recentPackages,
+      transition: normalizeTransitionConfig(parsed.transition),
     };
   } catch {
     return DEFAULT_LAUNCHER_STATE;
@@ -150,6 +173,13 @@ export default function App() {
     setState((prev) => ({ ...prev, panelOpacity }));
   };
 
+  const handleUpdateTransition = (transition: TransitionConfig) => {
+    setState((prev) => ({
+      ...prev,
+      transition: normalizeTransitionConfig(transition, prev.transition),
+    }));
+  };
+
   const handleResetState = () => {
     setState(DEFAULT_LAUNCHER_STATE);
     setIsEditMode(false);
@@ -168,6 +198,7 @@ export default function App() {
       recentPackages: Array.isArray(imported.recentPackages)
         ? imported.recentPackages.slice(0, 8)
         : prev.recentPackages,
+      transition: normalizeTransitionConfig(imported.transition, prev.transition),
     }));
   };
 
@@ -323,6 +354,7 @@ export default function App() {
             onSelectIconPack={handleSelectIconPack}
             onSelectWallpaper={handleSelectWallpaper}
             onChangeOpacity={handleChangeOpacity}
+            onUpdateTransition={handleUpdateTransition}
             onImportState={handleImportState}
             onResetState={handleResetState}
           />

@@ -42,3 +42,125 @@
 .hud-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(34, 211, 238, 0.45);
 }
+
+/* HILM Core Status-Driven HUD Breathing System */
+[data-hilm-status="nominal"] {
+  --hilm-breath-duration: 4.6s;
+  --hilm-breath-rgb: 34, 211, 238;
+  --hilm-breath-secondary-rgb: 245, 158, 11;
+}
+
+[data-hilm-status="syncing"] {
+  --hilm-breath-duration: 1.9s;
+  --hilm-breath-rgb: 56, 189, 248;
+  --hilm-breath-secondary-rgb: 34, 211, 238;
+}
+
+[data-hilm-status="alert"] {
+  --hilm-breath-duration: 2.7s;
+  --hilm-breath-rgb: 245, 158, 11;
+  --hilm-breath-secondary-rgb: 251, 146, 60;
+}
+
+[data-hilm-status="resolved"] {
+  --hilm-breath-duration: 3.4s;
+  --hilm-breath-rgb: 52, 211, 153;
+  --hilm-breath-secondary-rgb: 34, 211, 238;
+}
+
+@keyframes hilm-core-aura-breathe {
+  0%,
+  100% {
+    opacity: 0.34;
+    transform: scale(0.965);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes hilm-rail-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    filter: drop-shadow(0 0 2px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.18));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 7px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.52));
+  }
+}
+
+@keyframes hilm-spectrum-breathe {
+  0%,
+  100% {
+    opacity: 0.42;
+  }
+  50% {
+    opacity: 0.74;
+  }
+}
+
+@keyframes hilm-plate-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    filter: drop-shadow(0 0 2px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.15));
+  }
+  50% {
+    opacity: 0.92;
+    filter: drop-shadow(0 0 8px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.42));
+  }
+}
+
+@keyframes hilm-dock-ring-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.14));
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.022);
+    filter: drop-shadow(0 0 7px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.44));
+  }
+}
+
+.hud-breathe-core {
+  animation: hilm-core-aura-breathe var(--hilm-breath-duration, 4.6s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform, opacity;
+}
+
+.hud-breathe-rail {
+  animation: hilm-rail-breathe var(--hilm-breath-duration, 4.6s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: opacity, filter;
+}
+
+.hud-breathe-spectrum {
+  animation: hilm-spectrum-breathe var(--hilm-breath-duration, 4.6s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: opacity;
+}
+
+.hud-breathe-plate {
+  animation: hilm-plate-breathe var(--hilm-breath-duration, 4.6s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: opacity, filter;
+}
+
+.hud-breathe-ring {
+  animation: hilm-dock-ring-breathe var(--hilm-breath-duration, 4.6s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: center;
+  will-change: transform, opacity, filter;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-breathe-core,
+  .hud-breathe-rail,
+  .hud-breathe-spectrum,
+  .hud-breathe-plate,
+  .hud-breathe-ring {
+    animation: none !important;
+  }
+}
+

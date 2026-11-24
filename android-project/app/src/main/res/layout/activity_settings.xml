@@ -108,6 +108,130 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
+            android:text="@string/transitions_section"
+            android:textColor="@color/hud_cyan"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/txtTransitionAccessibilityNote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="#1A263B"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp"
+            android:text="@string/transitions_accessibility_note"
+            android:textColor="@color/hud_amber"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switchTransitionsEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:minHeight="48dp"
+            android:paddingVertical="8dp"
+            android:text="@string/transitions_enable_label"
+            android:textColor="@color/hud_text_primary"
+            android:textSize="14sp" />
+
+        <RadioGroup
+            android:id="@+id/radioTransitionEffects"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" />
+
+        <TextView
+            android:id="@+id/txtTransitionDurationValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/hud_text_secondary"
+            android:textSize="12.5sp" />
+
+        <SeekBar
+            android:id="@+id/seekTransitionDuration"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:max="42" />
+
+        <com.nossouniverso.launcher.ui.views.TransitionPreviewView
+            android:id="@+id/transitionPreviewStage"
+            android:layout_width="match_parent"
+            android:layout_height="116dp"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:id="@+id/txtTransitionPreviewStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/hud_text_secondary"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnPreviewTransition"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="#13233A"
+                android:gravity="center"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="48dp"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="10dp"
+                android:singleLine="false"
+                android:text="@string/transitions_preview_test"
+                android:textAllCaps="false"
+                android:textColor="@color/hud_cyan"
+                android:textSize="12.5sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnApplyTransition"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/hud_cyan"
+                android:gravity="center"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="48dp"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="10dp"
+                android:singleLine="false"
+                android:text="@string/transitions_apply"
+                android:textAllCaps="false"
+                android:textColor="#05080D"
+                android:textSize="12.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/transitions_android_scope_note"
+            android:textColor="@color/hud_text_secondary"
+            android:textSize="11.5sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
             android:text="@string/backup_section"
             android:textColor="@color/hud_cyan"
             android:textSize="14sp"

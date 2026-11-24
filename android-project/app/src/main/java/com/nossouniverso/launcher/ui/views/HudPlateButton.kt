@@ -11,6 +11,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
+import android.view.View
 import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -97,6 +98,27 @@ class HudPlateButton @JvmOverloads constructor(
 
         addView(iconView)
         addView(labelView)
+    }
+
+    fun getPortalOriginView(): View = if (iconView.visibility == VISIBLE) iconView else this
+
+    fun getPortalIconDrawable(): Drawable? = if (iconView.visibility == VISIBLE) iconView.drawable else null
+
+    fun triggerPortalLaunchReaction() {
+        if (HilmPortalOverlayView.isReducedMotionEnabled(context)) return
+        iconView.animate().cancel()
+        iconView.animate()
+            .scaleX(1.22f)
+            .scaleY(1.22f)
+            .setDuration(110L)
+            .withEndAction {
+                iconView.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(160L)
+                    .start()
+            }
+            .start()
     }
 
     fun bindShortcut(label: String, icon: Drawable?, empty: Boolean) {

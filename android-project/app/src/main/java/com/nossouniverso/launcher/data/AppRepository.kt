@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
 import com.nossouniverso.launcher.model.AppInfo
 
@@ -53,7 +54,11 @@ class AppRepository(
             .sortedBy { it.label.lowercase() }
     }
 
-    fun launchApp(packageName: String, activityName: String? = null): Boolean {
+    fun launchApp(
+        packageName: String,
+        activityName: String? = null,
+        launchOptions: Bundle? = null
+    ): Boolean {
         return try {
             val intent = if (!activityName.isNullOrBlank()) {
                 Intent(Intent.ACTION_MAIN).apply {
@@ -67,7 +72,15 @@ class AppRepository(
                 }
             } ?: return false
 
-            context.startActivity(intent)
+            if (launchOptions != null) {
+                try {
+                    context.startActivity(intent, launchOptions)
+                } catch (_: Exception) {
+                    context.startActivity(intent)
+                }
+            } else {
+                context.startActivity(intent)
+            }
             true
         } catch (_: Exception) {
             false

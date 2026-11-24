@@ -10,12 +10,14 @@ import {
   Pencil,
   RotateCcw,
   Sliders,
+  Sparkles,
   Upload,
 } from "lucide-react";
 import type {
   AndroidProjectTreeResponse,
   IconPackId,
   LauncherPersistedState,
+  TransitionConfig,
   WallpaperId,
 } from "../types/launcher";
 import {
@@ -23,9 +25,11 @@ import {
   INSTALLED_APPS_CATALOG,
   SLOT_IDS,
   SLOT_LABELS,
+  TRANSITION_EFFECTS,
   WALLPAPERS,
 } from "../data/launcherCatalog";
 import { IconPackManagerPanel } from "./IconPackManagerPanel";
+import { HilmTransitionPreview } from "./HilmTransitionPreview";
 
 export type WorkspaceTab = "personalizacao" | "androidide" | "criterios";
 
@@ -38,6 +42,7 @@ interface StudioWorkspacePanelProps {
   onSelectIconPack: (pack: IconPackId) => void;
   onSelectWallpaper: (wallpaperId: WallpaperId, customUrl?: string) => void;
   onChangeOpacity: (opacity: number) => void;
+  onUpdateTransition: (transition: TransitionConfig) => void;
   onImportState: (imported: Partial<LauncherPersistedState>) => void;
   onResetState: () => void;
 }
@@ -51,10 +56,14 @@ export function StudioWorkspacePanel({
   onSelectIconPack,
   onSelectWallpaper,
   onChangeOpacity,
+  onUpdateTransition,
   onImportState,
   onResetState,
 }: StudioWorkspacePanelProps) {
   const [layoutTransferStatus, setLayoutTransferStatus] = useState<string | null>(null);
+  const [draftTransition, setDraftTransition] = useState<TransitionConfig>(state.transition);
+  const [previewReplaySeq, setPreviewReplaySeq] = useState(0);
+  const [transitionAppliedNotice, setTransitionAppliedNotice] = useState(false);
   const [treeData, setTreeData] = useState<AndroidProjectTreeResponse | null>(null);
   const [treeError, setTreeError] = useState<string | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string>(
@@ -62,6 +71,10 @@ export function StudioWorkspacePanel({
   );
   const [fileContent, setFileContent] = useState<string>("");
   const [loadingFile, setLoadingFile] = useState(false);
+
+  useEffect(() => {
+    setDraftTransition(state.transition);
+  }, [state.transition.enabled, state.transition.effect, state.transition.durationMs]);
 
   useEffect(() => {
     let active = true;
@@ -129,6 +142,7 @@ export function StudioWorkspacePanel({
       iconPack: state.iconPack,
       wallpaperId: state.wallpaperId,
       panelOpacity: state.panelOpacity,
+      transition: state.transition,
       slots: state.slots,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -309,6 +323,163 @@ export function StudioWorkspacePanel({
               activePackId={state.iconPack}
               onSelectIconPack={onSelectIconPack}
             />
+
+            {/* Section 2.5: Custom Visual Transitions (Preview before apply) */}
+            <section className="space-y-4 pt-6 border-t border-slate-800/80">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-base font-semibold text-slate-100 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-cyan-300" />
+                    <span>Transições Visuais HILM</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Escolha o estilo e a velocidade com prévia ao vivo antes de aplicar.
+                  </p>
+                </div>
+
+                <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0D1523] border border-slate-700 text-xs font-medium text-slate-200 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={draftTransition.enabled}
+                    onChange={(e) => {
+                      const next = { ...draftTransition, enabled: e.target.checked };
+                      setDraftTransition(next);
+                      setTransitionAppliedNotice(false);
+                      setPreviewReplaySeq((s) => s + 1);
+                    }}
+                    className="accent-cyan-400 cursor-pointer"
+                  />
+                  <span>{draftTransition.enabled ? "Efeitos ativos" : "Efeitos desativados"}</span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {TRANSITION_EFFECTS.map((item) => {
+                  const isPreviewSelected = draftTransition.effect === item.id;
+                  const isSavedActive =
+                    state.transition.enabled && state.transition.effect === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setDraftTransition((prev) => ({
+                          ...prev,
+                          enabled: true,
+                          effect: item.id,
+                        }));
+                        setTransitionAppliedNotice(false);
+                        setPreviewReplaySeq((s) => s + 1);
+                      }}
+                      className={`p-3 rounded-xl text-left border transition-colors cursor-pointer ${
+                        isPreviewSelected && draftTransition.enabled
+                          ? "bg-cyan-500/10 border-cyan-400/60"
+                          : "bg-[#0B111C] border-slate-800 hover:border-slate-700"
+                      } ${!draftTransition.enabled ? "opacity-65" : ""}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-slate-100">
+                          {item.name}
+                        </span>
+                        <span className="text-[10px] font-mono-tabular shrink-0">
+                          {isSavedActive ? (
+                            <span className="text-emerald-400">Aplicado</span>
+                          ) : isPreviewSelected && draftTransition.enabled ? (
+                            <span className="text-cyan-300">Em prévia</span>
+                          ) : null}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                        {item.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#0B111C] border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="hilm-transition-duration"
+                    className="text-xs font-medium text-slate-200"
+                  >
+                    Duração da animação
+                  </label>
+                  <span className="text-xs font-mono-tabular text-cyan-300">
+                    {draftTransition.durationMs} ms
+                  </span>
+                </div>
+                <input
+                  id="hilm-transition-duration"
+                  type="range"
+                  min={180}
+                  max={600}
+                  step={20}
+                  disabled={!draftTransition.enabled}
+                  value={draftTransition.durationMs}
+                  onChange={(e) => {
+                    setDraftTransition((prev) => ({
+                      ...prev,
+                      durationMs: Number(e.target.value),
+                    }));
+                    setTransitionAppliedNotice(false);
+                    setPreviewReplaySeq((s) => s + 1);
+                  }}
+                  className="w-full accent-cyan-400 cursor-pointer disabled:opacity-50"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500">
+                  <span>Rápida (180 ms)</span>
+                  <span>Equilibrada (280 ms)</span>
+                  <span>Suave (600 ms)</span>
+                </div>
+              </div>
+
+              <HilmTransitionPreview
+                config={draftTransition}
+                replayTrigger={previewReplaySeq}
+              />
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-[11px] text-slate-400">
+                  {transitionAppliedNotice
+                    ? "Transição aplicada e salva com sucesso."
+                    : draftTransition.enabled !== state.transition.enabled ||
+                        draftTransition.effect !== state.transition.effect ||
+                        draftTransition.durationMs !== state.transition.durationMs
+                      ? "Alterações em prévia — clique em Aplicar para salvar no launcher."
+                      : !state.transition.enabled
+                        ? "Efeitos visuais desativados no momento."
+                        : "Preferência atual salva."}
+                </span>
+
+                <div className="flex items-center gap-2">
+                  {draftTransition.enabled && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const disabled = { ...draftTransition, enabled: false };
+                        setDraftTransition(disabled);
+                        onUpdateTransition(disabled);
+                        setTransitionAppliedNotice(true);
+                      }}
+                      className="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 hover:border-amber-400/50 text-xs font-medium text-slate-300 cursor-pointer"
+                    >
+                      Desativar Efeitos
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onUpdateTransition(draftTransition);
+                      setTransitionAppliedNotice(true);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-semibold cursor-pointer transition-colors"
+                  >
+                    Aplicar Transição
+                  </button>
+                </div>
+              </div>
+            </section>
 
             {/* Section 3: Persistent Shortcut Mapping Overview */}
             <section className="space-y-4 pt-6 border-t border-slate-800/80">

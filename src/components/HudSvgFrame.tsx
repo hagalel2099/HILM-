@@ -1,4 +1,9 @@
 import { useMemo } from "react";
+import type { HilmCoreStatus } from "./HilmCore";
+
+interface HudSvgFrameProps {
+  status?: HilmCoreStatus;
+}
 
 /**
  * Reproduz a arquitetura HUD da Referência 1 em SVG vetorial transparente:
@@ -7,7 +12,7 @@ import { useMemo } from "react";
  * - Matriz pontilhada inferior atrás do dock
  * O núcleo central HILM e o papel de parede permanecem livres de scrims ou filtros de cor.
  */
-export function HudSvgFrame() {
+export function HudSvgFrame({ status = "nominal" }: HudSvgFrameProps) {
   const spectrumCols = useMemo(() => {
     const cols: { x: number; rows: number }[] = [];
     const count = 38;
@@ -21,10 +26,20 @@ export function HudSvgFrame() {
     return cols;
   }, []);
 
+  const primaryStroke =
+    status === "alert"
+      ? "#F59E0B"
+      : status === "resolved"
+        ? "#34D399"
+        : status === "syncing"
+          ? "#38BDF8"
+          : "#22D3EE";
+
   return (
     <svg
       viewBox="0 0 360 760"
       preserveAspectRatio="xMidYMid slice"
+      data-hilm-status={status}
       className="absolute inset-0 w-full h-full pointer-events-none select-none"
       aria-hidden="true"
     >
@@ -39,11 +54,11 @@ export function HudSvgFrame() {
       </defs>
 
       {/* Top HUD Ornamental Rail (below Android Status Bar, clock removed) */}
-      <g opacity="0.92">
+      <g className="hud-breathe-rail" style={{ transition: "stroke 300ms ease" }}>
         <path
           d="M 18 46 L 36 39 L 324 39 L 342 46"
           fill="none"
-          stroke="#22D3EE"
+          stroke={primaryStroke}
           strokeWidth="1.5"
           filter="url(#cyanGlow)"
         />
@@ -52,16 +67,16 @@ export function HudSvgFrame() {
         <path
           d="M 164 44 L 180 54 L 196 44"
           fill="none"
-          stroke="#22D3EE"
+          stroke={primaryStroke}
           strokeWidth="1.5"
         />
-        <circle cx="173" cy="61" r="1.6" fill="#22D3EE" />
-        <circle cx="180" cy="61" r="1.6" fill="#22D3EE" />
-        <circle cx="187" cy="61" r="1.6" fill="#22D3EE" />
+        <circle cx="173" cy="61" r="1.6" fill={primaryStroke} />
+        <circle cx="180" cy="61" r="1.6" fill={primaryStroke} />
+        <circle cx="187" cy="61" r="1.6" fill={primaryStroke} />
       </g>
 
       {/* Left Vertical HUD Rail */}
-      <g>
+      <g className="hud-breathe-rail" style={{ animationDelay: "-0.65s" }}>
         <path
           d="M 5 145 L 15 157 L 15 244 L 8 252 L 8 296 L 15 304 L 15 391 L 5 403"
           fill="none"
@@ -70,13 +85,13 @@ export function HudSvgFrame() {
           opacity="0.78"
         />
         <line x1="11" y1="234" x2="11" y2="258" stroke="#F59E0B" strokeWidth="2.2" />
-        <line x1="11" y1="290" x2="11" y2="314" stroke="#22D3EE" strokeWidth="2.2" />
-        <line x1="8" y1="168" x2="8" y2="210" stroke="#22D3EE" strokeWidth="1.4" opacity="0.7" />
-        <line x1="8" y1="338" x2="8" y2="380" stroke="#22D3EE" strokeWidth="1.4" opacity="0.7" />
+        <line x1="11" y1="290" x2="11" y2="314" stroke={primaryStroke} strokeWidth="2.2" />
+        <line x1="8" y1="168" x2="8" y2="210" stroke={primaryStroke} strokeWidth="1.4" opacity="0.7" />
+        <line x1="8" y1="338" x2="8" y2="380" stroke={primaryStroke} strokeWidth="1.4" opacity="0.7" />
       </g>
 
       {/* Right Vertical HUD Rail (mirrored) */}
-      <g>
+      <g className="hud-breathe-rail" style={{ animationDelay: "-0.65s" }}>
         <path
           d="M 355 145 L 345 157 L 345 244 L 352 252 L 352 296 L 345 304 L 345 391 L 355 403"
           fill="none"
@@ -85,13 +100,13 @@ export function HudSvgFrame() {
           opacity="0.78"
         />
         <line x1="349" y1="234" x2="349" y2="258" stroke="#F59E0B" strokeWidth="2.2" />
-        <line x1="349" y1="290" x2="349" y2="314" stroke="#22D3EE" strokeWidth="2.2" />
-        <line x1="352" y1="168" x2="352" y2="210" stroke="#22D3EE" strokeWidth="1.4" opacity="0.7" />
-        <line x1="352" y1="338" x2="352" y2="380" stroke="#22D3EE" strokeWidth="1.4" opacity="0.7" />
+        <line x1="349" y1="290" x2="349" y2="314" stroke={primaryStroke} strokeWidth="2.2" />
+        <line x1="352" y1="168" x2="352" y2="210" stroke={primaryStroke} strokeWidth="1.4" opacity="0.7" />
+        <line x1="352" y1="338" x2="352" y2="380" stroke={primaryStroke} strokeWidth="1.4" opacity="0.7" />
       </g>
 
       {/* Bottom Dotted Equalizer / Spectrum Matrix behind the Dock */}
-      <g opacity="0.55">
+      <g className="hud-breathe-spectrum" style={{ animationDelay: "-1.3s" }}>
         {spectrumCols.map((col, colIdx) =>
           Array.from({ length: col.rows }).map((_, rowIdx) => (
             <rect
@@ -100,7 +115,7 @@ export function HudSvgFrame() {
               y={704 - rowIdx * 6}
               width="2.6"
               height="2.6"
-              fill={rowIdx < 3 ? "#22D3EE" : "#64748B"}
+              fill={rowIdx < 3 ? primaryStroke : "#64748B"}
               opacity={Math.max(0.14, 0.72 - rowIdx * 0.055)}
             />
           ))

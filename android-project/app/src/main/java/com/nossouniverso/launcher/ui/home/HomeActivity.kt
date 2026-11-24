@@ -19,8 +19,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
-import android.view.animation.DecelerateInterpolator
-import android.view.animation.OvershootInterpolator
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
@@ -43,6 +41,8 @@ import com.nossouniverso.launcher.ui.drawer.AppDrawerBottomSheet
 import com.nossouniverso.launcher.ui.settings.IconPackManagerActivity
 import com.nossouniverso.launcher.ui.settings.LauncherSettingsActivity
 import com.nossouniverso.launcher.ui.views.HilmCoreView
+import com.nossouniverso.launcher.ui.views.HilmPortalOverlayView
+import com.nossouniverso.launcher.ui.views.HilmTransitionAnimator
 import com.nossouniverso.launcher.ui.views.HudDockSlotView
 import com.nossouniverso.launcher.ui.views.HudFrameView
 import com.nossouniverso.launcher.ui.views.HudPlateButton
@@ -77,6 +77,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var progressUpdateDownload: ProgressBar
     private lateinit var btnUpdateAction: Button
     private lateinit var updateManager: LauncherUpdateManager
+    private lateinit var hilmPortalOverlay: HilmPortalOverlayView
 
     private val plateViews = mutableMapOf<SlotPosition, HudPlateButton>()
     private val dockViews = mutableMapOf<SlotPosition, HudDockSlotView>()
@@ -87,6 +88,7 @@ class HomeActivity : AppCompatActivity() {
     private var isEditMode = false
     private var isLeftDrawerOpen = false
     private var isRightDrawerOpen = false
+    private var isPortalLaunching = false
     private var pendingSwapSource: SlotPosition? = null
     private var pendingCustomIconTarget: SlotPosition? = null
     private var packageReceiver: BroadcastReceiver? = null
@@ -234,11 +236,27 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        isPortalLaunching = false
+        if (::hilmPortalOverlay.isInitialized) {
+            hilmPortalOverlay.cancelPortal()
+        }
         val opacityPercent = app.shortcutStorage.getPanelOpacityPercent()
         hudFrameView.panelOpacityPercent = opacityPercent
         plateViews.values.forEach { it.panelOpacityPercent = opacityPercent }
         dockViews.values.forEach { it.panelOpacityPercent = opacityPercent }
         reloadAppsAndRender()
+    }
+
+    override fun onStop() {
+        isPortalLaunching = false
+        if (::hilmPortalOverlay.isInitialized) {
+            hilmPortalOverlay.cancelPortal()
+        }
+        if (::leftSideDrawer.isInitialized) HilmTransitionAnimator.cancelRunning(leftSideDrawer)
+        if (::rightSideDrawer.isInitialized) HilmTransitionAnimator.cancelRunning(rightSideDrawer)
+        if (::coreUpdatePopover.isInitialized) HilmTransitionAnimator.cancelRunning(coreUpdatePopover)
+        if (::editModeBar.isInitialized) HilmTransitionAnimator.cancelRunning(editModeBar)
+        super.onStop()
     }
 
     override fun onDestroy() {
@@ -339,6 +357,7 @@ class HomeActivity : AppCompatActivity() {
         tvUpdateMessage = findViewById(R.id.tvUpdateMessage)
         progressUpdateDownload = findViewById(R.id.progressUpdateDownload)
         btnUpdateAction = findViewById(R.id.btnUpdateAction)
+        hilmPortalOverlay = findViewById(R.id.hilmPortalOverlay)
 
         plateViews[SlotPosition.PLATE_TOP_LEFT] = findViewById(R.id.plateTopLeft)
         plateViews[SlotPosition.PLATE_TOP_RIGHT] = findViewById(R.id.plateTopRight)
@@ -397,7 +416,7 @@ class HomeActivity : AppCompatActivity() {
         }
 
         dockCenterDrawer.setOnLongClickListener {
-            startActivity(Intent(this, LauncherSettingsActivity::class.java))
+            openSettingsScreen()
             true
         }
 
@@ -407,7 +426,7 @@ class HomeActivity : AppCompatActivity() {
         }
 
         btnHubControl.setOnLongClickListener {
-            startActivity(Intent(this, LauncherSettingsActivity::class.java))
+            openSettingsScreen()
             true
         }
 
@@ -424,7 +443,7 @@ class HomeActivity : AppCompatActivity() {
         }
 
         hilmCoreView.setOnLongClickListener {
-            startActivity(Intent(this, LauncherSettingsActivity::class.java))
+            openSettingsScreen()
             true
         }
 
@@ -452,45 +471,25 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private fun openSettingsScreen() {
+        startActivity(Intent(this, LauncherSettingsActivity::class.java))
+        HilmTransitionAnimator.applyActivityEnterTransition(
+            this,
+            app.shortcutStorage.getTransitionConfig()
+        )
+    }
+
     private fun setSideDrawerOpen(isLeft: Boolean, open: Boolean, animate: Boolean = true) {
         if (isLeft) isLeftDrawerOpen = open else isRightDrawerOpen = open
         val drawer = if (isLeft) leftSideDrawer else rightSideDrawer
-        val offsetPx = (if (isLeft) -84f else 84f) * resources.displayMetrics.density
-
-        drawer.animate().cancel()
-        if (open) {
-            if (drawer.visibility != View.VISIBLE) {
-                drawer.visibility = View.VISIBLE
-                drawer.alpha = 0f
-                drawer.translationX = offsetPx
-            }
-            if (animate) {
-                drawer.animate()
-                    .alpha(1f)
-                    .translationX(0f)
-                    .setDuration(300L)
-                    .setInterpolator(OvershootInterpolator(0.95f))
-                    .start()
-            } else {
-                drawer.alpha = 1f
-                drawer.translationX = 0f
-            }
-        } else {
-            if (animate && drawer.visibility == View.VISIBLE) {
-                drawer.animate()
-                    .alpha(0f)
-                    .translationX(offsetPx)
-                    .setDuration(240L)
-                    .setInterpolator(DecelerateInterpolator(1.4f))
-                    .withEndAction {
-                        drawer.visibility = View.GONE
-                    }
-                    .start()
-            } else {
-                drawer.visibility = View.GONE
-                drawer.alpha = 0f
-            }
-        }
+        val baseConfig = app.shortcutStorage.getTransitionConfig()
+        val effectiveConfig = if (animate) baseConfig else baseConfig.copy(enabled = false)
+        HilmTransitionAnimator.animateSideDrawer(
+            drawer = drawer,
+            isLeft = isLeft,
+            open = open,
+            config = effectiveConfig
+        )
     }
 
     @SuppressLint("WrongConstant")
@@ -547,12 +546,46 @@ class HomeActivity : AppCompatActivity() {
             return
         }
 
-        val launched = app.appRepository.launchApp(slot.packageName, slot.activityName)
-        if (launched) {
-            app.shortcutStorage.recordRecentPackage(slot.packageName)
-        } else {
-            Toast.makeText(this, "Aplicativo não encontrado.", Toast.LENGTH_SHORT).show()
-        }
+        if (isPortalLaunching) return
+        isPortalLaunching = true
+
+        val plateView = plateViews[position]
+        val dockView = dockViews[position]
+        val originView: View? = plateView?.getPortalOriginView() ?: dockView?.getPortalOriginView()
+        val originDrawable = plateView?.getPortalIconDrawable()
+            ?: dockView?.getPortalIconDrawable()
+            ?: app.iconPackManager.resolveCustomUriDrawable(slot.customIconUri)
+
+        plateView?.triggerPortalLaunchReaction()
+        dockView?.triggerPortalLaunchReaction()
+
+        val transitionConfig = app.shortcutStorage.getTransitionConfig()
+        hilmPortalOverlay.playLaunchTransition(
+            originView = originView,
+            iconDrawable = originDrawable,
+            config = transitionConfig,
+            onLaunch = {
+                val options = HilmPortalOverlayView.buildLaunchActivityOptions(
+                    this,
+                    originView,
+                    transitionConfig
+                )
+                val launched = app.appRepository.launchApp(
+                    packageName = slot.packageName,
+                    activityName = slot.activityName,
+                    launchOptions = options
+                )
+                if (launched) {
+                    app.shortcutStorage.recordRecentPackage(slot.packageName)
+                } else {
+                    isPortalLaunching = false
+                    Toast.makeText(this, "Aplicativo não encontrado.", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onFinished = {
+                isPortalLaunching = false
+            }
+        )
     }
 
     private fun showSlotOptionsDialog(position: SlotPosition) {
@@ -578,6 +611,10 @@ class HomeActivity : AppCompatActivity() {
                     "Sair do modo de edição" -> toggleEditMode(false)
                     "Gerenciar pacotes de ícones" -> {
                         startActivity(Intent(this, IconPackManagerActivity::class.java))
+                        HilmTransitionAnimator.applyActivityEnterTransition(
+                            this,
+                            app.shortcutStorage.getTransitionConfig()
+                        )
                     }
                     "Renomear atalho" -> showRenameSlotDialog(position, slot?.customLabel.orEmpty())
                     "Escolher imagem própria para ícone" -> {
@@ -624,11 +661,14 @@ class HomeActivity : AppCompatActivity() {
         val byPkg = installedApps.associateBy { it.packageName }
         val recentApps = app.shortcutStorage.getRecentPackages().mapNotNull { byPkg[it] }
 
+        val transitionConfig = app.shortcutStorage.getTransitionConfig()
         val sheet = AppDrawerBottomSheet(
             title = title,
             apps = installedApps,
             recentApps = recentApps,
-            onSelectApp = { selectedApp ->
+            isLaunchMode = (targetSlot == null),
+            transitionConfig = transitionConfig,
+            onSelectApp = { selectedApp, anchorView ->
                 if (targetSlot != null) {
                     slots = app.shortcutStorage.assignSlot(
                         position = targetSlot,
@@ -637,8 +677,20 @@ class HomeActivity : AppCompatActivity() {
                     )
                     renderAllSlots()
                 } else {
-                    if (app.appRepository.launchApp(selectedApp.packageName, selectedApp.activityName)) {
+                    val options = HilmPortalOverlayView.buildLaunchActivityOptions(
+                        this,
+                        anchorView,
+                        transitionConfig
+                    )
+                    if (app.appRepository.launchApp(
+                            packageName = selectedApp.packageName,
+                            activityName = selectedApp.activityName,
+                            launchOptions = options
+                        )
+                    ) {
                         app.shortcutStorage.recordRecentPackage(selectedApp.packageName)
+                    } else {
+                        Toast.makeText(this, "Aplicativo não encontrado.", Toast.LENGTH_SHORT).show()
                     }
                 }
             },
@@ -670,7 +722,12 @@ class HomeActivity : AppCompatActivity() {
     private fun toggleEditMode(active: Boolean) {
         isEditMode = active
         pendingSwapSource = null
-        editModeBar.visibility = if (active) View.VISIBLE else View.GONE
+        HilmTransitionAnimator.animatePanelVisibility(
+            panel = editModeBar,
+            show = active,
+            config = app.shortcutStorage.getTransitionConfig(),
+            fromTop = true
+        )
         plateViews.values.forEach { it.isEditModeActive = active }
         dockViews.values.forEach { it.isEditModeActive = active }
     }
@@ -804,11 +861,21 @@ class HomeActivity : AppCompatActivity() {
             }
         }
 
-        coreUpdatePopover.visibility = View.VISIBLE
+        HilmTransitionAnimator.animatePanelVisibility(
+            panel = coreUpdatePopover,
+            show = true,
+            config = app.shortcutStorage.getTransitionConfig(),
+            fromTop = true
+        )
     }
 
     private fun hideUpdatePopover() {
-        coreUpdatePopover.visibility = View.GONE
+        HilmTransitionAnimator.animatePanelVisibility(
+            panel = coreUpdatePopover,
+            show = false,
+            config = app.shortcutStorage.getTransitionConfig(),
+            fromTop = true
+        )
     }
 
     private fun handleUpdateActionTap() {
@@ -1053,7 +1120,12 @@ class HomeActivity : AppCompatActivity() {
                 actionLabel = "Fechar",
                 actionEnabled = true
             )
-            coreUpdatePopover.visibility = View.VISIBLE
+            HilmTransitionAnimator.animatePanelVisibility(
+                panel = coreUpdatePopover,
+                show = true,
+                config = app.shortcutStorage.getTransitionConfig(),
+                fromTop = true
+            )
         }
     }
 

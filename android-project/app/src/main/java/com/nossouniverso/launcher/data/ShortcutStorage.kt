@@ -2,6 +2,8 @@ package com.nossouniverso.launcher.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.nossouniverso.launcher.model.HilmTransitionConfig
+import com.nossouniverso.launcher.model.HilmTransitionEffect
 import com.nossouniverso.launcher.model.IconPackInfo
 import com.nossouniverso.launcher.model.ShortcutSlot
 import com.nossouniverso.launcher.model.SlotPosition
@@ -136,10 +138,19 @@ class ShortcutStorage(context: Context) {
                 }
             )
         }
+        val transition = getTransitionConfig()
         return JSONObject().apply {
             put("schema", "nosso_universo_layout_v1")
             put("iconPack", getSelectedIconPackId())
             put("panelOpacity", getPanelOpacityPercent())
+            put(
+                "transition",
+                JSONObject().apply {
+                    put("enabled", transition.enabled)
+                    put("effect", transition.effect.id)
+                    put("durationMs", transition.durationMs)
+                }
+            )
             put("slots", slotsObj)
         }.toString(2)
     }
@@ -198,6 +209,18 @@ class ShortcutStorage(context: Context) {
                 }
                 setSelectedIconPackId(mappedPack)
             }
+            val transitionNode = root.optJSONObject("transition")
+            if (transitionNode != null) {
+                val importedTransition = HilmTransitionConfig(
+                    enabled = transitionNode.optBoolean("enabled", true),
+                    effect = HilmTransitionEffect.fromId(transitionNode.optString("effect")),
+                    durationMs = transitionNode.optInt(
+                        "durationMs",
+                        HilmTransitionConfig.DEFAULT_DURATION_MS
+                    )
+                ).sanitized()
+                saveTransitionConfig(importedTransition)
+            }
             true
         } catch (_: Exception) {
             false
@@ -226,11 +249,37 @@ class ShortcutStorage(context: Context) {
         prefs.edit().putInt(KEY_PANEL_OPACITY, percent.coerceIn(25, 95)).apply()
     }
 
+    fun getTransitionConfig(): HilmTransitionConfig {
+        val enabled = prefs.getBoolean(KEY_TRANSITION_ENABLED, true)
+        val effect = HilmTransitionEffect.fromId(prefs.getString(KEY_TRANSITION_EFFECT, null))
+        val durationMs = prefs.getInt(
+            KEY_TRANSITION_DURATION_MS,
+            HilmTransitionConfig.DEFAULT_DURATION_MS
+        )
+        return HilmTransitionConfig(
+            enabled = enabled,
+            effect = effect,
+            durationMs = durationMs
+        ).sanitized()
+    }
+
+    fun saveTransitionConfig(config: HilmTransitionConfig) {
+        val clean = config.sanitized()
+        prefs.edit()
+            .putBoolean(KEY_TRANSITION_ENABLED, clean.enabled)
+            .putString(KEY_TRANSITION_EFFECT, clean.effect.id)
+            .putInt(KEY_TRANSITION_DURATION_MS, clean.durationMs)
+            .apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "nosso_universo_prefs"
         private const val KEY_SLOTS = "shortcut_slots_v1"
         private const val KEY_ICON_PACK = "selected_icon_pack_v1"
         private const val KEY_PANEL_OPACITY = "hud_panel_opacity_v1"
         private const val KEY_RECENT_PACKAGES = "recent_packages_v1"
+        private const val KEY_TRANSITION_ENABLED = "hilm_transition_enabled_v1"
+        private const val KEY_TRANSITION_EFFECT = "hilm_transition_effect_v1"
+        private const val KEY_TRANSITION_DURATION_MS = "hilm_transition_duration_ms_v1"
     }
 }
