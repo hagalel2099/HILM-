@@ -18,6 +18,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.nossouniverso.launcher.R
+import com.nossouniverso.launcher.model.HilmTransitionConfig
 
 /**
  * Chamfered octagonal HUD shortcut plate matching the 4 lower plates in Reference 1.
@@ -104,21 +105,8 @@ class HudPlateButton @JvmOverloads constructor(
 
     fun getPortalIconDrawable(): Drawable? = if (iconView.visibility == VISIBLE) iconView.drawable else null
 
-    fun triggerPortalLaunchReaction() {
-        if (HilmPortalOverlayView.isReducedMotionEnabled(context)) return
-        iconView.animate().cancel()
-        iconView.animate()
-            .scaleX(1.22f)
-            .scaleY(1.22f)
-            .setDuration(110L)
-            .withEndAction {
-                iconView.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(160L)
-                    .start()
-            }
-            .start()
+    fun triggerPortalLaunchReaction(config: HilmTransitionConfig = HilmTransitionConfig()) {
+        HilmTransitionAnimator.animateIconTapReaction(iconView, config)
     }
 
     fun bindShortcut(label: String, icon: Drawable?, empty: Boolean) {

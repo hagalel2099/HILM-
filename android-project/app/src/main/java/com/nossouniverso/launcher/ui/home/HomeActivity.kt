@@ -35,6 +35,7 @@ import androidx.core.content.ContextCompat
 import com.nossouniverso.launcher.NossoUniversoApp
 import com.nossouniverso.launcher.R
 import com.nossouniverso.launcher.model.AppInfo
+import com.nossouniverso.launcher.model.HilmTransitionConfig
 import com.nossouniverso.launcher.model.ShortcutSlot
 import com.nossouniverso.launcher.model.SlotPosition
 import com.nossouniverso.launcher.ui.drawer.AppDrawerBottomSheet
@@ -89,6 +90,8 @@ class HomeActivity : AppCompatActivity() {
     private var isLeftDrawerOpen = false
     private var isRightDrawerOpen = false
     private var isPortalLaunching = false
+    private var lastTransitionConfig: HilmTransitionConfig? = null
+    private var pendingIconTransitionReplay = false
     private var pendingSwapSource: SlotPosition? = null
     private var pendingCustomIconTarget: SlotPosition? = null
     private var packageReceiver: BroadcastReceiver? = null
@@ -240,6 +243,12 @@ class HomeActivity : AppCompatActivity() {
         if (::hilmPortalOverlay.isInitialized) {
             hilmPortalOverlay.cancelPortal()
         }
+        val currentTransitionConfig = app.shortcutStorage.getTransitionConfig()
+        if (lastTransitionConfig != null && lastTransitionConfig != currentTransitionConfig) {
+            pendingIconTransitionReplay = true
+        }
+        lastTransitionConfig = currentTransitionConfig
+
         val opacityPercent = app.shortcutStorage.getPanelOpacityPercent()
         hudFrameView.panelOpacityPercent = opacityPercent
         plateViews.values.forEach { it.panelOpacityPercent = opacityPercent }
@@ -490,6 +499,30 @@ class HomeActivity : AppCompatActivity() {
             open = open,
             config = effectiveConfig
         )
+        if (open && animate) {
+            val wingPositions = if (isLeft) {
+                listOf(
+                    SlotPosition.LEFT_1,
+                    SlotPosition.LEFT_2,
+                    SlotPosition.LEFT_3,
+                    SlotPosition.LEFT_4,
+                    SlotPosition.LEFT_5
+                )
+            } else {
+                listOf(
+                    SlotPosition.RIGHT_1,
+                    SlotPosition.RIGHT_2,
+                    SlotPosition.RIGHT_3,
+                    SlotPosition.RIGHT_4,
+                    SlotPosition.RIGHT_5
+                )
+            }
+            wingPositions.forEachIndexed { idx, pos ->
+                dockViews[pos]?.getPortalOriginView()?.let { iconView ->
+                    HilmTransitionAnimator.animateIconEntrance(iconView, idx, effectiveConfig)
+                }
+            }
+        }
     }
 
     @SuppressLint("WrongConstant")
@@ -556,10 +589,9 @@ class HomeActivity : AppCompatActivity() {
             ?: dockView?.getPortalIconDrawable()
             ?: app.iconPackManager.resolveCustomUriDrawable(slot.customIconUri)
 
-        plateView?.triggerPortalLaunchReaction()
-        dockView?.triggerPortalLaunchReaction()
-
         val transitionConfig = app.shortcutStorage.getTransitionConfig()
+        plateView?.triggerPortalLaunchReaction(transitionConfig)
+        dockView?.triggerPortalLaunchReaction(transitionConfig)
         hilmPortalOverlay.playLaunchTransition(
             originView = originView,
             iconDrawable = originDrawable,
@@ -742,8 +774,30 @@ class HomeActivity : AppCompatActivity() {
                 installedApps = loadedApps
                 slots = loadedSlots
                 renderAllSlots()
+                if (pendingIconTransitionReplay) {
+                    pendingIconTransitionReplay = false
+                    animateHomeIcons(app.shortcutStorage.getTransitionConfig())
+                }
             }
         }
+    }
+
+    private fun animateHomeIcons(config: HilmTransitionConfig) {
+        var index = 0
+        plateViews.values.forEach { plate ->
+            HilmTransitionAnimator.animateIconEntrance(plate.getPortalOriginView(), index++, config)
+        }
+        listOf(
+            SlotPosition.DOCK_1,
+            SlotPosition.DOCK_2,
+            SlotPosition.DOCK_4,
+            SlotPosition.DOCK_5
+        ).forEach { pos ->
+            dockViews[pos]?.getPortalOriginView()?.let { iconView ->
+                HilmTransitionAnimator.animateIconEntrance(iconView, index++, config)
+            }
+        }
+        HilmTransitionAnimator.animateIconEntrance(dockCenterDrawer.getPortalOriginView(), index, config)
     }
 
     private fun renderAllSlots() {

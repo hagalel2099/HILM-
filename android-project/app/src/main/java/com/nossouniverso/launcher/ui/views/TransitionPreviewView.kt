@@ -4,9 +4,11 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
+import android.graphics.Camera
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -88,9 +90,17 @@ class TransitionPreviewView @JvmOverloads constructor(
     }
     private val sweepPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val motePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val iconTilePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val iconBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1.2f * density
+    }
     private val rectF = RectF()
     private val cardRect = RectF()
+    private val iconTileRect = RectF()
     private val clipPath = Path()
+    private val camera3d = Camera()
+    private val matrix3d = Matrix()
 
     fun playPreview(config: HilmTransitionConfig) {
         stopPreview()
@@ -222,33 +232,132 @@ class TransitionPreviewView @JvmOverloads constructor(
         canvas.drawRoundRect(cardRect, 11f * density, 11f * density, cardPaint)
         canvas.drawRoundRect(cardRect, 11f * density, 11f * density, cardStrokePaint)
 
-        // Inner HUD mockup bars & emblem
-        accentPaint.alpha = (220 * alpha).toInt().coerceIn(0, 255)
-        orangeAccentPaint.alpha = (210 * alpha).toInt().coerceIn(0, 255)
-        val iconCx = cardRect.left + 26f * density
-        val iconCy = cardRect.centerY()
-        canvas.drawCircle(iconCx, iconCy, 13f * density, accentPaint)
-        canvas.drawCircle(iconCx, iconCy, 6f * density, orangeAccentPaint)
-
+        // Header label inside preview card
         textPaint.alpha = (245 * alpha).toInt().coerceIn(0, 255)
         val label = if (!activeConfig.enabled) {
             "Efeitos desativados (instantâneo)"
         } else {
             "${activeConfig.effect.title} · ${activeConfig.durationMs} ms"
         }
-        canvas.drawText(label, iconCx + 22f * density, iconCy - 3f * density, textPaint)
+        canvas.drawText(label, cardRect.left + 14f * density, cardRect.top + 19f * density, textPaint)
 
-        val barLeft = iconCx + 22f * density
-        val barTop = iconCy + 6f * density
-        canvas.drawRoundRect(
-            barLeft,
-            barTop,
-            cardRect.right - 16f * density,
-            barTop + 4f * density,
-            2f * density,
-            2f * density,
-            accentPaint
-        )
+        // Three miniature app icons transitioning individually inside the preview card
+        val iconRadius = 11.5f * density
+        val spacing = (baseCardW - 44f * density) / 2f
+        val startX = -spacing
+        val iconsCy = cardRect.centerY() + 9f * density
+        val shouldAnim = HilmTransitionAnimator.shouldAnimate(context, activeConfig)
+
+        for (idx in 0 until 3) {
+            val rawItemProgress = if (!shouldAnim) {
+                1f
+            } else {
+                ((progress * 1.16f) - idx * 0.08f).coerceIn(0f, 1f)
+            }
+            val itemT = easeOutQuint.getInterpolation(rawItemProgress)
+            val ix = startX + idx * spacing
+
+            var iScale = 1f
+            var iAlpha = alpha
+            var iDx = 0f
+            var iDy = 0f
+            var iRot = 0f
+
+            if (shouldAnim) {
+                when (activeConfig.effect) {
+                    HilmTransitionEffect.PORTAL -> {
+                        iScale = 0.42f + 0.58f * itemT
+                        iRot = (1f - itemT) * -20f
+                        iAlpha *= itemT
+                    }
+                    HilmTransitionEffect.DIGITAL_DISINTEGRATION -> {
+                        iScale = 0.70f + 0.30f * itemT
+                        iDx = (1f - itemT) * (if (idx % 2 == 0) -10f else 10f) * density
+                        iDy = (1f - itemT) * 7f * density
+                        iAlpha *= itemT
+                    }
+                    HilmTransitionEffect.LIGHT_SWEEP -> {
+                        iScale = 0.86f + 0.14f * itemT
+                        iDx = (1f - itemT) * -10f * density
+                        iAlpha *= 0.25f + 0.75f * itemT
+                    }
+                    HilmTransitionEffect.DIMENSIONAL_SLIDE -> {
+                        iScale = 0.74f + 0.26f * itemT
+                        iDy = (1f - itemT) * 10f * density
+                        iAlpha *= itemT
+                    }
+                    HilmTransitionEffect.ENERGY_DISSOLVE -> {
+                        iScale = 0.74f + 0.26f * itemT
+                        iAlpha *= itemT
+                    }
+                    HilmTransitionEffect.CLASSIC -> {
+                        iScale = 0.88f + 0.12f * itemT
+                        iDy = (1f - itemT) * 8f * density
+                        iAlpha *= itemT
+                    }
+                }
+            }
+
+            canvas.save()
+            if (shouldAnim && activeConfig.effect == HilmTransitionEffect.LIGHT_SWEEP && rawItemProgress < 1f) {
+                val clipSpan = iconRadius * 2.2f * itemT
+                canvas.clipRect(
+                    ix + iDx - iconRadius * 1.1f,
+                    iconsCy - iconRadius * 1.2f,
+                    ix + iDx - iconRadius * 1.1f + clipSpan,
+                    iconsCy + iconRadius * 1.2f
+                )
+            }
+            if (shouldAnim && activeConfig.effect == HilmTransitionEffect.DIMENSIONAL_SLIDE && rawItemProgress < 1f) {
+                camera3d.save()
+                camera3d.rotateY(-36f * (1f - itemT))
+                camera3d.rotateX(16f * (1f - itemT))
+                camera3d.getMatrix(matrix3d)
+                camera3d.restore()
+                matrix3d.preTranslate(-(ix + iDx), -(iconsCy + iDy))
+                matrix3d.postTranslate(ix + iDx, iconsCy + iDy)
+                canvas.concat(matrix3d)
+            }
+
+            canvas.translate(ix + iDx, iconsCy + iDy)
+            canvas.rotate(iRot)
+            canvas.scale(iScale, iScale)
+
+            val tileAlpha = (230 * iAlpha).toInt().coerceIn(0, 255)
+            iconTilePaint.color = when (idx) {
+                0 -> Color.argb(tileAlpha, 14, 42, 68)
+                1 -> Color.argb(tileAlpha, 44, 24, 62)
+                else -> Color.argb(tileAlpha, 52, 34, 20)
+            }
+            iconBorderPaint.color = when (idx) {
+                0 -> Color.argb(tileAlpha, 34, 211, 238)
+                1 -> Color.argb(tileAlpha, 168, 85, 247)
+                else -> Color.argb(tileAlpha, 251, 146, 60)
+            }
+            iconTileRect.set(-iconRadius, -iconRadius, iconRadius, iconRadius)
+            canvas.drawRoundRect(iconTileRect, 6f * density, 6f * density, iconTilePaint)
+            canvas.drawRoundRect(iconTileRect, 6f * density, 6f * density, iconBorderPaint)
+
+            accentPaint.alpha = tileAlpha
+            orangeAccentPaint.alpha = tileAlpha
+            when (idx) {
+                0 -> {
+                    canvas.drawCircle(0f, 0f, iconRadius * 0.44f, iconBorderPaint)
+                    canvas.drawCircle(0f, 0f, iconRadius * 0.18f, accentPaint)
+                }
+                1 -> {
+                    canvas.drawCircle(-2f * density, 2.5f * density, 2.2f * density, orangeAccentPaint)
+                    canvas.drawLine(0f, 2f * density, 0f, -4.5f * density, iconBorderPaint)
+                    canvas.drawLine(0f, -4.5f * density, 4f * density, -2.5f * density, iconBorderPaint)
+                }
+                else -> {
+                    canvas.drawCircle(0f, 0f, iconRadius * 0.44f, iconBorderPaint)
+                    canvas.drawLine(-4f * density, 0f, 4f * density, 0f, orangeAccentPaint)
+                    canvas.drawLine(0f, -4f * density, 0f, 4f * density, orangeAccentPaint)
+                }
+            }
+            canvas.restore()
+        }
         canvas.restore()
 
         // Effect-specific overlay accents during single-shot playback

@@ -6,12 +6,14 @@ import android.animation.ValueAnimator
 import android.app.ActivityOptions
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Camera
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RadialGradient
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
@@ -113,10 +115,14 @@ class HilmPortalOverlayView @JvmOverloads constructor(
 
     private val arcRect = RectF()
     private val iconDestRect = RectF()
+    private val iconSliceSrc = Rect()
+    private val iconSliceDest = RectF()
     private val frameRect = RectF()
     private val selfLocation = IntArray(2)
     private val targetLocation = IntArray(2)
     private val shaderMatrix = Matrix()
+    private val camera3d = Camera()
+    private val matrix3d = Matrix()
 
     init {
         isClickable = false
@@ -152,7 +158,6 @@ class HilmPortalOverlayView @JvmOverloads constructor(
         activeEffect = clean.effect
 
         if (!HilmTransitionAnimator.shouldAnimate(context, clean) ||
-            clean.effect == HilmTransitionEffect.CLASSIC ||
             originView == null ||
             width <= 0 ||
             height <= 0
@@ -188,13 +193,19 @@ class HilmPortalOverlayView @JvmOverloads constructor(
         bringToFront()
 
         val launchThreshold = when (clean.effect) {
-            HilmTransitionEffect.LIGHT_SWEEP -> 0.42f
-            HilmTransitionEffect.DIMENSIONAL_SLIDE -> 0.34f
-            else -> 0.36f
+            HilmTransitionEffect.LIGHT_SWEEP -> 0.50f
+            HilmTransitionEffect.DIMENSIONAL_SLIDE -> 0.46f
+            HilmTransitionEffect.CLASSIC -> 0.44f
+            else -> 0.46f
+        }
+        val animDuration = if (clean.effect == HilmTransitionEffect.CLASSIC) {
+            clean.durationMs.toLong().coerceIn(130L, 210L)
+        } else {
+            clean.durationMs.toLong()
         }
 
         animator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = clean.durationMs.toLong()
+            duration = animDuration
             addUpdateListener { anim ->
                 val raw = anim.animatedValue as Float
                 progress = raw
@@ -267,7 +278,7 @@ class HilmPortalOverlayView @JvmOverloads constructor(
             HilmTransitionEffect.LIGHT_SWEEP -> drawLightSweepEffect(canvas, eased, fadeOut)
             HilmTransitionEffect.DIMENSIONAL_SLIDE -> drawDimensionalEffect(canvas, eased, fadeOut)
             HilmTransitionEffect.ENERGY_DISSOLVE -> drawEnergyDissolveEffect(canvas, eased, fadeOut)
-            HilmTransitionEffect.CLASSIC -> Unit
+            HilmTransitionEffect.CLASSIC -> drawClassicIconEffect(canvas, eased)
         }
     }
 
@@ -408,7 +419,14 @@ class HilmPortalOverlayView @JvmOverloads constructor(
         glowRimPaint.color = Color.argb((150 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238)
         canvas.drawCircle(originX, originY, waveR * 0.74f, glowRimPaint)
 
-        drawSourceIcon(canvas, eased, scaleBoost = 0.34f)
+        drawSourceIcon(canvas, scaleBoost = 0.34f)
+    }
+
+    private fun drawClassicIconEffect(canvas: Canvas, eased: Float) {
+        glowRimPaint.strokeWidth = 1.4f * density
+        glowRimPaint.color = Color.argb(((1f - eased) * 110f).toInt().coerceIn(0, 255), 34, 211, 238)
+        canvas.drawCircle(originX, originY, baseRadius * (1.0f + 0.55f * eased), glowRimPaint)
+        drawSourceIcon(canvas, scaleBoost = 0.28f)
     }
 
     private fun drawWell(canvas: Canvas, wellRadius: Float, fadeOut: Float) {
@@ -426,16 +444,108 @@ class HilmPortalOverlayView @JvmOverloads constructor(
         }
     }
 
-    private fun drawSourceIcon(canvas: Canvas, eased: Float, scaleBoost: Float) {
-        val bmp = iconBitmap
-        if (bmp != null && !bmp.isRecycled && progress < 0.52f) {
-            val iconT = (progress / 0.52f).coerceIn(0f, 1f)
-            val iconScale = 1f + scaleBoost * easeOutQuint.getInterpolation(iconT)
-            val iconAlpha = ((1f - iconT) * (1f - iconT * 0.35f)).coerceIn(0f, 1f)
-            val half = baseRadius * 0.92f * iconScale
-            iconDestRect.set(originX - half, originY - half, originX + half, originY + half)
-            iconPaint.alpha = (255 * iconAlpha).toInt().coerceIn(0, 255)
-            canvas.drawBitmap(bmp, null, iconDestRect, iconPaint)
+    private fun drawSourceIcon(canvas: Canvas, scaleBoost: Float) {
+        val bmp = iconBitmap ?: return
+        if (bmp.isRecycled) return
+
+        val maxProgress = when (activeEffect) {
+            HilmTransitionEffect.LIGHT_SWEEP -> 0.68f
+            HilmTransitionEffect.DIGITAL_DISINTEGRATION -> 0.66f
+            HilmTransitionEffect.CLASSIC -> 0.60f
+            else -> 0.64f
+        }
+        if (progress >= maxProgress) return
+
+        val iconT = (progress / maxProgress).coerceIn(0f, 1f)
+        val iconEased = easeOutQuint.getInterpolation(iconT)
+        val effectiveBoost = when (activeEffect) {
+            HilmTransitionEffect.PORTAL -> max(scaleBoost, 0.72f)
+            HilmTransitionEffect.DIMENSIONAL_SLIDE -> max(scaleBoost, 0.52f)
+            HilmTransitionEffect.ENERGY_DISSOLVE -> max(scaleBoost, 0.44f)
+            else -> scaleBoost
+        }
+        val iconScale = 1f + effectiveBoost * iconEased
+        val iconAlpha = ((1f - iconT) * (1f - iconT * 0.25f)).coerceIn(0f, 1f)
+        val half = baseRadius * 0.94f * iconScale
+        val alphaInt = (255 * iconAlpha).toInt().coerceIn(0, 255)
+
+        when (activeEffect) {
+            HilmTransitionEffect.PORTAL -> {
+                canvas.save()
+                canvas.rotate(22f * iconEased, originX, originY)
+                iconDestRect.set(originX - half, originY - half, originX + half, originY + half)
+                iconPaint.alpha = alphaInt
+                canvas.drawBitmap(bmp, null, iconDestRect, iconPaint)
+                canvas.restore()
+            }
+            HilmTransitionEffect.DIGITAL_DISINTEGRATION -> {
+                val sliceCount = 4
+                val srcSliceH = max(1, bmp.height / sliceCount)
+                val destSliceH = (half * 2f) / sliceCount
+                iconPaint.alpha = alphaInt
+                for (i in 0 until sliceCount) {
+                    val srcTop = i * srcSliceH
+                    val srcBottom = if (i == sliceCount - 1) bmp.height else (i + 1) * srcSliceH
+                    val driftX = (if (i % 2 == 0) -1f else 1f) * (12f + i * 2f) * density * iconEased
+                    val driftY = (i - 1.5f) * 4f * density * iconEased
+                    iconSliceSrc.set(0, srcTop, bmp.width, srcBottom)
+                    iconSliceDest.set(
+                        originX - half + driftX,
+                        originY - half + i * destSliceH + driftY,
+                        originX + half + driftX,
+                        originY - half + (i + 1) * destSliceH + driftY
+                    )
+                    canvas.drawBitmap(bmp, iconSliceSrc, iconSliceDest, iconPaint)
+                }
+            }
+            HilmTransitionEffect.LIGHT_SWEEP -> {
+                val left = originX - half
+                val right = originX + half
+                val top = originY - half
+                val bottom = originY + half
+                val wipeX = left + (right - left) * (1f - iconEased * 0.88f)
+                canvas.save()
+                canvas.clipRect(left, top, wipeX, bottom)
+                iconDestRect.set(left, top, right, bottom)
+                iconPaint.alpha = alphaInt
+                canvas.drawBitmap(bmp, null, iconDestRect, iconPaint)
+                canvas.restore()
+
+                flarePaint.strokeWidth = 2.2f * density
+                flarePaint.color = Color.argb((235 * (1f - iconT)).toInt().coerceIn(0, 255), 165, 243, 252)
+                canvas.drawLine(wipeX, top - 4f * density, wipeX, bottom + 4f * density, flarePaint)
+            }
+            HilmTransitionEffect.DIMENSIONAL_SLIDE -> {
+                canvas.save()
+                camera3d.save()
+                camera3d.rotateY(-34f * iconEased)
+                camera3d.rotateX(16f * iconEased)
+                camera3d.getMatrix(matrix3d)
+                camera3d.restore()
+                matrix3d.preTranslate(-originX, -originY)
+                matrix3d.postTranslate(originX, originY - 12f * density * iconEased)
+                canvas.concat(matrix3d)
+                iconDestRect.set(originX - half, originY - half, originX + half, originY + half)
+                iconPaint.alpha = alphaInt
+                canvas.drawBitmap(bmp, null, iconDestRect, iconPaint)
+                canvas.restore()
+            }
+            HilmTransitionEffect.ENERGY_DISSOLVE -> {
+                glowRimPaint.strokeWidth = 3.2f * density
+                glowRimPaint.color = Color.argb((195 * (1f - iconT)).toInt().coerceIn(0, 255), 34, 211, 238)
+                canvas.drawCircle(originX, originY, half * 1.12f, glowRimPaint)
+                glowRimPaint.strokeWidth = 2.0f * density
+                glowRimPaint.color = Color.argb((170 * (1f - iconT)).toInt().coerceIn(0, 255), 168, 85, 247)
+                canvas.drawCircle(originX, originY, half * 1.32f, glowRimPaint)
+                iconDestRect.set(originX - half, originY - half, originX + half, originY + half)
+                iconPaint.alpha = alphaInt
+                canvas.drawBitmap(bmp, null, iconDestRect, iconPaint)
+            }
+            HilmTransitionEffect.CLASSIC -> {
+                iconDestRect.set(originX - half, originY - half, originX + half, originY + half)
+                iconPaint.alpha = alphaInt
+                canvas.drawBitmap(bmp, null, iconDestRect, iconPaint)
+            }
         }
     }
 

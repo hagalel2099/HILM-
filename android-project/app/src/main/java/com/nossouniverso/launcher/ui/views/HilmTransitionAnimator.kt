@@ -62,9 +62,257 @@ object HilmTransitionAnimator {
         view.translationY = 0f
         view.scaleX = 1f
         view.scaleY = 1f
+        view.rotation = 0f
         view.rotationX = 0f
         view.rotationY = 0f
         view.alpha = 1f
+    }
+
+    fun animateIconEntrance(
+        iconTarget: View,
+        index: Int,
+        config: HilmTransitionConfig
+    ) {
+        cancelRunning(iconTarget)
+        val clean = config.sanitized()
+        if (!shouldAnimate(iconTarget.context, clean)) {
+            resetVisualState(iconTarget)
+            return
+        }
+
+        val density = iconTarget.resources.displayMetrics.density
+        val startDelayMs = minOf(index, 11) * 18L
+        val duration = clean.durationMs.toLong()
+        resetVisualState(iconTarget)
+        iconTarget.cameraDistance = 14f * maxOf(iconTarget.width, (48 * density).toInt()) * density
+
+        when (clean.effect) {
+            HilmTransitionEffect.PORTAL -> {
+                iconTarget.alpha = 0f
+                iconTarget.scaleX = 0.36f
+                iconTarget.scaleY = 0.36f
+                iconTarget.rotation = -16f
+                iconTarget.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .rotation(0f)
+                    .setStartDelay(startDelayMs)
+                    .setDuration(duration)
+                    .setInterpolator(OvershootInterpolator(1.05f))
+                    .start()
+            }
+            HilmTransitionEffect.DIGITAL_DISINTEGRATION -> {
+                iconTarget.alpha = 0f
+                iconTarget.translationX = (if (index % 2 == 0) -14f else 14f) * density
+                iconTarget.translationY = 10f * density
+                iconTarget.scaleX = 0.68f
+                iconTarget.scaleY = 0.68f
+                iconTarget.animate()
+                    .alpha(1f)
+                    .translationX(0f)
+                    .translationY(0f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setStartDelay(startDelayMs)
+                    .setDuration(duration)
+                    .setInterpolator(quintOut)
+                    .start()
+            }
+            HilmTransitionEffect.LIGHT_SWEEP -> {
+                if (iconTarget.width > 0 && iconTarget.height > 0) {
+                    val w = iconTarget.width
+                    val h = iconTarget.height
+                    val iconClip = Rect()
+                    iconTarget.alpha = 0.25f
+                    iconTarget.translationX = -16f * density
+                    val anim = ValueAnimator.ofFloat(0f, 1f).apply {
+                        this.startDelay = startDelayMs
+                        this.duration = duration
+                        interpolator = quintOut
+                        addUpdateListener { a ->
+                            val t = a.animatedValue as Float
+                            iconTarget.alpha = 0.25f + 0.75f * t
+                            iconTarget.translationX = -16f * density * (1f - t)
+                            val right = (w * t).toInt().coerceIn(1, w)
+                            iconClip.set(0, 0, right, h)
+                            iconTarget.clipBounds = iconClip
+                        }
+                        addListener(object : AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: Animator) {
+                                activeValueAnimators.remove(iconTarget)
+                                resetVisualState(iconTarget)
+                            }
+
+                            override fun onAnimationCancel(animation: Animator) {
+                                activeValueAnimators.remove(iconTarget)
+                                resetVisualState(iconTarget)
+                            }
+                        })
+                        start()
+                    }
+                    activeValueAnimators[iconTarget] = anim
+                } else {
+                    iconTarget.alpha = 0f
+                    iconTarget.translationX = -16f * density
+                    iconTarget.scaleX = 0.82f
+                    iconTarget.scaleY = 0.82f
+                    iconTarget.animate()
+                        .alpha(1f)
+                        .translationX(0f)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setStartDelay(startDelayMs)
+                        .setDuration(duration)
+                        .setInterpolator(quintOut)
+                        .start()
+                }
+            }
+            HilmTransitionEffect.DIMENSIONAL_SLIDE -> {
+                iconTarget.alpha = 0f
+                iconTarget.rotationY = -42f
+                iconTarget.rotationX = 18f
+                iconTarget.translationY = 16f * density
+                iconTarget.scaleX = 0.74f
+                iconTarget.scaleY = 0.74f
+                iconTarget.animate()
+                    .alpha(1f)
+                    .rotationY(0f)
+                    .rotationX(0f)
+                    .translationY(0f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setStartDelay(startDelayMs)
+                    .setDuration(duration)
+                    .setInterpolator(quintOut)
+                    .start()
+            }
+            HilmTransitionEffect.ENERGY_DISSOLVE -> {
+                iconTarget.alpha = 0f
+                iconTarget.scaleX = 0.74f
+                iconTarget.scaleY = 0.74f
+                iconTarget.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setStartDelay(startDelayMs)
+                    .setDuration(duration)
+                    .setInterpolator(smoothInOut)
+                    .start()
+            }
+            HilmTransitionEffect.CLASSIC -> {
+                iconTarget.alpha = 0f
+                iconTarget.translationY = 12f * density
+                iconTarget.scaleX = 0.88f
+                iconTarget.scaleY = 0.88f
+                iconTarget.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setStartDelay(minOf(index, 9) * 12L)
+                    .setDuration(duration.coerceAtMost(220L))
+                    .setInterpolator(DecelerateInterpolator())
+                    .start()
+            }
+        }
+    }
+
+    fun animateIconTapReaction(
+        iconTarget: View,
+        config: HilmTransitionConfig
+    ) {
+        cancelRunning(iconTarget)
+        val clean = config.sanitized()
+        if (!shouldAnimate(iconTarget.context, clean)) {
+            resetVisualState(iconTarget)
+            return
+        }
+
+        val density = iconTarget.resources.displayMetrics.density
+        resetVisualState(iconTarget)
+        iconTarget.cameraDistance = 14f * maxOf(iconTarget.width, (48 * density).toInt()) * density
+
+        val outDuration = (clean.durationMs * 0.38f).toLong().coerceIn(85L, 160L)
+        val backDuration = (clean.durationMs * 0.50f).toLong().coerceIn(115L, 210L)
+
+        val settle = Runnable {
+            iconTarget.animate()
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationX(0f)
+                .translationY(0f)
+                .rotation(0f)
+                .rotationX(0f)
+                .rotationY(0f)
+                .alpha(1f)
+                .setDuration(backDuration)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+        }
+
+        when (clean.effect) {
+            HilmTransitionEffect.PORTAL -> {
+                iconTarget.animate()
+                    .scaleX(1.30f)
+                    .scaleY(1.30f)
+                    .rotation(12f)
+                    .setDuration(outDuration)
+                    .setInterpolator(quintOut)
+                    .withEndAction(settle)
+                    .start()
+            }
+            HilmTransitionEffect.DIGITAL_DISINTEGRATION -> {
+                iconTarget.animate()
+                    .scaleX(1.20f)
+                    .scaleY(0.84f)
+                    .alpha(0.62f)
+                    .setDuration(outDuration)
+                    .setInterpolator(quintOut)
+                    .withEndAction(settle)
+                    .start()
+            }
+            HilmTransitionEffect.LIGHT_SWEEP -> {
+                iconTarget.animate()
+                    .translationX(8f * density)
+                    .scaleX(1.16f)
+                    .scaleY(1.16f)
+                    .setDuration(outDuration)
+                    .setInterpolator(quintOut)
+                    .withEndAction(settle)
+                    .start()
+            }
+            HilmTransitionEffect.DIMENSIONAL_SLIDE -> {
+                iconTarget.animate()
+                    .rotationY(-28f)
+                    .rotationX(14f)
+                    .scaleX(1.18f)
+                    .scaleY(1.18f)
+                    .setDuration(outDuration)
+                    .setInterpolator(quintOut)
+                    .withEndAction(settle)
+                    .start()
+            }
+            HilmTransitionEffect.ENERGY_DISSOLVE -> {
+                iconTarget.animate()
+                    .scaleX(1.22f)
+                    .scaleY(1.22f)
+                    .alpha(0.70f)
+                    .setDuration(outDuration)
+                    .setInterpolator(smoothInOut)
+                    .withEndAction(settle)
+                    .start()
+            }
+            HilmTransitionEffect.CLASSIC -> {
+                iconTarget.animate()
+                    .scaleX(1.16f)
+                    .scaleY(1.16f)
+                    .setDuration(85L)
+                    .setInterpolator(DecelerateInterpolator())
+                    .withEndAction(settle)
+                    .start()
+            }
+        }
     }
 
     fun animateSideDrawer(

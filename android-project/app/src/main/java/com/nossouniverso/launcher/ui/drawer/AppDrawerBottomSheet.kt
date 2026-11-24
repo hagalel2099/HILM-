@@ -120,7 +120,8 @@ class AppDrawerBottomSheet(
             val recentAdapter = AppAdapter(
                 onAppClick = { app, anchorView -> handleAppSelection(app, anchorView) },
                 onAppLongClick = { app -> showAppContextMenu(app) },
-                itemLayoutResId = R.layout.item_app_drawer_recent
+                itemLayoutResId = R.layout.item_app_drawer_recent,
+                transitionConfig = transitionConfig
             )
             recentRecycler.layoutManager =
                 LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
@@ -130,7 +131,8 @@ class AppDrawerBottomSheet(
 
         val adapter = AppAdapter(
             onAppClick = { app, anchorView -> handleAppSelection(app, anchorView) },
-            onAppLongClick = { app -> showAppContextMenu(app) }
+            onAppLongClick = { app -> showAppContextMenu(app) },
+            transitionConfig = transitionConfig
         )
         recycler.layoutManager = GridLayoutManager(requireContext(), 4)
         recycler.adapter = adapter
@@ -217,11 +219,13 @@ class AppDrawerBottomSheet(
             onLaunch = {
                 if (isAdded) {
                     onSelectApp(app, anchorView)
-                    dismissAllowingStateLoss()
                 }
             },
             onFinished = {
                 isLaunching = false
+                if (isAdded) {
+                    dismissAllowingStateLoss()
+                }
             }
         )
     }

@@ -15,6 +15,7 @@ import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import com.nossouniverso.launcher.R
+import com.nossouniverso.launcher.model.HilmTransitionConfig
 import kotlin.math.min
 
 /**
@@ -102,21 +103,8 @@ class HudDockSlotView @JvmOverloads constructor(
 
     fun getPortalIconDrawable(): Drawable? = iconView.drawable
 
-    fun triggerPortalLaunchReaction() {
-        if (HilmPortalOverlayView.isReducedMotionEnabled(context)) return
-        iconView.animate().cancel()
-        iconView.animate()
-            .scaleX(1.22f)
-            .scaleY(1.22f)
-            .setDuration(110L)
-            .withEndAction {
-                iconView.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(160L)
-                    .start()
-            }
-            .start()
+    fun triggerPortalLaunchReaction(config: HilmTransitionConfig = HilmTransitionConfig()) {
+        HilmTransitionAnimator.animateIconTapReaction(iconView, config)
     }
 
     fun bindIcon(drawable: Drawable?, contentDescriptionText: String) {

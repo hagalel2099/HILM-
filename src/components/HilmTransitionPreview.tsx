@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Play, Sparkles } from "lucide-react";
+import { Camera, Compass, Music, Play, Sparkles } from "lucide-react";
 import type { TransitionConfig, TransitionEffectId } from "../types/launcher";
 import { TRANSITION_EFFECTS } from "../data/launcherCatalog";
 
@@ -127,6 +127,86 @@ export function getHilmSurfaceMotion(
   }
 }
 
+export function getHilmIconItemMotion(
+  config: TransitionConfig,
+  index: number,
+  prefersReducedMotion: boolean
+) {
+  if (prefersReducedMotion || !config.enabled) {
+    return {
+      initial: { opacity: 1 },
+      animate: { opacity: 1 },
+      exit: { opacity: 0 },
+      transition: { duration: 0.01 },
+    };
+  }
+
+  const dur = Math.max(0.18, Math.min(0.6, config.durationMs / 1000));
+  const stagger = Math.min(index, 11) * 0.022;
+
+  switch (config.effect) {
+    case "portal":
+      return {
+        initial: { scale: 0.34, opacity: 0, rotate: -14 },
+        animate: { scale: 1, opacity: 1, rotate: 0 },
+        exit: { scale: 0.42, opacity: 0, rotate: 12 },
+        transition: { duration: dur, delay: stagger, ease: [0.16, 1, 0.3, 1] as const },
+      };
+
+    case "digital-disintegration":
+      return {
+        initial: {
+          opacity: 0,
+          scale: 0.68,
+          x: (index % 2 === 0 ? -1 : 1) * 8,
+          y: -6,
+          filter: "blur(5px)",
+        },
+        animate: { opacity: 1, scale: 1, x: 0, y: 0, filter: "blur(0px)" },
+        exit: {
+          opacity: 0,
+          scale: 1.18,
+          x: (index % 2 === 0 ? 1 : -1) * 10,
+          filter: "blur(6px)",
+        },
+        transition: { duration: dur, delay: stagger, ease: [0.22, 1, 0.36, 1] as const },
+      };
+
+    case "light-sweep":
+      return {
+        initial: { clipPath: "inset(0 100% 0 0)", opacity: 0.25, x: -12 },
+        animate: { clipPath: "inset(0 0% 0 0)", opacity: 1, x: 0 },
+        exit: { clipPath: "inset(0 0 0 100%)", opacity: 0, x: 10 },
+        transition: { duration: dur, delay: stagger, ease: [0.2, 0.9, 0.25, 1] as const },
+      };
+
+    case "dimensional-slide":
+      return {
+        initial: { opacity: 0, y: 18, rotateY: -36, rotateX: 16, scale: 0.78 },
+        animate: { opacity: 1, y: 0, rotateY: 0, rotateX: 0, scale: 1 },
+        exit: { opacity: 0, y: -14, rotateY: 32, rotateX: -12, scale: 0.8 },
+        transition: { duration: dur, delay: stagger, ease: [0.18, 0.88, 0.28, 1] as const },
+      };
+
+    case "energy-dissolve":
+      return {
+        initial: { opacity: 0, scale: 0.8, filter: "brightness(1.85) blur(3px)" },
+        animate: { opacity: 1, scale: 1, filter: "brightness(1) blur(0px)" },
+        exit: { opacity: 0, scale: 1.15, filter: "brightness(1.85) blur(3px)" },
+        transition: { duration: dur * 1.05, delay: stagger, ease: [0.4, 0, 0.2, 1] as const },
+      };
+
+    case "classic":
+    default:
+      return {
+        initial: { opacity: 0, y: 10, scale: 0.92 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        exit: { opacity: 0, y: 6, scale: 0.94 },
+        transition: { duration: Math.min(dur, 0.24), delay: stagger * 0.5, ease: "easeOut" as const },
+      };
+  }
+}
+
 export function getHilmAppWindowMotion(
   effect: TransitionEffectId,
   enabled: boolean,
@@ -221,6 +301,12 @@ const PREVIEW_MOTES = [
   { dx: 28, dy: -8, color: "#E2E8F0", size: 3 },
 ];
 
+const PREVIEW_ICONS = [
+  { id: "camera", label: "Câmera", Icon: Camera, accent: "text-cyan-300 border-cyan-400/60" },
+  { id: "music", label: "Música", Icon: Music, accent: "text-amber-300 border-amber-400/60" },
+  { id: "browser", label: "Navegador", Icon: Compass, accent: "text-sky-300 border-sky-400/60" },
+];
+
 interface HilmTransitionPreviewProps {
   config: TransitionConfig;
   replayTrigger: number;
@@ -288,9 +374,9 @@ export function HilmTransitionPreview({
         </button>
       </div>
 
-      {/* Simulated Mini HUD Viewport */}
+      {/* Simulated Mini HUD Viewport showing both HUD card & app icons */}
       <div
-        className="relative h-32 rounded-lg overflow-hidden border border-cyan-500/20 bg-gradient-to-br from-[#04070D] via-[#091220] to-[#060B15] flex items-center justify-center"
+        className="relative h-36 rounded-lg overflow-hidden border border-cyan-500/20 bg-gradient-to-br from-[#04070D] via-[#091220] to-[#060B15] flex flex-col items-center justify-center gap-2.5 px-3"
         style={{ perspective: "540px" }}
       >
         {/* Subtle HUD Grid Background */}
@@ -306,31 +392,47 @@ export function HilmTransitionPreview({
         <AnimatePresence mode="wait">
           {stageOpen && (
             <motion.div
-              key={`preview-card-${config.effect}-${config.enabled}`}
+              key={`preview-stage-${config.effect}-${config.enabled}`}
               initial={cardMotion.initial}
               animate={cardMotion.animate}
               exit={cardMotion.exit}
               transition={cardMotion.transition}
-              className="relative z-10 w-[76%] max-w-[240px] rounded-xl bg-[#0A1322]/90 border border-cyan-400/50 px-3.5 py-2.5 shadow-lg shadow-black/60"
+              className="relative z-10 w-[86%] max-w-[270px] rounded-xl bg-[#0A1322]/90 border border-cyan-400/45 px-3.5 py-2.5 shadow-lg shadow-black/60 space-y-2.5"
             >
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-md bg-cyan-500/20 border border-cyan-400/60 flex items-center justify-center">
-                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-300" />
-                  </span>
-                  <div>
-                    <div className="text-[11px] font-semibold text-slate-100">
-                      Painel HILM
-                    </div>
-                    <div className="text-[10px] font-mono-tabular text-cyan-300/80">
-                      {config.enabled ? `${config.durationMs} ms` : "Instantâneo"}
-                    </div>
-                  </div>
+                <div className="text-[11px] font-semibold text-slate-100 truncate">
+                  Painel e Ícones HILM
                 </div>
-                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <div className="text-[10px] font-mono-tabular text-cyan-300/85 shrink-0">
+                  {config.enabled ? `${config.durationMs} ms` : "Instantâneo"}
+                </div>
               </div>
-              <div className="mt-2 h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
-                <div className="h-full w-2/3 bg-gradient-to-r from-cyan-400 to-amber-400 rounded-full" />
+
+              <div className="flex items-center justify-around gap-2" style={{ perspective: "420px" }}>
+                {PREVIEW_ICONS.map(({ id, label, Icon, accent }, idx) => {
+                  const iconMotion = getHilmIconItemMotion(
+                    config,
+                    idx,
+                    Boolean(prefersReducedMotion)
+                  );
+                  return (
+                    <motion.div
+                      key={id}
+                      initial={iconMotion.initial}
+                      animate={iconMotion.animate}
+                      exit={iconMotion.exit}
+                      transition={iconMotion.transition}
+                      className="flex flex-col items-center gap-1"
+                    >
+                      <span
+                        className={`w-9 h-9 rounded-full bg-[#060C16] border ${accent} flex items-center justify-center`}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </span>
+                      <span className="text-[9.5px] text-slate-300">{label}</span>
+                    </motion.div>
+                  );
+                })}
               </div>
             </motion.div>
           )}

@@ -1,17 +1,25 @@
 import { Plus, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { IconPackId, InstalledAppItem, SlotId } from "../types/launcher";
-import { SLOT_LABELS } from "../data/launcherCatalog";
+import { motion, useReducedMotion } from "motion/react";
+import type {
+  IconPackId,
+  InstalledAppItem,
+  SlotId,
+  TransitionConfig,
+} from "../types/launcher";
+import { DEFAULT_LAUNCHER_STATE, SLOT_LABELS } from "../data/launcherCatalog";
 import {
   isArtifactIconPack,
   usesExpandedGlyphScale,
 } from "../data/iconPackRegistry";
 import { AppGlyph } from "./AppGlyph";
+import { getHilmIconItemMotion } from "./HilmTransitionPreview";
 
 interface AppDrawerModalProps {
   apps: InstalledAppItem[];
   iconPack: IconPackId;
   targetSlot: SlotId | null;
+  transition?: TransitionConfig;
   onClose: () => void;
   onSelectApp: (app: InstalledAppItem, originElement?: HTMLElement | null) => void;
   onPinToSlot?: (app: InstalledAppItem) => void;
@@ -21,12 +29,14 @@ export function AppDrawerModal({
   apps,
   iconPack,
   targetSlot,
+  transition = DEFAULT_LAUNCHER_STATE.transition,
   onClose,
   onSelectApp,
   onPinToSlot,
 }: AppDrawerModalProps) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("Todos");
+  const prefersReducedMotion = Boolean(useReducedMotion());
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(apps.map((a) => a.category)));
@@ -109,58 +119,68 @@ export function AppDrawerModal({
             Nenhum aplicativo encontrado para "{query}".
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-2">
-            {filtered.map((app) => (
-              <div
-                key={app.packageName}
-                className="group relative flex flex-col items-center p-2 rounded-xl bg-[#0B121E]/70 border border-slate-800/70 hover:border-cyan-400/50 transition-colors"
-              >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    const iconEl = e.currentTarget.querySelector<HTMLElement>("[data-portal-glyph]");
-                    onSelectApp(app, iconEl ?? e.currentTarget);
-                  }}
-                  className="w-full flex flex-col items-center gap-1.5 min-h-[44px] active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg cursor-pointer"
+          <div className="grid grid-cols-4 gap-2" style={{ perspective: "620px" }}>
+            {filtered.map((app, index) => {
+              const itemMotion = getHilmIconItemMotion(
+                transition,
+                index,
+                prefersReducedMotion
+              );
+              return (
+                <motion.div
+                  key={`${category}-${transition.effect}-${app.packageName}`}
+                  initial={itemMotion.initial}
+                  animate={itemMotion.animate}
+                  transition={itemMotion.transition}
+                  className="group relative flex flex-col items-center p-2 rounded-xl bg-[#0B121E]/70 border border-slate-800/70 hover:border-cyan-400/50 transition-colors"
                 >
-                  <div
-                    data-portal-glyph="true"
-                    className={
-                      isArtifactIconPack(iconPack)
-                        ? "w-12 h-12 flex items-center justify-center"
-                        : "w-11 h-11 rounded-full bg-[#060A12] border border-cyan-500/30 flex items-center justify-center"
-                    }
-                  >
-                    <AppGlyph
-                      app={app}
-                      iconPack={iconPack}
-                      sizeClass={
-                        isArtifactIconPack(iconPack)
-                          ? "w-11 h-11"
-                          : usesExpandedGlyphScale(iconPack)
-                            ? "w-8 h-8"
-                            : "w-5 h-5"
-                      }
-                    />
-                  </div>
-                  <span className="text-[11px] text-slate-200 truncate w-full text-center">
-                    {app.label}
-                  </span>
-                </button>
-                {!targetSlot && onPinToSlot && (
                   <button
                     type="button"
-                    onClick={() => onPinToSlot(app)}
-                    title="Fixar na tela inicial"
-                    aria-label={`Fixar ${app.label} na tela inicial`}
-                    className="mt-1 px-1.5 py-0.5 text-[10px] text-amber-300/90 hover:text-amber-200 flex items-center gap-0.5 whitespace-nowrap"
+                    onClick={(e) => {
+                      const iconEl = e.currentTarget.querySelector<HTMLElement>("[data-portal-glyph]");
+                      onSelectApp(app, iconEl ?? e.currentTarget);
+                    }}
+                    className="w-full flex flex-col items-center gap-1.5 min-h-[44px] active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg cursor-pointer"
                   >
-                    <Plus className="w-3 h-3" />
-                    <span>Fixar</span>
+                    <div
+                      data-portal-glyph="true"
+                      className={
+                        isArtifactIconPack(iconPack)
+                          ? "w-12 h-12 flex items-center justify-center"
+                          : "w-11 h-11 rounded-full bg-[#060A12] border border-cyan-500/30 flex items-center justify-center"
+                      }
+                    >
+                      <AppGlyph
+                        app={app}
+                        iconPack={iconPack}
+                        sizeClass={
+                          isArtifactIconPack(iconPack)
+                            ? "w-11 h-11"
+                            : usesExpandedGlyphScale(iconPack)
+                              ? "w-8 h-8"
+                              : "w-5 h-5"
+                        }
+                      />
+                    </div>
+                    <span className="text-[11px] text-slate-200 truncate w-full text-center">
+                      {app.label}
+                    </span>
                   </button>
-                )}
-              </div>
-            ))}
+                  {!targetSlot && onPinToSlot && (
+                    <button
+                      type="button"
+                      onClick={() => onPinToSlot(app)}
+                      title="Fixar na tela inicial"
+                      aria-label={`Fixar ${app.label} na tela inicial`}
+                      className="mt-1 px-1.5 py-0.5 text-[10px] text-amber-300/90 hover:text-amber-200 flex items-center gap-0.5 whitespace-nowrap"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Fixar</span>
+                    </button>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>

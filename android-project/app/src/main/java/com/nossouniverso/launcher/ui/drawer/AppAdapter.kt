@@ -12,21 +12,26 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.nossouniverso.launcher.R
 import com.nossouniverso.launcher.model.AppInfo
+import com.nossouniverso.launcher.model.HilmTransitionConfig
+import com.nossouniverso.launcher.ui.views.HilmTransitionAnimator
 
 class AppAdapter(
     private val onAppClick: (AppInfo, View) -> Unit,
     private val onAppLongClick: (AppInfo) -> Unit,
-    private val itemLayoutResId: Int = R.layout.item_app_drawer
+    private val itemLayoutResId: Int = R.layout.item_app_drawer,
+    private val transitionConfig: HilmTransitionConfig = HilmTransitionConfig()
 ) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
 
     private val fullList = mutableListOf<AppInfo>()
     private val filteredList = mutableListOf<AppInfo>()
+    private val animatedPositions = HashSet<Int>()
 
     fun submitList(apps: List<AppInfo>) {
         fullList.clear()
         fullList.addAll(apps)
         filteredList.clear()
         filteredList.addAll(apps)
+        animatedPositions.clear()
         notifyDataSetChanged()
     }
 
@@ -48,7 +53,7 @@ class AppAdapter(
     }
 
     override fun onBindViewHolder(holder: AppViewHolder, position: Int) {
-        holder.bind(filteredList[position])
+        holder.bind(filteredList[position], position)
     }
 
     override fun getItemCount(): Int = filteredList.size
@@ -58,18 +63,29 @@ class AppAdapter(
         private val labelView: TextView = itemView.findViewById(R.id.txtAppLabel)
 
         @SuppressLint("ClickableViewAccessibility")
-        fun bind(app: AppInfo) {
-            iconView.animate().cancel()
+        fun bind(app: AppInfo, position: Int) {
+            HilmTransitionAnimator.cancelRunning(iconView)
+            iconView.clipBounds = null
+            iconView.translationX = 0f
+            iconView.translationY = 0f
+            iconView.rotation = 0f
+            iconView.rotationX = 0f
+            iconView.rotationY = 0f
             iconView.scaleX = 1f
             iconView.scaleY = 1f
+            iconView.alpha = 1f
             iconView.setImageDrawable(app.icon)
             labelView.text = app.label
+
+            if (position < 20 && animatedPositions.add(position)) {
+                HilmTransitionAnimator.animateIconEntrance(iconView, position, transitionConfig)
+            }
 
             itemView.setOnTouchListener { v, event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                        iconView.animate().cancel()
+                        HilmTransitionAnimator.cancelRunning(iconView)
                         iconView.animate()
                             .scaleX(0.88f)
                             .scaleY(0.88f)
@@ -81,7 +97,7 @@ class AppAdapter(
                         iconView.animate()
                             .scaleX(1f)
                             .scaleY(1f)
-                            .setDuration(200L)
+                            .setDuration(180L)
                             .setInterpolator(OvershootInterpolator(1.5f))
                             .start()
                     }
@@ -89,7 +105,10 @@ class AppAdapter(
                 false
             }
 
-            itemView.setOnClickListener { onAppClick(app, iconView) }
+            itemView.setOnClickListener {
+                HilmTransitionAnimator.animateIconTapReaction(iconView, transitionConfig)
+                onAppClick(app, iconView)
+            }
             itemView.setOnLongClickListener {
                 onAppLongClick(app)
                 true

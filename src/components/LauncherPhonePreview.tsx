@@ -43,6 +43,7 @@ import {
 } from "./HilmPortalOverlay";
 import {
   getHilmAppWindowMotion,
+  getHilmIconItemMotion,
   getHilmSurfaceMotion,
 } from "./HilmTransitionPreview";
 import { HudSvgFrame } from "./HudSvgFrame";
@@ -284,9 +285,9 @@ export function LauncherPhonePreview({
 
     const launchDelay =
       state.transition.effect === "classic"
-        ? 0
-        : Math.max(60, Math.min(130, Math.round(state.transition.durationMs * 0.32)));
-    const cleanupDelay = Math.max(260, state.transition.durationMs + 110);
+        ? 85
+        : Math.max(95, Math.min(220, Math.round(state.transition.durationMs * 0.44)));
+    const cleanupDelay = Math.max(280, state.transition.durationMs + 130);
 
     setPortalWindowOrigin(origin);
     setPortalLaunch({
@@ -641,6 +642,23 @@ export function LauncherPhonePreview({
           {app ? (
             <>
               <motion.span
+                key={`plate-glyph-${slotId}-${state.iconPack}-${state.transition.effect}-${state.transition.enabled}-${app.packageName}`}
+                initial={
+                  getHilmIconItemMotion(
+                    state.transition,
+                    PLATE_SLOTS.indexOf(slotId),
+                    prefersReducedMotion
+                  ).initial
+                }
+                animate={
+                  plateState === "rest"
+                    ? getHilmIconItemMotion(
+                        state.transition,
+                        PLATE_SLOTS.indexOf(slotId),
+                        prefersReducedMotion
+                      ).animate
+                    : plateState
+                }
                 variants={{
                   rest: { scale: 1 },
                   hover: { scale: prefersReducedMotion ? 1 : 1.12 },
@@ -649,7 +667,15 @@ export function LauncherPhonePreview({
                   dropTarget: { scale: prefersReducedMotion ? 1 : 1.15 },
                   selected: { scale: prefersReducedMotion ? 1 : 1.1 },
                 }}
-                transition={hilmSpring}
+                transition={
+                  plateState === "rest"
+                    ? getHilmIconItemMotion(
+                        state.transition,
+                        PLATE_SLOTS.indexOf(slotId),
+                        prefersReducedMotion
+                      ).transition
+                    : hilmSpring
+                }
                 data-portal-glyph="true"
                 className="inline-flex items-center justify-center shrink-0"
               >
@@ -760,12 +786,17 @@ export function LauncherPhonePreview({
     );
   };
 
-  const renderSideDrawerSlot = (slotId: SlotId) => {
+  const renderSideDrawerSlot = (slotId: SlotId, drawerIndex = 0) => {
     const slot = state.slots[slotId];
     const app = slot?.packageName ? appMap.get(slot.packageName) : undefined;
     const isSwapSelected = selectedSwapSource === slotId;
     const isBeingDragged = draggedSlot === slotId;
     const isDropTarget = dragOverSlot === slotId && draggedSlot !== null && draggedSlot !== slotId;
+    const iconItemMotion = getHilmIconItemMotion(
+      state.transition,
+      drawerIndex,
+      prefersReducedMotion
+    );
 
     const slotState = prefersReducedMotion
       ? "rest"
@@ -868,6 +899,9 @@ export function LauncherPhonePreview({
           </svg>
           {app ? (
             <motion.span
+              key={`wing-glyph-${slotId}-${state.iconPack}-${state.transition.effect}-${state.transition.enabled}-${app.packageName}`}
+              initial={iconItemMotion.initial}
+              animate={slotState === "rest" ? iconItemMotion.animate : slotState}
               variants={{
                 rest: { scale: 1 },
                 hover: { scale: prefersReducedMotion ? 1 : 1.14 },
@@ -876,7 +910,7 @@ export function LauncherPhonePreview({
                 dropTarget: { scale: prefersReducedMotion ? 1 : 1.15 },
                 selected: { scale: prefersReducedMotion ? 1 : 1.1 },
               }}
-              transition={hilmSpring}
+              transition={slotState === "rest" ? iconItemMotion.transition : hilmSpring}
               data-portal-glyph="true"
               className="relative z-10 inline-flex items-center justify-center"
             >
@@ -1033,6 +1067,23 @@ export function LauncherPhonePreview({
           </svg>
           {app ? (
             <motion.span
+              key={`dock-glyph-${slotId}-${state.iconPack}-${state.transition.effect}-${state.transition.enabled}-${app.packageName}`}
+              initial={
+                getHilmIconItemMotion(
+                  state.transition,
+                  ["dock_1", "dock_2", "dock_4", "dock_5"].indexOf(slotId),
+                  prefersReducedMotion
+                ).initial
+              }
+              animate={
+                dockState === "rest"
+                  ? getHilmIconItemMotion(
+                      state.transition,
+                      ["dock_1", "dock_2", "dock_4", "dock_5"].indexOf(slotId),
+                      prefersReducedMotion
+                    ).animate
+                  : dockState
+              }
               variants={{
                 rest: { scale: 1 },
                 hover: { scale: prefersReducedMotion ? 1 : 1.14 },
@@ -1041,7 +1092,15 @@ export function LauncherPhonePreview({
                 dropTarget: { scale: prefersReducedMotion ? 1 : 1.15 },
                 selected: { scale: prefersReducedMotion ? 1 : 1.1 },
               }}
-              transition={hilmSpring}
+              transition={
+                dockState === "rest"
+                  ? getHilmIconItemMotion(
+                      state.transition,
+                      ["dock_1", "dock_2", "dock_4", "dock_5"].indexOf(slotId),
+                      prefersReducedMotion
+                    ).transition
+                  : hilmSpring
+              }
               data-portal-glyph="true"
               className="relative z-10 inline-flex items-center justify-center"
             >
@@ -1220,7 +1279,7 @@ export function LauncherPhonePreview({
               style={{ transformOrigin: "left center" }}
               className="absolute left-[16px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
             >
-              {LEFT_DRAWER_SLOT_IDS.map((slotId) => renderSideDrawerSlot(slotId))}
+              {LEFT_DRAWER_SLOT_IDS.map((slotId, idx) => renderSideDrawerSlot(slotId, idx))}
             </motion.aside>
           )}
         </AnimatePresence>
@@ -1238,7 +1297,7 @@ export function LauncherPhonePreview({
               style={{ transformOrigin: "right center" }}
               className="absolute right-[16px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
             >
-              {RIGHT_DRAWER_SLOT_IDS.map((slotId) => renderSideDrawerSlot(slotId))}
+              {RIGHT_DRAWER_SLOT_IDS.map((slotId, idx) => renderSideDrawerSlot(slotId, idx))}
             </motion.aside>
           )}
         </AnimatePresence>
@@ -1460,6 +1519,7 @@ export function LauncherPhonePreview({
                 apps={INSTALLED_APPS_CATALOG}
                 iconPack={state.iconPack}
                 targetSlot={drawerTargetSlot}
+                transition={state.transition}
                 onClose={() => {
                   setDrawerOpen(false);
                   setDrawerTargetSlot(null);
