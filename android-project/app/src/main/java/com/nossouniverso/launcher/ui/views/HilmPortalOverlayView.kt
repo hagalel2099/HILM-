@@ -332,7 +332,7 @@ class HilmPortalOverlayView @JvmOverloads constructor(
             canvas.drawLine(originX, originY, originX + span, originY, flarePaint)
         }
 
-        drawSourceIcon(canvas, eased, scaleBoost = 0.50f)
+        drawSourceIcon(canvas, scaleBoost = 0.50f)
     }
 
     private fun drawDisintegrationEffect(canvas: Canvas, eased: Float, fadeOut: Float) {
@@ -350,7 +350,7 @@ class HilmPortalOverlayView @JvmOverloads constructor(
             canvas.drawCircle(mx, my, dotR, motePaint)
         }
 
-        drawSourceIcon(canvas, eased, scaleBoost = 0.28f)
+        drawSourceIcon(canvas, scaleBoost = 0.28f)
     }
 
     private fun drawLightSweepEffect(canvas: Canvas, eased: Float, fadeOut: Float) {
@@ -380,7 +380,7 @@ class HilmPortalOverlayView @JvmOverloads constructor(
         flarePaint.color = Color.argb((145 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238)
         canvas.drawLine(originX - span, originY, originX + span, originY, flarePaint)
 
-        drawSourceIcon(canvas, eased, scaleBoost = 0.24f)
+        drawSourceIcon(canvas, scaleBoost = 0.24f)
     }
 
     private fun drawDimensionalEffect(canvas: Canvas, eased: Float, fadeOut: Float) {
@@ -403,7 +403,7 @@ class HilmPortalOverlayView @JvmOverloads constructor(
         framePaint.color = Color.argb((150 * fadeOut).toInt().coerceIn(0, 255), 251, 146, 60)
         canvas.drawRoundRect(frameRect, 14f * density, 14f * density, framePaint)
 
-        drawSourceIcon(canvas, eased, scaleBoost = 0.44f)
+        drawSourceIcon(canvas, scaleBoost = 0.44f)
     }
 
     private fun drawEnergyDissolveEffect(canvas: Canvas, eased: Float, fadeOut: Float) {
