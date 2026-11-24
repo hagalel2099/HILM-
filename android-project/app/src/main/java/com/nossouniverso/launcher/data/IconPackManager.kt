@@ -465,6 +465,18 @@ class IconPackManager(
                 activityName = activityName,
                 fallback = fallback
             )
+            "tron_neon", "tron-neon" -> renderUnifiedTronNeonIcon(
+                cacheIdentity = "$packId:$normalizedPkg/$normalizedAct",
+                fallback = fallback
+            )
+            "cyberpunk_holo", "cyberpunk-holo" -> renderUnifiedCyberpunkHoloIcon(
+                cacheIdentity = "$packId:$normalizedPkg/$normalizedAct",
+                fallback = fallback
+            )
+            "obsidian_core", "obsidian-core" -> renderUnifiedObsidianCoreIcon(
+                cacheIdentity = "$packId:$normalizedPkg/$normalizedAct",
+                fallback = fallback
+            )
             else -> renderUnifiedTitaniumLiquidIcon(
                 cacheIdentity = "$packId:$normalizedPkg/$normalizedAct",
                 fallback = fallback
@@ -1022,6 +1034,1003 @@ class IconPackManager(
             // Disk cache write is best-effort
         }
         return BitmapDrawable(context.resources, out)
+    }
+
+    /**
+     * Converts any unmapped native or third-party app icon into the TRON Neon aesthetic:
+     * deep obsidian-teal 3D beveled tile, electric cyan neon double rim, glossy top glass specular,
+     * warm amber micro-accent bar, and luminous cyan/amber sculpted foreground symbol.
+     */
+    private fun renderUnifiedTronNeonIcon(
+        cacheIdentity: String,
+        fallback: Drawable
+    ): Drawable {
+        val size = 192
+        val cacheKey = "tron_neon_auto_v1:$cacheIdentity#$size"
+        bitmapCache.get(cacheKey)?.let { cached ->
+            return BitmapDrawable(context.resources, cached)
+        }
+
+        val diskFile = diskCacheFileForKey(cacheKey)
+        if (diskFile.exists()) {
+            try {
+                FileInputStream(diskFile).use { stream ->
+                    BitmapFactory.decodeStream(stream)?.let { decoded ->
+                        bitmapCache.put(cacheKey, decoded)
+                        return BitmapDrawable(context.resources, decoded)
+                    }
+                }
+            } catch (_: Exception) {
+                // Re-render cleanly if disk entry was corrupted
+            }
+        }
+
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+
+        val margin = size * 0.08f
+        val rect = RectF(margin, margin - 2f, size - margin, size - margin - 2f)
+        val radius = size * 0.22f
+        val squirclePath = Path().apply {
+            addRoundRect(rect, radius, radius, Path.Direction.CW)
+        }
+
+        // 1. Subtle 3D stacked back-slab edge matching TRON dimensional tiles
+        val backRect = RectF(rect.left + 3f, rect.top + 5.5f, rect.right + 3f, rect.bottom + 5.5f)
+        val backFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(4, 34, 46)
+        }
+        canvas.drawRoundRect(backRect, radius, radius, backFillPaint)
+        val backStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.6f
+            color = Color.argb(145, 14, 165, 233)
+        }
+        canvas.drawRoundRect(backRect, radius, radius, backStrokePaint)
+
+        // 2. Electric cyan outer neon aura
+        val cyanAuraPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 6f
+            color = Color.argb(150, 34, 211, 238)
+            maskFilter = BlurMaskFilter(7.5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawPath(squirclePath, cyanAuraPaint)
+
+        // 3. Deep obsidian-teal interior gradient
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                intArrayOf(
+                    Color.rgb(11, 46, 60),
+                    Color.rgb(4, 18, 26),
+                    Color.rgb(2, 9, 14)
+                ),
+                floatArrayOf(0f, 0.52f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(squirclePath, bgPaint)
+
+        // 4. Extract & render foreground app symbol in glowing TRON Neon style
+        val prepared = prepareForegroundSymbol(fallback, 128)
+        if (prepared.isIsolatedSilhouette) {
+            drawSculptedTronNeonSymbol(canvas, prepared.bitmap, size)
+        } else {
+            drawTronFramedArtwork(canvas, prepared.bitmap, size)
+        }
+        if (!prepared.bitmap.isRecycled) {
+            prepared.bitmap.recycle()
+        }
+
+        // 5. Glossy cyan glass top specular reflection inside tile
+        canvas.save()
+        canvas.clipPath(squirclePath)
+        val domePath = Path().apply {
+            addOval(
+                RectF(
+                    rect.left - size * 0.14f,
+                    rect.top - size * 0.34f,
+                    rect.right + size * 0.14f,
+                    rect.top + rect.height() * 0.46f
+                ),
+                Path.Direction.CW
+            )
+        }
+        val domePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f,
+                rect.top,
+                0f,
+                rect.top + rect.height() * 0.44f,
+                Color.argb(72, 103, 232, 249),
+                Color.argb(0, 34, 211, 238),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(domePath, domePaint)
+
+        // Signature warm amber status micro-pill at top-right corner of tile
+        val pillW = size * 0.145f
+        val pillH = size * 0.048f
+        val pillRect = RectF(
+            rect.right - size * 0.11f - pillW,
+            rect.top + size * 0.095f,
+            rect.right - size * 0.11f,
+            rect.top + size * 0.095f + pillH
+        )
+        val amberGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(145, 245, 158, 11)
+            maskFilter = BlurMaskFilter(4f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawRoundRect(pillRect, pillH / 2f, pillH / 2f, amberGlowPaint)
+        val amberPillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                pillRect.left,
+                pillRect.top,
+                pillRect.right,
+                pillRect.bottom,
+                Color.parseColor("#FDE68A"),
+                Color.parseColor("#F59E0B"),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRoundRect(pillRect, pillH / 2f, pillH / 2f, amberPillPaint)
+        canvas.restore()
+
+        // 6. Electric cyan outer neon border + crisp ice-cyan inner bevel
+        val outerNeonPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 5.4f
+            shader = LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                intArrayOf(
+                    Color.parseColor("#A5F3FC"),
+                    Color.parseColor("#22D3EE"),
+                    Color.parseColor("#06B6D4"),
+                    Color.parseColor("#67E8F9")
+                ),
+                floatArrayOf(0f, 0.35f, 0.72f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(squirclePath, outerNeonPaint)
+
+        val innerRect = RectF(
+            rect.left + 4f,
+            rect.top + 4f,
+            rect.right - 4f,
+            rect.bottom - 4f
+        )
+        val innerRadius = max(4f, radius - 4f)
+        val innerRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 1.8f
+            color = Color.argb(200, 224, 249, 255)
+        }
+        canvas.drawRoundRect(innerRect, innerRadius, innerRadius, innerRimPaint)
+
+        bitmapCache.put(cacheKey, out)
+        try {
+            renderDiskCacheDir.mkdirs()
+            FileOutputStream(diskFile).use { fos ->
+                out.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+        } catch (_: Exception) {
+            // Disk cache write is best-effort
+        }
+        return BitmapDrawable(context.resources, out)
+    }
+
+    private fun drawSculptedTronNeonSymbol(
+        canvas: Canvas,
+        symbolBmp: Bitmap,
+        canvasSize: Int
+    ) {
+        val drawSize = (canvasSize * 0.56f).toInt()
+        val offset = (canvasSize - drawSize) / 2f
+        val destRect = RectF(offset, offset + 2f, offset + drawSize, offset + drawSize + 2f)
+
+        val alphaMask = symbolBmp.extractAlpha()
+
+        // Drop shadow for floating 3D separation
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(220, 0, 0, 0)
+            maskFilter = BlurMaskFilter(6f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left + 3f, destRect.top + 5f, destRect.right + 3f, destRect.bottom + 5f),
+            shadowPaint
+        )
+
+        // Electric cyan neon halo behind symbol
+        val cyanGlow = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(185, 34, 211, 238)
+            maskFilter = BlurMaskFilter(6.5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(alphaMask, null, destRect, cyanGlow)
+
+        // Subtle warm amber back-rim bounce on bottom-right edge
+        val amberBounce = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(115, 245, 158, 11)
+            maskFilter = BlurMaskFilter(3.5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left + 2f, destRect.top + 2f, destRect.right + 2f, destRect.bottom + 2f),
+            amberBounce
+        )
+
+        // Sculpted ice-cyan to electric-cyan glowing symbol preserving internal luminance details
+        val sculpted = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
+        val sCanvas = Canvas(sculpted)
+        val lumaMatrix = ColorMatrix(
+            floatArrayOf(
+                0.15f, 0.30f, 0.08f, 0f, 95f,
+                0.28f, 0.56f, 0.14f, 0f, 115f,
+                0.32f, 0.62f, 0.18f, 0f, 125f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
+        val basePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(lumaMatrix)
+        }
+        sCanvas.drawBitmap(symbolBmp, null, RectF(0f, 0f, drawSize.toFloat(), drawSize.toFloat()), basePaint)
+
+        val neonFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+            shader = LinearGradient(
+                0f,
+                0f,
+                drawSize.toFloat(),
+                drawSize.toFloat(),
+                intArrayOf(
+                    Color.argb(190, 236, 254, 255),
+                    Color.argb(165, 103, 232, 249),
+                    Color.argb(155, 34, 211, 238),
+                    Color.argb(165, 6, 182, 212)
+                ),
+                floatArrayOf(0f, 0.32f, 0.70f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        sCanvas.drawRect(0f, 0f, drawSize.toFloat(), drawSize.toFloat(), neonFillPaint)
+
+        canvas.drawBitmap(sculpted, null, destRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+
+        sculpted.recycle()
+        alphaMask.recycle()
+    }
+
+    private fun drawTronFramedArtwork(
+        canvas: Canvas,
+        artworkBmp: Bitmap,
+        canvasSize: Int
+    ) {
+        val inset = canvasSize * 0.18f
+        val innerRect = RectF(inset, inset + 1f, canvasSize - inset, canvasSize - inset + 1f)
+        val innerRadius = canvasSize * 0.16f
+        val clipPath = Path().apply {
+            addRoundRect(innerRect, innerRadius, innerRadius, Path.Direction.CW)
+        }
+
+        canvas.save()
+        canvas.clipPath(clipPath)
+        val tronSatMatrix = ColorMatrix().apply { setSaturation(0.72f) }
+        val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(tronSatMatrix)
+        }
+        canvas.drawBitmap(artworkBmp, null, innerRect, artPaint)
+
+        val rimTint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                innerRect.left,
+                innerRect.top,
+                innerRect.right,
+                innerRect.bottom,
+                Color.argb(46, 34, 211, 238),
+                Color.argb(32, 245, 158, 11),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(innerRect, rimTint)
+        canvas.restore()
+
+        val wellBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2f
+            color = Color.argb(145, 34, 211, 238)
+        }
+        canvas.drawRoundRect(innerRect, innerRadius, innerRadius, wellBorderPaint)
+    }
+
+    /**
+     * Converts any unmapped native or future third-party app icon into the Cyberpunk Holo aesthetic:
+     * 3D translucent holographic glass cube housing, subtle internal micro-circuit lines,
+     * electric cyan + neon magenta edge aura, and glowing cyan/magenta symbol.
+     */
+    private fun renderUnifiedCyberpunkHoloIcon(
+        cacheIdentity: String,
+        fallback: Drawable
+    ): Drawable {
+        val size = 192
+        val cacheKey = "cyberpunk_holo_auto_v1:$cacheIdentity#$size"
+        bitmapCache.get(cacheKey)?.let { cached ->
+            return BitmapDrawable(context.resources, cached)
+        }
+
+        val diskFile = diskCacheFileForKey(cacheKey)
+        if (diskFile.exists()) {
+            try {
+                FileInputStream(diskFile).use { stream ->
+                    BitmapFactory.decodeStream(stream)?.let { decoded ->
+                        bitmapCache.put(cacheKey, decoded)
+                        return BitmapDrawable(context.resources, decoded)
+                    }
+                }
+            } catch (_: Exception) {
+                // Re-render cleanly if disk entry was corrupted
+            }
+        }
+
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+
+        val margin = size * 0.085f
+        val rect = RectF(margin - 2f, margin, size - margin - 2f, size - margin)
+        val radius = size * 0.21f
+        val cubePath = Path().apply {
+            addRoundRect(rect, radius, radius, Path.Direction.CW)
+        }
+
+        // 1. 3D glass cube back-depth edge on right/bottom
+        val depthRect = RectF(rect.left + 5f, rect.top + 3.5f, rect.right + 5f, rect.bottom + 3.5f)
+        val depthFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                depthRect.left,
+                depthRect.top,
+                depthRect.right,
+                depthRect.bottom,
+                Color.argb(120, 14, 116, 144),
+                Color.argb(120, 131, 24, 67),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRoundRect(depthRect, radius, radius, depthFillPaint)
+        val depthStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.4f
+            color = Color.argb(165, 34, 211, 238)
+        }
+        canvas.drawRoundRect(depthRect, radius, radius, depthStrokePaint)
+
+        // 2. Dual cyan + neon pink outer holographic aura
+        val auraPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 6f
+            shader = LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                Color.argb(145, 236, 72, 153),
+                Color.argb(155, 34, 211, 238),
+                Shader.TileMode.CLAMP
+            )
+            maskFilter = BlurMaskFilter(7f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawPath(cubePath, auraPaint)
+
+        // 3. Translucent dark holographic glass cube interior
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                intArrayOf(
+                    Color.rgb(13, 35, 58),
+                    Color.rgb(7, 15, 34),
+                    Color.rgb(26, 14, 44)
+                ),
+                floatArrayOf(0f, 0.52f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(cubePath, bgPaint)
+
+        // 4. Subtle internal micro-circuit traces + corner holo nodes
+        canvas.save()
+        canvas.clipPath(cubePath)
+        val circuitPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 1.4f
+            color = Color.argb(72, 34, 211, 238)
+        }
+        val innerInset = size * 0.16f
+        val innerBox = RectF(
+            rect.left + innerInset,
+            rect.top + innerInset,
+            rect.right - innerInset,
+            rect.bottom - innerInset
+        )
+        canvas.drawRoundRect(innerBox, radius * 0.65f, radius * 0.65f, circuitPaint)
+        canvas.drawLine(rect.left + size * 0.12f, rect.centerY(), innerBox.left, rect.centerY(), circuitPaint)
+        canvas.drawLine(innerBox.right, rect.centerY(), rect.right - size * 0.12f, rect.centerY(), circuitPaint)
+        canvas.drawLine(rect.centerX(), rect.top + size * 0.12f, rect.centerX(), innerBox.top, circuitPaint)
+        canvas.drawLine(rect.centerX(), innerBox.bottom, rect.centerX(), rect.bottom - size * 0.12f, circuitPaint)
+
+        val nodePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(145, 244, 114, 182)
+        }
+        val nodeOffset = size * 0.13f
+        val nodeR = 2.6f
+        canvas.drawCircle(rect.left + nodeOffset, rect.top + nodeOffset, nodeR, nodePaint)
+        canvas.drawCircle(rect.right - nodeOffset, rect.top + nodeOffset, nodeR, nodePaint)
+        canvas.drawCircle(rect.left + nodeOffset, rect.bottom - nodeOffset, nodeR, nodePaint)
+        canvas.drawCircle(rect.right - nodeOffset, rect.bottom - nodeOffset, nodeR, nodePaint)
+        canvas.restore()
+
+        // 5. Render foreground symbol or framed third-party artwork inside glass cube
+        val prepared = prepareForegroundSymbol(fallback, 128)
+        if (prepared.isIsolatedSilhouette) {
+            drawSculptedCyberpunkNeonSymbol(canvas, prepared.bitmap, size)
+        } else {
+            drawCyberpunkFramedArtwork(canvas, prepared.bitmap, size)
+        }
+        if (!prepared.bitmap.isRecycled) {
+            prepared.bitmap.recycle()
+        }
+
+        // 6. Specular holographic glass sheen across top-left face
+        canvas.save()
+        canvas.clipPath(cubePath)
+        val sheenPath = Path().apply {
+            addOval(
+                RectF(
+                    rect.left - size * 0.16f,
+                    rect.top - size * 0.34f,
+                    rect.right + size * 0.10f,
+                    rect.top + rect.height() * 0.48f
+                ),
+                Path.Direction.CW
+            )
+        }
+        val sheenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.top + rect.height() * 0.45f,
+                Color.argb(64, 165, 243, 252),
+                Color.argb(0, 236, 72, 153),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(sheenPath, sheenPaint)
+        canvas.restore()
+
+        // 7. Outer cyan-magenta neon cube border + crisp inner glass edge
+        val outerBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 4.6f
+            shader = LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                intArrayOf(
+                    Color.parseColor("#F472B6"),
+                    Color.parseColor("#22D3EE"),
+                    Color.parseColor("#A855F7"),
+                    Color.parseColor("#67E8F9")
+                ),
+                floatArrayOf(0f, 0.35f, 0.72f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(cubePath, outerBorderPaint)
+
+        val innerGlassRect = RectF(rect.left + 4f, rect.top + 4f, rect.right - 4f, rect.bottom - 4f)
+        val innerGlassRim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 1.6f
+            color = Color.argb(185, 224, 242, 254)
+        }
+        canvas.drawRoundRect(innerGlassRect, max(4f, radius - 4f), max(4f, radius - 4f), innerGlassRim)
+
+        bitmapCache.put(cacheKey, out)
+        try {
+            renderDiskCacheDir.mkdirs()
+            FileOutputStream(diskFile).use { fos ->
+                out.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+        } catch (_: Exception) {
+            // Disk cache write is best-effort
+        }
+        return BitmapDrawable(context.resources, out)
+    }
+
+    private fun drawSculptedCyberpunkNeonSymbol(
+        canvas: Canvas,
+        symbolBmp: Bitmap,
+        canvasSize: Int
+    ) {
+        val drawSize = (canvasSize * 0.54f).toInt()
+        val offset = (canvasSize - drawSize) / 2f
+        val destRect = RectF(offset - 1f, offset, offset + drawSize - 1f, offset + drawSize)
+
+        val alphaMask = symbolBmp.extractAlpha()
+
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(215, 0, 0, 0)
+            maskFilter = BlurMaskFilter(5.5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left + 3f, destRect.top + 4f, destRect.right + 3f, destRect.bottom + 4f),
+            shadowPaint
+        )
+
+        val pinkGlow = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(190, 236, 72, 153)
+            maskFilter = BlurMaskFilter(7f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(alphaMask, null, destRect, pinkGlow)
+
+        val cyanEcho = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(135, 34, 211, 238)
+            maskFilter = BlurMaskFilter(4f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left - 1.5f, destRect.top - 1.5f, destRect.right - 1.5f, destRect.bottom - 1.5f),
+            cyanEcho
+        )
+
+        val sculpted = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
+        val sCanvas = Canvas(sculpted)
+        val lumaMatrix = ColorMatrix(
+            floatArrayOf(
+                0.28f, 0.50f, 0.16f, 0f, 115f,
+                0.14f, 0.28f, 0.10f, 0f, 88f,
+                0.26f, 0.48f, 0.18f, 0f, 125f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
+        val basePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(lumaMatrix)
+        }
+        sCanvas.drawBitmap(symbolBmp, null, RectF(0f, 0f, drawSize.toFloat(), drawSize.toFloat()), basePaint)
+
+        val neonTubePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+            shader = LinearGradient(
+                0f,
+                0f,
+                drawSize.toFloat(),
+                drawSize.toFloat(),
+                intArrayOf(
+                    Color.argb(195, 253, 242, 248),
+                    Color.argb(175, 244, 114, 182),
+                    Color.argb(165, 168, 85, 247),
+                    Color.argb(170, 34, 211, 238)
+                ),
+                floatArrayOf(0f, 0.35f, 0.70f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        sCanvas.drawRect(0f, 0f, drawSize.toFloat(), drawSize.toFloat(), neonTubePaint)
+
+        canvas.drawBitmap(sculpted, null, destRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+
+        sculpted.recycle()
+        alphaMask.recycle()
+    }
+
+    private fun drawCyberpunkFramedArtwork(
+        canvas: Canvas,
+        artworkBmp: Bitmap,
+        canvasSize: Int
+    ) {
+        val inset = canvasSize * 0.19f
+        val innerRect = RectF(inset - 1f, inset, canvasSize - inset - 1f, canvasSize - inset)
+        val innerRadius = canvasSize * 0.15f
+        val clipPath = Path().apply {
+            addRoundRect(innerRect, innerRadius, innerRadius, Path.Direction.CW)
+        }
+
+        canvas.save()
+        canvas.clipPath(clipPath)
+        val holoSatMatrix = ColorMatrix().apply { setSaturation(0.82f) }
+        val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(holoSatMatrix)
+        }
+        canvas.drawBitmap(artworkBmp, null, innerRect, artPaint)
+
+        val rimTint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                innerRect.left,
+                innerRect.top,
+                innerRect.right,
+                innerRect.bottom,
+                Color.argb(42, 236, 72, 153),
+                Color.argb(42, 34, 211, 238),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(innerRect, rimTint)
+        canvas.restore()
+
+        val wellBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2f
+            shader = LinearGradient(
+                innerRect.left,
+                innerRect.top,
+                innerRect.right,
+                innerRect.bottom,
+                Color.argb(160, 244, 114, 182),
+                Color.argb(160, 34, 211, 238),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRoundRect(innerRect, innerRadius, innerRadius, wellBorderPaint)
+    }
+
+    private fun buildChamferedOctagonPath(rect: RectF, chamfer: Float): Path {
+        return Path().apply {
+            moveTo(rect.left + chamfer, rect.top)
+            lineTo(rect.right - chamfer, rect.top)
+            lineTo(rect.right, rect.top + chamfer)
+            lineTo(rect.right, rect.bottom - chamfer)
+            lineTo(rect.right - chamfer, rect.bottom)
+            lineTo(rect.left + chamfer, rect.bottom)
+            lineTo(rect.left, rect.bottom - chamfer)
+            lineTo(rect.left, rect.top + chamfer)
+            close()
+        }
+    }
+
+    /**
+     * Converts any unmapped native or future third-party app icon into the OBSIDIAN CORE aesthetic:
+     * faceted volcanic black obsidian stone artifact, graphite chamfered bevels, brushed dark bronze
+     * inlay trim, small restrained amber/volcanic-orange core node, and sculpted bronze symbol.
+     */
+    private fun renderUnifiedObsidianCoreIcon(
+        cacheIdentity: String,
+        fallback: Drawable
+    ): Drawable {
+        val size = 192
+        val cacheKey = "obsidian_core_auto_v1:$cacheIdentity#$size"
+        bitmapCache.get(cacheKey)?.let { cached ->
+            return BitmapDrawable(context.resources, cached)
+        }
+
+        val diskFile = diskCacheFileForKey(cacheKey)
+        if (diskFile.exists()) {
+            try {
+                FileInputStream(diskFile).use { stream ->
+                    BitmapFactory.decodeStream(stream)?.let { decoded ->
+                        bitmapCache.put(cacheKey, decoded)
+                        return BitmapDrawable(context.resources, decoded)
+                    }
+                }
+            } catch (_: Exception) {
+                // Re-render cleanly if disk entry was corrupted
+            }
+        }
+
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+
+        val margin = size * 0.08f
+        val outerRect = RectF(margin, margin - 1.5f, size - margin, size - margin - 1.5f)
+        val chamfer = size * 0.19f
+        val stonePath = buildChamferedOctagonPath(outerRect, chamfer)
+
+        // 1. Subtle physical stone weight shadow + 3D lower slab depth
+        val backRect = RectF(outerRect.left + 2.5f, outerRect.top + 5f, outerRect.right + 2.5f, outerRect.bottom + 5f)
+        val backPath = buildChamferedOctagonPath(backRect, chamfer)
+        val backShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(175, 0, 0, 0)
+            maskFilter = BlurMaskFilter(5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawPath(backPath, backShadowPaint)
+        val backSlabPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(12, 14, 19)
+        }
+        canvas.drawPath(backPath, backSlabPaint)
+
+        // 2. Faceted graphite chamfer bevel exterior
+        val bevelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                outerRect.left,
+                outerRect.top,
+                outerRect.right,
+                outerRect.bottom,
+                intArrayOf(
+                    Color.rgb(52, 58, 70),
+                    Color.rgb(24, 28, 36),
+                    Color.rgb(9, 11, 15)
+                ),
+                floatArrayOf(0f, 0.48f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(stonePath, bevelPaint)
+
+        // 3. Recessed volcanic black obsidian core face inside beveled facets
+        val faceInset = size * 0.06f
+        val faceRect = RectF(
+            outerRect.left + faceInset,
+            outerRect.top + faceInset,
+            outerRect.right - faceInset,
+            outerRect.bottom - faceInset
+        )
+        val faceChamfer = max(8f, chamfer - faceInset * 0.72f)
+        val facePath = buildChamferedOctagonPath(faceRect, faceChamfer)
+        val obsidianFacePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                faceRect.left,
+                faceRect.top,
+                faceRect.right,
+                faceRect.bottom,
+                intArrayOf(
+                    Color.rgb(22, 25, 31),
+                    Color.rgb(10, 12, 16),
+                    Color.rgb(5, 6, 8)
+                ),
+                floatArrayOf(0f, 0.45f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(facePath, obsidianFacePaint)
+
+        // Controlled diagonal specular sheen across polished volcanic stone
+        canvas.save()
+        canvas.clipPath(facePath)
+        val sheenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                faceRect.left,
+                faceRect.top,
+                faceRect.centerX() + size * 0.08f,
+                faceRect.centerY() + size * 0.08f,
+                intArrayOf(
+                    Color.argb(36, 255, 255, 255),
+                    Color.argb(10, 180, 195, 215),
+                    Color.argb(0, 255, 255, 255)
+                ),
+                floatArrayOf(0f, 0.55f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(faceRect, sheenPaint)
+        canvas.restore()
+
+        // 4. Brushed dark bronze metallic inlay frame around the obsidian face
+        val bronzeRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 3.2f
+            shader = LinearGradient(
+                faceRect.left,
+                faceRect.top,
+                faceRect.right,
+                faceRect.bottom,
+                intArrayOf(
+                    Color.parseColor("#B4834D"),
+                    Color.parseColor("#7A5630"),
+                    Color.parseColor("#47321D"),
+                    Color.parseColor("#9A6E3E")
+                ),
+                floatArrayOf(0f, 0.34f, 0.72f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(facePath, bronzeRimPaint)
+
+        // 5. Render foreground symbol sculpted in brushed bronze OR framed third-party logo
+        val prepared = prepareForegroundSymbol(fallback, 128)
+        if (prepared.isIsolatedSilhouette) {
+            drawSculptedObsidianBronzeSymbol(canvas, prepared.bitmap, size)
+        } else {
+            drawObsidianFramedArtwork(canvas, prepared.bitmap, size)
+        }
+        if (!prepared.bitmap.isRecycled) {
+            prepared.bitmap.recycle()
+        }
+
+        // 6. Small restrained recessed glowing amber / volcanic-orange energy core jewel
+        val coreCx = faceRect.right - size * 0.115f
+        val coreCy = faceRect.bottom - size * 0.115f
+        val coreBezelR = size * 0.044f
+        val bezelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#5C4024")
+        }
+        canvas.drawCircle(coreCx, coreCy, coreBezelR, bezelPaint)
+
+        val coreGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                coreCx,
+                coreCy,
+                coreBezelR * 1.45f,
+                intArrayOf(
+                    Color.argb(145, 245, 158, 11),
+                    Color.argb(70, 234, 88, 12),
+                    Color.argb(0, 234, 88, 12)
+                ),
+                floatArrayOf(0f, 0.52f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(coreCx, coreCy, coreBezelR * 1.45f, coreGlowPaint)
+
+        val coreJewelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                coreCx - coreBezelR * 0.2f,
+                coreCy - coreBezelR * 0.2f,
+                coreBezelR * 0.65f,
+                intArrayOf(
+                    Color.parseColor("#FDE68A"),
+                    Color.parseColor("#F59E0B"),
+                    Color.parseColor("#EA580C")
+                ),
+                floatArrayOf(0f, 0.55f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(coreCx, coreCy, coreBezelR * 0.62f, coreJewelPaint)
+
+        // Subtle crisp top-left stone bevel highlight
+        val edgeHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 1.4f
+            shader = LinearGradient(
+                outerRect.left,
+                outerRect.top,
+                outerRect.right,
+                outerRect.bottom,
+                Color.argb(95, 226, 232, 240),
+                Color.argb(18, 15, 23, 42),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(stonePath, edgeHighlightPaint)
+
+        bitmapCache.put(cacheKey, out)
+        try {
+            renderDiskCacheDir.mkdirs()
+            FileOutputStream(diskFile).use { fos ->
+                out.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+        } catch (_: Exception) {
+            // Disk cache write is best-effort
+        }
+        return BitmapDrawable(context.resources, out)
+    }
+
+    private fun drawSculptedObsidianBronzeSymbol(
+        canvas: Canvas,
+        symbolBmp: Bitmap,
+        canvasSize: Int
+    ) {
+        val drawSize = (canvasSize * 0.53f).toInt()
+        val offset = (canvasSize - drawSize) / 2f
+        val destRect = RectF(offset, offset - 1f, offset + drawSize, offset + drawSize - 1f)
+
+        val alphaMask = symbolBmp.extractAlpha()
+
+        // Carved stone shadow behind raised bronze emblem
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(230, 0, 0, 0)
+            maskFilter = BlurMaskFilter(5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left + 2.5f, destRect.top + 4.5f, destRect.right + 2.5f, destRect.bottom + 4.5f),
+            shadowPaint
+        )
+
+        // Restrained warm amber energy undertone beneath symbol edge
+        val emberUnderPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(95, 234, 88, 12)
+            maskFilter = BlurMaskFilter(4f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left + 1.5f, destRect.top + 1.5f, destRect.right + 1.5f, destRect.bottom + 1.5f),
+            emberUnderPaint
+        )
+
+        // Sculpted dark bronze + graphite relief preserving internal symbol details
+        val sculpted = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
+        val sCanvas = Canvas(sculpted)
+        val lumaMatrix = ColorMatrix(
+            floatArrayOf(
+                0.24f, 0.44f, 0.12f, 0f, 88f,
+                0.18f, 0.34f, 0.10f, 0f, 64f,
+                0.12f, 0.22f, 0.08f, 0f, 40f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
+        val basePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(lumaMatrix)
+        }
+        sCanvas.drawBitmap(symbolBmp, null, RectF(0f, 0f, drawSize.toFloat(), drawSize.toFloat()), basePaint)
+
+        val bronzeFinishPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+            shader = LinearGradient(
+                0f,
+                0f,
+                drawSize.toFloat(),
+                drawSize.toFloat(),
+                intArrayOf(
+                    Color.argb(175, 224, 178, 118),
+                    Color.argb(155, 168, 118, 66),
+                    Color.argb(165, 92, 64, 38),
+                    Color.argb(165, 196, 144, 86)
+                ),
+                floatArrayOf(0f, 0.34f, 0.68f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        sCanvas.drawRect(0f, 0f, drawSize.toFloat(), drawSize.toFloat(), bronzeFinishPaint)
+
+        // Crisp subtle top-left bevel catchlight
+        val bevelHighlight = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(120, 245, 210, 160)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left - 1f, destRect.top - 1f, destRect.right - 1f, destRect.bottom - 1f),
+            bevelHighlight
+        )
+        canvas.drawBitmap(sculpted, null, destRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+
+        sculpted.recycle()
+        alphaMask.recycle()
+    }
+
+    private fun drawObsidianFramedArtwork(
+        canvas: Canvas,
+        artworkBmp: Bitmap,
+        canvasSize: Int
+    ) {
+        val inset = canvasSize * 0.21f
+        val innerRect = RectF(inset, inset - 1f, canvasSize - inset, canvasSize - inset - 1f)
+        val innerChamfer = canvasSize * 0.10f
+        val clipPath = buildChamferedOctagonPath(innerRect, innerChamfer)
+
+        canvas.save()
+        canvas.clipPath(clipPath)
+        val mutedToneMatrix = ColorMatrix().apply { setSaturation(0.76f) }
+        val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(mutedToneMatrix)
+        }
+        canvas.drawBitmap(artworkBmp, null, innerRect, artPaint)
+        canvas.restore()
+
+        val wellBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.4f
+            color = Color.parseColor("#8A6238")
+        }
+        canvas.drawPath(clipPath, wellBorderPaint)
     }
 
     private fun diskCacheFileForKey(key: String): File {

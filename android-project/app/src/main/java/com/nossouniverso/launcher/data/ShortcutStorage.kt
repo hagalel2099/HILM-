@@ -201,6 +201,9 @@ class ShortcutStorage(context: Context) {
             if (importedPack.isNotBlank()) {
                 val mappedPack = when (importedPack) {
                     "hilm-artifacts", IconPackInfo.LEGACY_STYLE_HILM_ARTIFACTS -> IconPackInfo.STYLE_HILM_ARTIFACTS
+                    "obsidian-core", "obsidian_core" -> IconPackInfo.STYLE_OBSIDIAN_CORE
+                    "cyberpunk-holo", "cyberpunk_holo" -> IconPackInfo.STYLE_CYBERPUNK_HOLO
+                    "tron-neon", "tron_neon" -> IconPackInfo.STYLE_TRON_NEON
                     "titanium-liquid" -> IconPackInfo.ASSET_PACK_PREFIX + "titanium_liquid"
                     "nosso-universo" -> IconPackInfo.STYLE_NOSSO_UNIVERSO
                     "monochrome-hud" -> IconPackInfo.STYLE_MONOCHROME_HUD

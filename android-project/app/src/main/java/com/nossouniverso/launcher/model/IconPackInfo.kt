@@ -32,6 +32,9 @@ data class IconPackInfo(
 ) {
     companion object {
         const val STYLE_HILM_ARTIFACTS = "asset_pack:hilm_artifacts"
+        const val STYLE_OBSIDIAN_CORE = "asset_pack:obsidian_core"
+        const val STYLE_CYBERPUNK_HOLO = "asset_pack:cyberpunk_holo"
+        const val STYLE_TRON_NEON = "asset_pack:tron_neon"
         const val LEGACY_STYLE_HILM_ARTIFACTS = "builtin_hilm_artifacts"
         const val STYLE_NOSSO_UNIVERSO = "builtin_nosso_universo"
         const val STYLE_MONOCHROME_HUD = "builtin_monochrome_hud"

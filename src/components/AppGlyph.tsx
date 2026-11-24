@@ -65,8 +65,20 @@ export function AppGlyph({
   }
 
   const illustratedFallback = isIllustratedIconPack(iconPack);
+  const isObsidianFallback = illustratedFallback && iconPack === "obsidian-core";
+  const isTronFallback = illustratedFallback && iconPack === "tron-neon";
+  const isCyberpunkFallback = illustratedFallback && iconPack === "cyberpunk-holo";
 
   const colorStyle = (() => {
+    if (isObsidianFallback) {
+      return { color: "#C69458" };
+    }
+    if (isCyberpunkFallback) {
+      return { color: "#F472B6" };
+    }
+    if (isTronFallback) {
+      return { color: "#67E8F9" };
+    }
     if (illustratedFallback) {
       return { color: "#E2E8F0" };
     }
@@ -84,7 +96,15 @@ export function AppGlyph({
   })();
 
   const props = {
-    className: illustratedFallback ? "w-[58%] h-[58%] drop-shadow-[0_1px_2px_rgba(34,211,238,0.45)]" : sizeClass,
+    className: illustratedFallback
+      ? isObsidianFallback
+        ? "w-[54%] h-[54%] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+        : isCyberpunkFallback
+          ? "w-[56%] h-[56%] drop-shadow-[0_0_7px_rgba(236,72,153,0.9)]"
+          : isTronFallback
+            ? "w-[56%] h-[56%] drop-shadow-[0_0_6px_rgba(34,211,238,0.85)]"
+            : "w-[58%] h-[58%] drop-shadow-[0_1px_2px_rgba(34,211,238,0.45)]"
+      : sizeClass,
     style: colorStyle,
     strokeWidth: illustratedFallback || iconPack === "nosso-universo" ? 1.85 : 2,
   };
@@ -126,6 +146,39 @@ export function AppGlyph({
         return <Settings {...props} />;
     }
   })();
+
+  if (isObsidianFallback) {
+    return (
+      <span
+        className={`${sizeClass} relative rounded-[20%] bg-gradient-to-br from-[#232730] via-[#0E1015] to-[#050608] border border-[#7A5630]/85 shadow-[inset_0_1px_2px_rgba(255,255,255,0.14),inset_0_-2px_4px_rgba(0,0,0,0.85),0_4px_10px_rgba(0,0,0,0.75)] flex items-center justify-center shrink-0 overflow-hidden`}
+      >
+        <span className="pointer-events-none absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_5px_rgba(234,88,12,0.85)]" />
+        {glyphNode}
+      </span>
+    );
+  }
+
+  if (isCyberpunkFallback) {
+    return (
+      <span
+        className={`${sizeClass} relative rounded-[24%] bg-gradient-to-br from-[#0E243B]/90 via-[#080F22]/90 to-[#1D0F2E]/90 border-[1.5px] border-cyan-400/80 shadow-[inset_0_1px_4px_rgba(244,114,182,0.5),0_0_11px_rgba(34,211,238,0.45)] flex items-center justify-center shrink-0 overflow-hidden`}
+      >
+        <span className="pointer-events-none absolute inset-[3px] rounded-[20%] border border-pink-400/45" />
+        {glyphNode}
+      </span>
+    );
+  }
+
+  if (isTronFallback) {
+    return (
+      <span
+        className={`${sizeClass} relative rounded-[24%] bg-gradient-to-br from-[#0B2D3A] via-[#041219] to-[#02090D] border-[1.5px] border-cyan-400/90 shadow-[inset_0_2px_4px_rgba(103,232,249,0.55),0_0_10px_rgba(34,211,238,0.48)] flex items-center justify-center shrink-0 overflow-hidden`}
+      >
+        <span className="pointer-events-none absolute top-1.5 right-1.5 w-2 h-1 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.9)]" />
+        {glyphNode}
+      </span>
+    );
+  }
 
   if (illustratedFallback) {
     return (

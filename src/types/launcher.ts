@@ -20,6 +20,9 @@ export type SlotId =
 
 export type BuiltInIconPackId =
   | "hilm-artifacts"
+  | "obsidian-core"
+  | "cyberpunk-holo"
+  | "tron-neon"
   | "titanium-liquid"
   | "nosso-universo"
   | "monochrome-hud"

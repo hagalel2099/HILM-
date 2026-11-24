@@ -7,6 +7,9 @@ import type {
 } from "../types/launcher";
 import titaniumLiquidManifest from "../../public/assets/icon-packs/titanium-liquid/manifest.json";
 import hilmArtifactsManifest from "../../public/assets/icon-packs/hilm-artifacts/manifest.json";
+import tronNeonManifest from "../../public/assets/icon-packs/tron-neon/manifest.json";
+import cyberpunkHoloManifest from "../../public/assets/icon-packs/cyberpunk-holo/manifest.json";
+import obsidianCoreManifest from "../../public/assets/icon-packs/obsidian-core/manifest.json";
 
 interface RawManifest {
   id?: string;
@@ -41,6 +44,18 @@ export const ICON_PACK_REGISTRY: IconPackDescriptor[] = [
   buildIllustratedDescriptor(
     hilmArtifactsManifest as RawManifest,
     "/assets/icon-packs/hilm-artifacts"
+  ),
+  buildIllustratedDescriptor(
+    obsidianCoreManifest as RawManifest,
+    "/assets/icon-packs/obsidian-core"
+  ),
+  buildIllustratedDescriptor(
+    cyberpunkHoloManifest as RawManifest,
+    "/assets/icon-packs/cyberpunk-holo"
+  ),
+  buildIllustratedDescriptor(
+    tronNeonManifest as RawManifest,
+    "/assets/icon-packs/tron-neon"
   ),
   buildIllustratedDescriptor(
     titaniumLiquidManifest as RawManifest,
