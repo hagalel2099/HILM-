@@ -285,9 +285,9 @@ export function LauncherPhonePreview({
 
     const launchDelay =
       state.transition.effect === "classic"
-        ? 85
-        : Math.max(95, Math.min(220, Math.round(state.transition.durationMs * 0.44)));
-    const cleanupDelay = Math.max(280, state.transition.durationMs + 130);
+        ? 135
+        : Math.max(150, Math.min(480, Math.round(state.transition.durationMs * 0.78)));
+    const cleanupDelay = Math.max(320, state.transition.durationMs + 140);
 
     setPortalWindowOrigin(origin);
     setPortalLaunch({
