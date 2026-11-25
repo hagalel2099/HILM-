@@ -146,14 +146,92 @@ export function AppGlyph({
       case "message":
         return <MessageSquare {...props} />;
       case "chat":
+        if (isLunaHolo && app.packageName === "com.whatsapp") {
+          return (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className={props.className}
+              style={props.style}
+              stroke="currentColor"
+              strokeWidth={1.65}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3a9 9 0 0 0-7.75 13.56L3 21l4.6-1.2A9 9 0 1 0 12 3z" />
+              <path
+                d="M9.5 8.8c-.2-.4-.4-.4-.6-.4h-.4c-.2 0-.4.1-.6.3-.2.3-.7.8-.7 1.8s.8 2.2 1 2.4c.1.2 1.6 2.5 4 3.4 1.9.7 2.4.6 2.9.5.5-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1-.1-.1-.2-.2-.5-.3l-1.3-.6c-.2-.1-.4-.1-.6.1l-.5.6c-.2.2-.3.2-.6.1-.3-.1-1.1-.4-2-1.2-.7-.6-1.2-1.4-1.3-1.7-.1-.3 0-.4.1-.5l.4-.4c.1-.2.2-.3.2-.4.1-.1 0-.3 0-.4l-.6-1.4z"
+                stroke="#D9F7FF"
+                strokeWidth={1.3}
+              />
+            </svg>
+          );
+        }
         return <MessageCircle {...props} />;
       case "instagram":
         return <Instagram {...props} />;
       case "youtube":
+        if (isLunaHolo) {
+          return (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className={props.className}
+              style={props.style}
+              stroke="currentColor"
+              strokeWidth={1.65}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="2.5" y="5.5" width="19" height="13" rx="4.2" stroke="#398BFF" />
+              <polygon points="10,9 16,12 10,15" stroke="#D9F7FF" strokeWidth={1.6} />
+            </svg>
+          );
+        }
         return <Play {...props} />;
       case "music":
+        if (isLunaHolo && app.packageName === "com.spotify.music") {
+          return (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className={props.className}
+              style={props.style}
+              stroke="currentColor"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9.2" strokeWidth={1.55} stroke="#00E5FF" />
+              <path d="M7.4 9.6c3-.9 6.6-.7 9.4.8" stroke="#D9F7FF" strokeWidth={1.7} />
+              <path d="M8.2 12.6c2.5-.7 5.5-.5 7.8.7" stroke="#00E5FF" strokeWidth={1.6} />
+              <path d="M9.1 15.4c1.9-.5 4.2-.3 5.9.6" stroke="#398BFF" strokeWidth={1.5} />
+            </svg>
+          );
+        }
         return <Music {...props} />;
       case "globe":
+        if (isLunaHolo && app.packageName === "com.android.chrome") {
+          return (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className={props.className}
+              style={props.style}
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9.2" strokeWidth={1.6} stroke="#00E5FF" />
+              <circle cx="12" cy="12" r="3.6" stroke="#D9F7FF" strokeWidth={1.6} />
+              <path d="M12 8.4h8.4" stroke="#00E5FF" strokeWidth={1.55} />
+              <path d="M8.9 13.8L4.7 6.6" stroke="#398BFF" strokeWidth={1.55} />
+              <path d="M15.1 13.8l-4.2 7.2" stroke="#00E5FF" strokeWidth={1.55} />
+            </svg>
+          );
+        }
         return <Globe {...props} />;
       case "camera":
         return <Camera {...props} />;
@@ -172,6 +250,28 @@ export function AppGlyph({
       case "terminal":
         return <Terminal {...props} />;
       case "discord":
+        if (isLunaHolo) {
+          return (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className={props.className}
+              style={props.style}
+              stroke="currentColor"
+              strokeWidth={1.6}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                stroke="#00E5FF"
+                d="M19.2 6.2A14 14 0 0 0 15.3 5l-.5 1a13 13 0 0 0-5.6 0l-.5-1A14 14 0 0 0 4.8 6.2C2.4 9.8 1.8 13.3 2.1 16.8a14.4 14.4 0 0 0 4.4 2.2l.9-1.5a9.3 9.3 0 0 1-1.5-.7l.4-.3a10.4 10.4 0 0 0 11.4 0l.4.3c-.5.3-1 .5-1.5.7l.9 1.5a14.4 14.4 0 0 0 4.4-2.2c.4-4-.7-7.5-2.7-10.6z"
+              />
+              <circle cx="9.2" cy="12.4" r="1.4" stroke="#D9F7FF" strokeWidth={1.45} />
+              <circle cx="14.8" cy="12.4" r="1.4" stroke="#D9F7FF" strokeWidth={1.45} />
+            </svg>
+          );
+        }
         return (
           <svg
             viewBox="0 0 24 24"
@@ -186,6 +286,30 @@ export function AppGlyph({
           </svg>
         );
       case "bank":
+        if (isLunaHolo) {
+          return (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className={props.className}
+              style={props.style}
+              stroke="currentColor"
+              strokeWidth={1.6}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                stroke="#00E5FF"
+                d="M4.5 18.5V6.2c0-.9 1.1-1.4 1.7-.7l6.6 8.3V5.5"
+              />
+              <path
+                stroke="#D9F7FF"
+                d="M19.5 5.5v12.3c0 .9-1.1 1.4-1.7.7l-6.6-8.3v8.3"
+              />
+            </svg>
+          );
+        }
         return (
           <svg
             viewBox="0 0 24 24"
