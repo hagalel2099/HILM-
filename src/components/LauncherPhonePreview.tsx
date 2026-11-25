@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import type {
+  IconPackId,
   InstalledAppItem,
   LauncherPersistedState,
   LauncherUpdateCheckResponse,
@@ -116,6 +117,9 @@ export function LauncherPhonePreview({
     state.themeId === "luna-entre-luz-e-sombra" ||
     state.wallpaperId === "luna-shadow-light";
   const activeThemeId = isLunaTheme ? "luna-entre-luz-e-sombra" : "default";
+  const effectiveIconPack: IconPackId = isLunaTheme
+    ? "luna-holographic"
+    : state.iconPack;
 
   const coreStatus: HilmCoreStatus = useMemo(() => {
     if (
@@ -673,7 +677,7 @@ export function LauncherPhonePreview({
           {app ? (
             <>
               <motion.span
-                key={`plate-glyph-${slotId}-${state.iconPack}-${state.transition.effect}-${state.transition.enabled}-${app.packageName}`}
+                key={`plate-glyph-${slotId}-${effectiveIconPack}-${state.transition.effect}-${state.transition.enabled}-${app.packageName}`}
                 initial={
                   getHilmIconItemMotion(
                     state.transition,
@@ -712,10 +716,10 @@ export function LauncherPhonePreview({
               >
                 <AppGlyph
                   app={app}
-                  iconPack={state.iconPack}
+                  iconPack={effectiveIconPack}
                   customIconDataUrl={slot.customIconDataUrl}
                   sizeClass={
-                    usesExpandedGlyphScale(state.iconPack)
+                    usesExpandedGlyphScale(effectiveIconPack)
                       ? "w-6 h-6 shrink-0"
                       : "w-4 h-4 shrink-0"
                   }
@@ -942,7 +946,7 @@ export function LauncherPhonePreview({
           </svg>
           {app ? (
             <motion.span
-              key={`wing-glyph-${slotId}-${state.iconPack}-${state.transition.effect}-${state.transition.enabled}-${app.packageName}`}
+              key={`wing-glyph-${slotId}-${effectiveIconPack}-${state.transition.effect}-${state.transition.enabled}-${app.packageName}`}
               initial={iconItemMotion.initial}
               animate={slotState === "rest" ? iconItemMotion.animate : slotState}
               variants={{
@@ -959,9 +963,9 @@ export function LauncherPhonePreview({
             >
               <AppGlyph
                 app={app}
-                iconPack={state.iconPack}
+                iconPack={effectiveIconPack}
                 customIconDataUrl={slot.customIconDataUrl}
-                sizeClass={usesExpandedGlyphScale(state.iconPack) ? "w-8 h-8" : "w-6 h-6"}
+                sizeClass={usesExpandedGlyphScale(effectiveIconPack) ? "w-8 h-8" : "w-6 h-6"}
               />
             </motion.span>
           ) : (
@@ -1144,7 +1148,7 @@ export function LauncherPhonePreview({
           </svg>
           {app ? (
             <motion.span
-              key={`dock-glyph-${slotId}-${state.iconPack}-${state.transition.effect}-${state.transition.enabled}-${app.packageName}`}
+              key={`dock-glyph-${slotId}-${effectiveIconPack}-${state.transition.effect}-${state.transition.enabled}-${app.packageName}`}
               initial={
                 getHilmIconItemMotion(
                   state.transition,
@@ -1183,10 +1187,10 @@ export function LauncherPhonePreview({
             >
               <AppGlyph
                 app={app}
-                iconPack={state.iconPack}
+                iconPack={effectiveIconPack}
                 customIconDataUrl={slot.customIconDataUrl}
                 sizeClass={
-                  usesExpandedGlyphScale(state.iconPack)
+                  usesExpandedGlyphScale(effectiveIconPack)
                     ? "w-8 h-8"
                     : "w-5 h-5"
                 }
@@ -1705,7 +1709,7 @@ export function LauncherPhonePreview({
             >
               <AppDrawerModal
                 apps={INSTALLED_APPS_CATALOG}
-                iconPack={state.iconPack}
+                iconPack={effectiveIconPack}
                 themeId={activeThemeId}
                 targetSlot={drawerTargetSlot}
                 transition={state.transition}
@@ -1911,8 +1915,8 @@ export function LauncherPhonePreview({
                     >
                       <AppGlyph
                         app={app}
-                        iconPack={state.iconPack}
-                        sizeClass={usesExpandedGlyphScale(state.iconPack) ? "w-8 h-8" : "w-5 h-5"}
+                        iconPack={effectiveIconPack}
+                        sizeClass={usesExpandedGlyphScale(effectiveIconPack) ? "w-8 h-8" : "w-5 h-5"}
                       />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -1973,8 +1977,8 @@ export function LauncherPhonePreview({
                 <div className="w-16 h-16 rounded-2xl bg-[#0C1422] border border-cyan-400/40 flex items-center justify-center">
                   <AppGlyph
                     app={activeAppWindow}
-                    iconPack={state.iconPack}
-                    sizeClass={usesExpandedGlyphScale(state.iconPack) ? "w-12 h-12" : "w-8 h-8"}
+                    iconPack={effectiveIconPack}
+                    sizeClass={usesExpandedGlyphScale(effectiveIconPack) ? "w-12 h-12" : "w-8 h-8"}
                   />
                 </div>
                 <div>
@@ -2011,7 +2015,7 @@ export function LauncherPhonePreview({
         {/* HILM Portal Holographic Expansion Layer */}
         <HilmPortalOverlay
           launch={portalLaunch}
-          iconPack={state.iconPack}
+          iconPack={effectiveIconPack}
           themeId={activeThemeId}
         />
       </div>

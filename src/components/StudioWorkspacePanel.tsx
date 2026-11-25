@@ -377,6 +377,10 @@ export function StudioWorkspacePanel({
             {/* Section 2: Icon Pack Manager */}
             <IconPackManagerPanel
               activePackId={state.iconPack}
+              isLunaThemeActive={
+                state.themeId === "luna-entre-luz-e-sombra" ||
+                state.wallpaperId === "luna-shadow-light"
+              }
               onSelectIconPack={onSelectIconPack}
             />
 

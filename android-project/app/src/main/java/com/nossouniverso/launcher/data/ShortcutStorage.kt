@@ -216,7 +216,7 @@ class ShortcutStorage(context: Context) {
                     "obsidian-core", "obsidian_core" -> IconPackInfo.STYLE_OBSIDIAN_CORE
                     "cyberpunk-holo", "cyberpunk_holo" -> IconPackInfo.STYLE_CYBERPUNK_HOLO
                     "tron-neon", "tron_neon" -> IconPackInfo.STYLE_TRON_NEON
-                    "luna-holographic", "luna_holographic", IconPackInfo.STYLE_LUNA_HOLOGRAPHIC -> IconPackInfo.STYLE_LUNA_HOLOGRAPHIC
+                    "luna-holographic", "luna_holographic", IconPackInfo.STYLE_LUNA_HOLOGRAPHIC -> IconPackInfo.STYLE_HILM_ARTIFACTS
                     "titanium-liquid" -> IconPackInfo.ASSET_PACK_PREFIX + "titanium_liquid"
                     "nosso-universo" -> IconPackInfo.STYLE_NOSSO_UNIVERSO
                     "monochrome-hud" -> IconPackInfo.STYLE_MONOCHROME_HUD
@@ -260,15 +260,24 @@ class ShortcutStorage(context: Context) {
     fun getSelectedIconPackId(): String {
         val raw = prefs.getString(KEY_ICON_PACK, IconPackInfo.STYLE_HILM_ARTIFACTS)
             ?: IconPackInfo.STYLE_HILM_ARTIFACTS
-        return if (raw == IconPackInfo.LEGACY_STYLE_HILM_ARTIFACTS || raw == "hilm-artifacts") {
-            IconPackInfo.STYLE_HILM_ARTIFACTS
-        } else {
-            raw
+        return when (raw) {
+            IconPackInfo.LEGACY_STYLE_HILM_ARTIFACTS,
+            "hilm-artifacts",
+            IconPackInfo.STYLE_LUNA_HOLOGRAPHIC,
+            "luna-holographic",
+            "luna_holographic" -> IconPackInfo.STYLE_HILM_ARTIFACTS
+            else -> raw
         }
     }
 
     fun setSelectedIconPackId(id: String) {
-        prefs.edit().putString(KEY_ICON_PACK, id).apply()
+        val clean = when (id) {
+            IconPackInfo.STYLE_LUNA_HOLOGRAPHIC,
+            "luna-holographic",
+            "luna_holographic" -> IconPackInfo.STYLE_HILM_ARTIFACTS
+            else -> id
+        }
+        prefs.edit().putString(KEY_ICON_PACK, clean).apply()
     }
 
     fun getPanelOpacityPercent(): Int {

@@ -230,7 +230,6 @@
       "packages": [
         "com.android.documentsui",
         "com.google.android.apps.nbu.files",
-        "com.sec.android.app.myfiles",
         "com.mi.android.globalFileexplorer",
         "com.alphainventor.filemanager",
         "com.cxinventor.file.explorer",
@@ -245,12 +244,22 @@
       "keywords": [
         "documentsui",
         "files",
-        "myfiles",
         "filemanager",
         "file.explorer",
         "globalfileexplorer",
-        "gerenciador"
+        "gerenciador",
+        "arquivos"
       ]
+    },
+    {
+      "key": "meusarquivos",
+      "label": "Meus Arquivos",
+      "file": "meusarquivos.png",
+      "packages": [
+        "com.sec.android.app.myfiles",
+        "com.sec.android.app.myfiles.ui"
+      ],
+      "keywords": ["myfiles", "meusarquivos", "meus arquivos"]
     },
     {
       "key": "github",
@@ -339,18 +348,30 @@
       "keywords": ["kodi", "xbmc"]
     },
     {
+      "key": "mercadolivre",
+      "label": "Mercado Livre",
+      "file": "mercadolivre.png",
+      "packages": ["com.mercadolibre"],
+      "keywords": [
+        "mercadolibre",
+        "mercadolivre",
+        "mercado libre",
+        "mercado livre"
+      ]
+    },
+    {
       "key": "mercadopago",
       "label": "Mercado Pago",
       "file": "mercadopago.png",
       "packages": ["com.mercadopago.wallet"],
-      "keywords": ["mercadopago", "mercado.pago"]
+      "keywords": ["mercadopago", "mercado.pago", "mercado pago"]
     },
     {
       "key": "meuinss",
       "label": "Meu INSS",
       "file": "meuinss.png",
       "packages": ["br.gov.dataprev.meuinss"],
-      "keywords": ["meuinss", "dataprev"]
+      "keywords": ["meuinss", "dataprev", "meu inss"]
     },
     {
       "key": "rar",
@@ -358,6 +379,24 @@
       "file": "rar.png",
       "packages": ["com.rarlab.rar"],
       "keywords": ["rarlab", ".rar", "winrar"]
+    },
+    {
+      "key": "sendfiles",
+      "label": "Send Files",
+      "file": "sendfiles.png",
+      "packages": [
+        "com.yablio.sendfilestotv",
+        "com.estmob.android.sendanywhere",
+        "com.lenovo.anyshare.gps",
+        "com.sharekaro.app"
+      ],
+      "keywords": [
+        "sendfiles",
+        "send.files",
+        "sendfilestotv",
+        "sendanywhere",
+        "send files"
+      ]
     },
     {
       "key": "snaptube",

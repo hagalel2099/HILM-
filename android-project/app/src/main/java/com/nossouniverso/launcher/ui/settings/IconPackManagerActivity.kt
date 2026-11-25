@@ -167,10 +167,15 @@ class IconPackManagerActivity : AppCompatActivity() {
         val packs = app.iconPackManager.getAvailableIconPacks()
         val selectedId = app.shortcutStorage.getSelectedIconPackId()
         val activePack = packs.firstOrNull { it.id == selectedId }
-        txtActivePackSummary.text = getString(
-            R.string.active_icon_pack_format,
-            activePack?.title ?: "HILM Artefatos 3D (Universal)"
-        )
+        val isLunaTheme = app.shortcutStorage.getLauncherTheme() == ShortcutStorage.THEME_LUNA
+        txtActivePackSummary.text = if (isLunaTheme) {
+            "Tema Luna ativo (ícones holográficos exclusivos) · Padrão salvo: ${activePack?.title ?: "HILM Artefatos 3D (Universal)"}"
+        } else {
+            getString(
+                R.string.active_icon_pack_format,
+                activePack?.title ?: "HILM Artefatos 3D (Universal)"
+            )
+        }
         btnRestoreOriginalIcons.isEnabled = selectedId != IconPackInfo.STYLE_SYSTEM_DEFAULT
         adapter.submit(packs, selectedId)
     }

@@ -26,6 +26,7 @@ import { AppGlyph } from "./AppGlyph";
 
 interface IconPackManagerPanelProps {
   activePackId: IconPackId;
+  isLunaThemeActive?: boolean;
   onSelectIconPack: (packId: IconPackId) => void;
 }
 
@@ -40,6 +41,7 @@ const SAMPLE_APPS_FOR_HUD = [
 
 export function IconPackManagerPanel({
   activePackId,
+  isLunaThemeActive = false,
   onSelectIconPack,
 }: IconPackManagerPanelProps) {
   const [inspectingPack, setInspectingPack] =
@@ -109,8 +111,21 @@ export function IconPackManagerPanel({
             Gerenciador de Pacotes de Ícones
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Visualize, selecione, importe pacotes <code className="text-cyan-300">.zip</code> sem recompilar o APK ou restaure os originais. Ativo:{" "}
-            <span className="text-cyan-300 font-medium">{activePack.name}</span>
+            {isLunaThemeActive ? (
+              <>
+                Tema Luna ativo usando{" "}
+                <span className="text-[#00E5FF] font-medium">
+                  ícones holográficos exclusivos do tema
+                </span>
+                . Pacote salvo para o tema padrão:{" "}
+                <span className="text-slate-200 font-medium">{activePack.name}</span>
+              </>
+            ) : (
+              <>
+                Visualize, selecione, importe pacotes <code className="text-cyan-300">.zip</code> sem recompilar o APK ou restaure os originais. Ativo:{" "}
+                <span className="text-cyan-300 font-medium">{activePack.name}</span>
+              </>
+            )}
           </p>
         </div>
 

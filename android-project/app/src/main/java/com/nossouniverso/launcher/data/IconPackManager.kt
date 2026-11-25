@@ -99,16 +99,6 @@ class IconPackManager(
 
         packs.add(
             IconPackInfo(
-                id = IconPackInfo.STYLE_LUNA_HOLOGRAPHIC,
-                title = "Luna Holográfico (Luz & Sombra)",
-                subtitle = "Símbolos flutuantes sem moldura em ciano luminoso (#00E5FF) e azul elétrico (#398BFF).",
-                author = "HILM · Tema Luna",
-                kind = IconPackKind.BUILT_IN_STYLE,
-                isBuiltIn = true
-            )
-        )
-        packs.add(
-            IconPackInfo(
                 id = IconPackInfo.STYLE_NOSSO_UNIVERSO,
                 title = "Nosso Universo Padrão (HUD Ciano & Âmbar)",
                 subtitle = "Tonalização técnica ciano integrada às molduras HUD.",
@@ -412,6 +402,13 @@ class IconPackManager(
     }
 
     fun resolveAppIcon(packageName: String, activityName: String, fallback: Drawable): Drawable {
+        if (storage.getLauncherTheme() == ShortcutStorage.THEME_LUNA) {
+            return renderUnifiedLunaHolographicIcon(
+                cacheIdentity = "theme_luna:${packageName.lowercase()}/${activityName.lowercase()}",
+                packageName = packageName,
+                fallback = fallback
+            )
+        }
         val selectedId = storage.getSelectedIconPackId()
         return resolveForPack(selectedId, packageName, activityName, fallback)
     }

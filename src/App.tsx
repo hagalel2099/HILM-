@@ -50,7 +50,10 @@ function loadInitialState(): LauncherPersistedState {
         parsed.themeId === "luna-entre-luz-e-sombra"
           ? "luna-entre-luz-e-sombra"
           : "default",
-      iconPack: parsed.iconPack || DEFAULT_LAUNCHER_STATE.iconPack,
+      iconPack:
+        parsed.iconPack && parsed.iconPack !== "luna-holographic"
+          ? parsed.iconPack
+          : DEFAULT_LAUNCHER_STATE.iconPack,
       wallpaperId: parsed.wallpaperId || DEFAULT_LAUNCHER_STATE.wallpaperId,
       customWallpaperUrl: parsed.customWallpaperUrl,
       panelOpacity:
@@ -168,7 +171,6 @@ export default function App() {
           ...prev,
           themeId,
           wallpaperId: "luna-shadow-light",
-          iconPack: "luna-holographic",
           panelOpacity: 40,
         };
       }
@@ -226,7 +228,12 @@ export default function App() {
           : imported.themeId === "default"
             ? "default"
             : prev.themeId,
-      iconPack: imported.iconPack || prev.iconPack,
+      iconPack:
+        imported.iconPack && imported.iconPack !== "luna-holographic"
+          ? imported.iconPack
+          : prev.iconPack === "luna-holographic"
+            ? DEFAULT_LAUNCHER_STATE.iconPack
+            : prev.iconPack,
       wallpaperId: imported.wallpaperId || prev.wallpaperId,
       customWallpaperUrl: imported.customWallpaperUrl ?? prev.customWallpaperUrl,
       panelOpacity:

@@ -225,7 +225,7 @@ export const LAUNCHER_THEMES = [
     id: "luna-entre-luz-e-sombra" as const,
     name: "Tema Luna — Entre Luz e Sombra",
     subtitle:
-      "Projeção holográfica pessoal em ciano (#00E5FF) e azul elétrico (#398BFF) ao redor da personagem.",
+      "Papel de parede pessoal e ícones holográficos exclusivos em ciano (#00E5FF) e azul elétrico (#398BFF) ao redor da personagem.",
     badge: "Exclusivo HILM",
   },
 ];

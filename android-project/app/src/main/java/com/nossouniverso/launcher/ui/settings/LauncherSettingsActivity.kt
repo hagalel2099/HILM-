@@ -166,15 +166,11 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
             app.shortcutStorage.setLauncherTheme(targetTheme)
             if (targetTheme == ShortcutStorage.THEME_LUNA) {
-                app.shortcutStorage.setSelectedIconPackId(IconPackInfo.STYLE_LUNA_HOLOGRAPHIC)
                 if (app.shortcutStorage.getPanelOpacityPercent() > 50) {
                     app.shortcutStorage.setPanelOpacityPercent(40)
                     seekOpacity.progress = 15
                 }
             } else {
-                if (app.shortcutStorage.getSelectedIconPackId() == IconPackInfo.STYLE_LUNA_HOLOGRAPHIC) {
-                    app.shortcutStorage.setSelectedIconPackId(IconPackInfo.STYLE_HILM_ARTIFACTS)
-                }
                 if (app.shortcutStorage.getPanelOpacityPercent() <= 45) {
                     app.shortcutStorage.setPanelOpacityPercent(78)
                     seekOpacity.progress = 53
@@ -207,10 +203,15 @@ class LauncherSettingsActivity : AppCompatActivity() {
         val packs = app.iconPackManager.getAvailableIconPacks()
         val currentId = app.shortcutStorage.getSelectedIconPackId()
         val activePack = packs.firstOrNull { it.id == currentId }
-        txtSettingsActivePack.text = getString(
-            R.string.active_icon_pack_format,
-            activePack?.title ?: "HILM Artefatos 3D (Universal)"
-        )
+        val isLunaTheme = app.shortcutStorage.getLauncherTheme() == ShortcutStorage.THEME_LUNA
+        txtSettingsActivePack.text = if (isLunaTheme) {
+            "Tema Luna ativo (ícones holográficos exclusivos) · Padrão salvo: ${activePack?.title ?: "HILM Artefatos 3D (Universal)"}"
+        } else {
+            getString(
+                R.string.active_icon_pack_format,
+                activePack?.title ?: "HILM Artefatos 3D (Universal)"
+            )
+        }
 
         radioIconPacks.setOnCheckedChangeListener(null)
         radioIconPacks.removeAllViews()
@@ -232,10 +233,14 @@ class LauncherSettingsActivity : AppCompatActivity() {
             app.shortcutStorage.setSelectedIconPackId(selected)
             app.iconPackManager.clearCache()
             val updated = packs.firstOrNull { it.id == selected }
-            txtSettingsActivePack.text = getString(
-                R.string.active_icon_pack_format,
-                updated?.title ?: selected
-            )
+            txtSettingsActivePack.text = if (app.shortcutStorage.getLauncherTheme() == ShortcutStorage.THEME_LUNA) {
+                "Tema Luna ativo (ícones holográficos exclusivos) · Padrão salvo: ${updated?.title ?: selected}"
+            } else {
+                getString(
+                    R.string.active_icon_pack_format,
+                    updated?.title ?: selected
+                )
+            }
         }
     }
 
