@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.nossouniverso.launcher.NossoUniversoApp
 import com.nossouniverso.launcher.R
+import com.nossouniverso.launcher.data.ShortcutStorage
 import com.nossouniverso.launcher.model.IconPackInfo
 import com.nossouniverso.launcher.model.IconPackKind
 import com.nossouniverso.launcher.model.IconPackPreviewItem
