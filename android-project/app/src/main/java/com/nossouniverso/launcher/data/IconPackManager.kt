@@ -21,6 +21,7 @@ import android.graphics.RadialGradient
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.SweepGradient
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -42,7 +43,13 @@ import java.security.MessageDigest
 import java.util.ArrayDeque
 import java.util.zip.ZipInputStream
 import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 class IconPackManager(
     private val context: Context,
@@ -432,6 +439,12 @@ class IconPackManager(
                 activityName,
                 fallback
             )
+            packId == IconPackInfo.LEGACY_STYLE_LIQUID_GOLD_OBSIDIAN -> resolveFromManagedPack(
+                IconPackInfo.STYLE_LIQUID_GOLD_OBSIDIAN,
+                packageName,
+                activityName,
+                fallback
+            )
             packId == IconPackInfo.STYLE_NOSSO_UNIVERSO -> applyHudCyanTint(fallback)
             packId == IconPackInfo.STYLE_MONOCHROME_HUD -> applyMonochromeSilver(fallback)
             packId.startsWith(IconPackInfo.ASSET_PACK_PREFIX) ||
@@ -475,6 +488,10 @@ class IconPackManager(
             "luna_holographic", "luna-holographic" -> renderUnifiedLunaHolographicIcon(
                 cacheIdentity = "$packId:$normalizedPkg/$normalizedAct",
                 packageName = appPackage,
+                fallback = fallback
+            )
+            "liquid_gold_obsidian", "liquid-gold-obsidian" -> renderUnifiedLiquidGoldObsidianIcon(
+                cacheIdentity = "$packId:$normalizedPkg/$normalizedAct",
                 fallback = fallback
             )
             "hilm_artifacts" -> renderHilmArtifactIcon(
@@ -1051,6 +1068,250 @@ class IconPackManager(
             // Disk cache write is best-effort
         }
         return BitmapDrawable(context.resources, out)
+    }
+
+    /**
+     * Liquid Gold & Obsidian 3D SDF + Height-Field Pixel Shader replicating Titanium Liquid's
+     * true 3D construction: thick molded double-refraction liquid-gold squircle border, deep
+     * smoked-obsidian concave glass well (#06070A), sharp optical specular flares, and
+     * normal-mapped 3D carved liquid-gold internal symbols (#FFF3B0 / #D4AF37 / #785513).
+     */
+    private fun renderUnifiedLiquidGoldObsidianIcon(
+        cacheIdentity: String,
+        fallback: Drawable
+    ): Drawable {
+        val size = 224
+        val cacheKey = "liquid_gold_obsidian_v2:$cacheIdentity#$size"
+        bitmapCache.get(cacheKey)?.let { cached ->
+            return BitmapDrawable(context.resources, cached)
+        }
+
+        val diskFile = diskCacheFileForKey(cacheKey)
+        if (diskFile.exists()) {
+            try {
+                FileInputStream(diskFile).use { stream ->
+                    BitmapFactory.decodeStream(stream)?.let { decoded ->
+                        bitmapCache.put(cacheKey, decoded)
+                        return BitmapDrawable(context.resources, decoded)
+                    }
+                }
+            } catch (_: Exception) {
+                // Re-render cleanly if disk entry was corrupted
+            }
+        }
+
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val pixels = IntArray(size * size)
+
+        val hashShift = ((cacheIdentity.hashCode() and 0x1F) - 16) * 0.04f
+        val half = size * 0.5f
+        val margin = size * 0.052f
+        val boxHalf = half - margin
+        val cornerR = size * 0.225f
+        val innerBox = boxHalf - cornerR
+        val rimWidth = size * 0.088f
+
+        fun roundedBoxSdf(px: Float, py: Float): Float {
+            val dx = abs(px - half) - innerBox
+            val dy = abs(py - half) - innerBox
+            val ox = max(dx, 0f)
+            val oy = max(dy, 0f)
+            return sqrt(ox * ox + oy * oy) + min(max(dx, dy), 0f) - cornerR
+        }
+
+        for (y in 0 until size) {
+            val fy = y + 0.5f
+            val rowOff = y * size
+            for (x in 0 until size) {
+                val fx = x + 0.5f
+                val d = roundedBoxSdf(fx, fy)
+
+                if (d > 8.0f) {
+                    continue
+                }
+
+                if (d > 0.7f) {
+                    // Soft 3D external contact shadow + subtle molten-gold refractive halo
+                    val shadowD = roundedBoxSdf(fx - 1.2f, fy - 2.8f)
+                    val shadowAlpha = if (shadowD > 0f) (0.58f * kotlin.math.exp(-shadowD * 0.42f)) else 0.45f
+                    val goldBloom = 0.24f * kotlin.math.exp(-d * 0.46f)
+                    val a = ((shadowAlpha + goldBloom) * 255f).toInt().coerceIn(0, 235)
+                    val br = (goldBloom * 212f).toInt().coerceIn(0, 255)
+                    val bg = (goldBloom * 175f).toInt().coerceIn(0, 255)
+                    val bb = (goldBloom * 55f).toInt().coerceIn(0, 255)
+                    pixels[rowOff + x] = Color.argb(a, br, bg, bb)
+                    continue
+                }
+
+                // Compute exact SDF normal via finite differences
+                val gx = roundedBoxSdf(fx + 0.8f, fy) - roundedBoxSdf(fx - 0.8f, fy)
+                val gy = roundedBoxSdf(fx, fy + 0.8f) - roundedBoxSdf(fx, fy - 0.8f)
+                val glen = max(1e-4f, sqrt(gx * gx + gy * gy))
+                val enx = gx / glen
+                val eny = gy / glen
+
+                val edgeAA = ((0.7f - d) / 1.4f).coerceIn(0f, 1f)
+                val angle = atan2(fy - half, fx - half) + hashShift
+
+                if (d >= -rimWidth) {
+                    // Thick 3D sculpted toroidal liquid-gold + glass double-bevel bezel
+                    val t = (-d / rimWidth).coerceIn(0f, 1f) // 0 at outer edge, 1 at inner obsidian well
+                    val u = t * 2f - 1f // -1..+1 across bezel cross-section
+                    val nz = sqrt((1f - u * u * 0.86f).coerceIn(0.05f, 1f))
+                    val nx = enx * u * 0.88f
+                    val ny = eny * u * 0.88f
+
+                    // Key light (top-left) + secondary caustic bounce (bottom-right)
+                    val diff1 = max(0f, nx * -0.60f + ny * -0.66f + nz * 0.45f)
+                    val diff2 = max(0f, nx * 0.56f + ny * 0.58f + nz * 0.50f)
+
+                    // Half-vectors for razor-sharp specular lens flares & anisotropic sheen
+                    val spec1 = (nx * -0.34f + ny * -0.38f + nz * 0.86f).coerceAtLeast(0f).pow(26f)
+                    val spec2 = (nx * 0.34f + ny * 0.36f + nz * 0.87f).coerceAtLeast(0f).pow(30f)
+
+                    // Organic liquid-glass double refraction ridge along bezel
+                    val doubleRidge = 0.5f + 0.5f * cos((t - 0.5f) * 6.28318f * 1.45f)
+                    val sweep = 0.5f + 0.5f * cos(angle * 2f - 0.72f)
+                    val cornerFlare = (0.5f + 0.5f * sin(angle * 2f + 1.57f)).pow(3.5f) * (0.35f + 0.65f * doubleRidge)
+
+                    val metalEnergy = (
+                        0.16f +
+                            0.44f * diff1 +
+                            0.24f * diff2 +
+                            0.18f * sweep * doubleRidge +
+                            0.36f * cornerFlare +
+                            0.85f * spec1 +
+                            0.65f * spec2
+                        ).coerceIn(0f, 1.15f)
+
+                    val rgb = sampleGoldRampRgb(metalEnergy.coerceIn(0f, 1f))
+                    // Deepen outer perimeter silhouette slightly for physical 3D glass rim separation
+                    val outerLipShade = if (t < 0.08f) 0.55f + (t / 0.08f) * 0.45f else 1f
+                    val a = (edgeAA * 255f).toInt().coerceIn(0, 255)
+                    pixels[rowOff + x] = Color.argb(
+                        a,
+                        (rgb[0] * outerLipShade).toInt().coerceIn(0, 255),
+                        (rgb[1] * outerLipShade).toInt().coerceIn(0, 255),
+                        (rgb[2] * outerLipShade).toInt().coerceIn(0, 255)
+                    )
+                } else {
+                    // Inner recessed smoked-obsidian glass cavity (#06070A) with depth & dome gloss
+                    val wellDepth = (-d - rimWidth) / (boxHalf - rimWidth)
+                    val nxNorm = (fx - half) / boxHalf
+                    val nyNorm = (fy - half) / boxHalf
+                    val radialDist = sqrt(nxNorm * nxNorm + nyNorm * nyNorm).coerceIn(0f, 1.4f)
+
+                    // Smoked obsidian floor with ultra-subtle concave specular dome
+                    val dome = if (nyNorm < 0.12f) {
+                        val arc = (1f - ((nyNorm + 0.48f) * 1.25f).pow(2f)).coerceIn(0f, 1f)
+                        arc * (0.28f + 0.72f * (1f - abs(nxNorm * 0.7f))).coerceIn(0f, 1f)
+                    } else 0f
+
+                    // Delicate refractive golden hairline right inside the glass bevel lip
+                    val innerLipGlow = kotlin.math.exp(-((-d - rimWidth - 2.2f).let { it * it }) * 0.32f) *
+                        (0.28f + 0.72f * (0.5f + 0.5f * cos(angle * 2f - 0.6f)))
+
+                    val rObs = 6f + dome * 24f + innerLipGlow * 212f - radialDist * 2.5f
+                    val gObs = 7f + dome * 18f + innerLipGlow * 175f - radialDist * 2.5f
+                    val bObs = 10f + dome * 8f + innerLipGlow * 55f - radialDist * 2.0f
+
+                    // Subtle inner concave vignette near glass walls
+                    val wallShade = (0.72f + 0.28f * (wellDepth * 3.5f).coerceIn(0f, 1f))
+                    pixels[rowOff + x] = Color.argb(
+                        (edgeAA * 255f).toInt().coerceIn(0, 255),
+                        (rObs * wallShade).toInt().coerceIn(0, 255),
+                        (gObs * wallShade).toInt().coerceIn(0, 255),
+                        (bObs * wallShade).toInt().coerceIn(0, 255)
+                    )
+                }
+            }
+        }
+        out.setPixels(pixels, 0, size, 0, 0, size, size)
+
+        val canvas = Canvas(out)
+
+        // 2. Sculpted 3D height-field molten liquid-gold internal symbol
+        val prepared = prepareForegroundSymbol(fallback, 148)
+        if (prepared.isIsolatedSilhouette) {
+            drawSculptedLiquidGoldSymbol(canvas, prepared.bitmap, size, hashShift)
+        } else {
+            drawGoldMetallicFramedArtwork(canvas, prepared.bitmap, size, hashShift)
+        }
+        if (!prepared.bitmap.isRecycled) {
+            prepared.bitmap.recycle()
+        }
+
+        // 3. Sharp optical catchlight lens flare on top-left & bottom-right liquid glass rim
+        val marginPx = margin + rimWidth * 0.45f
+        val flareTLX = marginPx + size * 0.11f
+        val flareTLY = marginPx + size * 0.11f
+        val flareTLPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                flareTLX,
+                flareTLY,
+                size * 0.13f,
+                intArrayOf(
+                    Color.argb(235, 255, 252, 232),
+                    Color.argb(125, 255, 243, 176),
+                    Color.argb(28, 212, 175, 55),
+                    Color.argb(0, 212, 175, 55)
+                ),
+                floatArrayOf(0f, 0.22f, 0.56f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(flareTLX, flareTLY, size * 0.13f, flareTLPaint)
+
+        val flareBRX = size - marginPx - size * 0.11f
+        val flareBRY = size - marginPx - size * 0.11f
+        val flareBRPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                flareBRX,
+                flareBRY,
+                size * 0.105f,
+                intArrayOf(
+                    Color.argb(200, 255, 248, 210),
+                    Color.argb(72, 212, 175, 55),
+                    Color.argb(0, 120, 85, 19)
+                ),
+                floatArrayOf(0f, 0.36f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(flareBRX, flareBRY, size * 0.105f, flareBRPaint)
+
+        bitmapCache.put(cacheKey, out)
+        try {
+            renderDiskCacheDir.mkdirs()
+            FileOutputStream(diskFile).use { fos ->
+                out.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+        } catch (_: Exception) {
+            // Disk cache write is best-effort
+        }
+        return BitmapDrawable(context.resources, out)
+    }
+
+    private fun sampleGoldRampRgb(tRaw: Float): IntArray {
+        val t = tRaw.coerceIn(0f, 1f)
+        val stopsT = floatArrayOf(0.00f, 0.14f, 0.30f, 0.45f, 0.62f, 0.77f, 0.90f, 1.00f)
+        val stopsR = intArrayOf(6, 36, 92, 120, 186, 212, 248, 255)
+        val stopsG = intArrayOf(7, 24, 62, 85, 144, 175, 226, 246)
+        val stopsB = intArrayOf(10, 7, 13, 19, 34, 55, 142, 204)
+        for (i in 0 until stopsT.size - 1) {
+            val t0 = stopsT[i]
+            val t1 = stopsT[i + 1]
+            if (t <= t1) {
+                val u = ((t - t0) / max(1e-5f, t1 - t0)).coerceIn(0f, 1f)
+                val s = u * u * (3f - 2f * u)
+                return intArrayOf(
+                    (stopsR[i] + (stopsR[i + 1] - stopsR[i]) * s).toInt(),
+                    (stopsG[i] + (stopsG[i + 1] - stopsG[i]) * s).toInt(),
+                    (stopsB[i] + (stopsB[i + 1] - stopsB[i]) * s).toInt()
+                )
+            }
+        }
+        return intArrayOf(255, 246, 204)
     }
 
     /**
@@ -2430,6 +2691,247 @@ class IconPackManager(
         }
         canvas.drawRect(innerRect, tintOverlay)
         canvas.restore()
+    }
+
+    /**
+     * Genuine 3D height-field & Blinn-Phong molten gold relief shader:
+     * inflates any app symbol into a volumetric carved 3D liquid-gold sculpture with smooth
+     * curved normals, deep crevices, brushed metallic reflections, and cast obsidian shadows.
+     */
+    private fun drawSculptedLiquidGoldSymbol(
+        canvas: Canvas,
+        symbolBmp: Bitmap,
+        canvasSize: Int,
+        hashShift: Float
+    ) {
+        val drawSize = (canvasSize * 0.60f).toInt()
+        val offset = (canvasSize - drawSize) / 2f
+        val destRect = RectF(offset, offset, offset + drawSize, offset + drawSize)
+
+        val alphaMask = symbolBmp.extractAlpha()
+
+        // 1. Deep cast shadow onto smoked obsidian glass cavity
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(235, 0, 0, 0)
+            maskFilter = BlurMaskFilter(7f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left + 4.2f, destRect.top + 6.5f, destRect.right + 4.2f, destRect.bottom + 6.5f),
+            shadowPaint
+        )
+
+        // Subtle warm molten-gold ambient bounce halo underneath sculpture
+        val goldBouncePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(72, 212, 175, 55)
+            maskFilter = BlurMaskFilter(5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(alphaMask, null, destRect, goldBouncePaint)
+
+        // 2. Resample foreground symbol cleanly to drawSize x drawSize
+        val srcScaled = Bitmap.createScaledBitmap(symbolBmp, drawSize, drawSize, true)
+        val nPixels = drawSize * drawSize
+        val srcPx = IntArray(nPixels)
+        srcScaled.getPixels(srcPx, 0, drawSize, 0, 0, drawSize, drawSize)
+        if (srcScaled !== symbolBmp && !srcScaled.isRecycled) srcScaled.recycle()
+
+        // Distance transform inside opaque alpha (forward + backward Chamfer passes)
+        val dist = FloatArray(nPixels)
+        val luma = FloatArray(nPixels)
+        val maxDist = 18f
+        for (i in 0 until nPixels) {
+            val px = srcPx[i]
+            val a = (px ushr 24) and 0xFF
+            if (a > 24) {
+                dist[i] = maxDist
+                val r = (px ushr 16) and 0xFF
+                val g = (px ushr 8) and 0xFF
+                val b = px and 0xFF
+                luma[i] = (0.299f * r + 0.587f * g + 0.114f * b) / 255f
+            } else {
+                dist[i] = 0f
+            }
+        }
+        for (y in 1 until drawSize - 1) {
+            val row = y * drawSize
+            for (x in 1 until drawSize - 1) {
+                val idx = row + x
+                if (dist[idx] > 0f) {
+                    val dUp = dist[idx - drawSize] + 1f
+                    val dLeft = dist[idx - 1] + 1f
+                    val dDiag = dist[idx - drawSize - 1] + 1.414f
+                    dist[idx] = min(dist[idx], min(dUp, min(dLeft, dDiag)))
+                }
+            }
+        }
+        for (y in drawSize - 2 downTo 1) {
+            val row = y * drawSize
+            for (x in drawSize - 2 downTo 1) {
+                val idx = row + x
+                if (dist[idx] > 0f) {
+                    val dDown = dist[idx + drawSize] + 1f
+                    val dRight = dist[idx + 1] + 1f
+                    val dDiag = dist[idx + drawSize + 1] + 1.414f
+                    dist[idx] = min(dist[idx], min(dDown, min(dRight, dDiag)))
+                }
+            }
+        }
+
+        // Build smooth volumetric 3D height field H = pillow(dist) + internal luminance relief
+        val rawH = FloatArray(nPixels)
+        for (i in 0 until nPixels) {
+            if (dist[i] > 0f) {
+                val normD = (dist[i] / 9.5f).coerceIn(0f, 1f)
+                val pillow = sqrt(normD * (2f - normD))
+                rawH[i] = pillow * 0.78f + luma[i] * 0.28f
+            }
+        }
+        val smoothH = FloatArray(nPixels)
+        for (y in 1 until drawSize - 1) {
+            val row = y * drawSize
+            for (x in 1 until drawSize - 1) {
+                val idx = row + x
+                smoothH[idx] = (
+                    rawH[idx - drawSize - 1] + 2f * rawH[idx - drawSize] + rawH[idx - drawSize + 1] +
+                        2f * rawH[idx - 1] + 4f * rawH[idx] + 2f * rawH[idx + 1] +
+                        rawH[idx + drawSize - 1] + 2f * rawH[idx + drawSize] + rawH[idx + drawSize + 1]
+                    ) / 16f
+            }
+        }
+
+        // Shade every pixel with 3D surface normals, brushed anisotropic gold reflection & Blinn-Phong highlights
+        val outPx = IntArray(nPixels)
+        val angleShift = hashShift * 0.55f
+        for (y in 0 until drawSize) {
+            val row = y * drawSize
+            val yUp = max(0, y - 1) * drawSize
+            val yDn = min(drawSize - 1, y + 1) * drawSize
+            for (x in 0 until drawSize) {
+                val idx = row + x
+                val a = (srcPx[idx] ushr 24) and 0xFF
+                if (a < 8) continue
+
+                val xL = max(0, x - 1)
+                val xR = min(drawSize - 1, x + 1)
+                val dhdx = (smoothH[row + xR] - smoothH[row + xL]) * 4.4f
+                val dhdy = (smoothH[yDn + x] - smoothH[yUp + x]) * 4.4f
+
+                val invLen = 1f / sqrt(dhdx * dhdx + dhdy * dhdy + 1f)
+                val nx = -dhdx * invLen
+                val ny = -dhdy * invLen
+                val nz = invLen
+
+                // Studio key light (top-left) + warm secondary bounce (bottom-right)
+                val diffKey = max(0f, nx * -0.58f + ny * -0.64f + nz * 0.50f)
+                val diffRim = max(0f, nx * 0.54f + ny * 0.56f + nz * 0.44f)
+
+                // Crisp specular highlight peaks
+                val specKey = (nx * -0.34f + ny * -0.38f + nz * 0.86f).coerceAtLeast(0f).pow(24f)
+                val specBounce = (nx * 0.34f + ny * 0.36f + nz * 0.86f).coerceAtLeast(0f).pow(20f)
+
+                // Reflected studio reflection band pattern (gives liquid gold liquid-metal flow)
+                val rx = nx * 1.4f + (x.toFloat() / drawSize - 0.5f) * 0.45f + angleShift
+                val ry = ny * 1.4f + (y.toFloat() / drawSize - 0.5f) * 0.45f
+                val studioBand = 0.5f + 0.5f * cos((rx * 1.15f + ry * 1.25f) * 4.2f)
+
+                // Grazing Fresnel catchlight on curved edges
+                val fresnel = (1f - nz).pow(2.1f) * 0.45f
+
+                val energy = (
+                    0.18f +
+                        0.46f * diffKey +
+                        0.22f * diffRim +
+                        0.18f * studioBand +
+                        fresnel +
+                        0.72f * specKey +
+                        0.38f * specBounce +
+                        luma[idx] * 0.14f
+                    ).coerceIn(0.08f, 1.0f)
+
+                val rgb = sampleGoldRampRgb(energy)
+                outPx[idx] = Color.argb(a, rgb[0], rgb[1], rgb[2])
+            }
+        }
+
+        val sculpted = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
+        sculpted.setPixels(outPx, 0, drawSize, 0, 0, drawSize, drawSize)
+        canvas.drawBitmap(sculpted, null, destRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+
+        sculpted.recycle()
+        alphaMask.recycle()
+    }
+
+    private fun drawGoldMetallicFramedArtwork(
+        canvas: Canvas,
+        artworkBmp: Bitmap,
+        canvasSize: Int,
+        hashShift: Float
+    ) {
+        val inset = canvasSize * 0.17f
+        val innerRect = RectF(inset, inset, canvasSize - inset, canvasSize - inset)
+        val innerRadius = canvasSize * 0.16f
+        val clipPath = Path().apply {
+            addRoundRect(innerRect, innerRadius, innerRadius, Path.Direction.CW)
+        }
+
+        canvas.save()
+        canvas.clipPath(clipPath)
+        val goldContrastMatrix = ColorMatrix().apply {
+            setSaturation(0.18f)
+            postConcat(
+                ColorMatrix(
+                    floatArrayOf(
+                        1.15f, 0f, 0f, 0f, 10f,
+                        0f, 0.96f, 0f, 0f, 4f,
+                        0f, 0f, 0.52f, 0f, -8f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            )
+        }
+        val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(goldContrastMatrix)
+        }
+        canvas.drawBitmap(artworkBmp, null, innerRect, artPaint)
+
+        val moltenGoldTint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                innerRect.left + hashShift * 40f,
+                innerRect.top,
+                innerRect.right - hashShift * 40f,
+                innerRect.bottom,
+                intArrayOf(
+                    Color.argb(62, 255, 243, 176),
+                    Color.argb(85, 212, 175, 55),
+                    Color.argb(95, 120, 85, 19)
+                ),
+                floatArrayOf(0f, 0.46f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(innerRect, moltenGoldTint)
+        canvas.restore()
+
+        val innerBevelStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 3.2f
+            shader = LinearGradient(
+                innerRect.left,
+                innerRect.top,
+                innerRect.right,
+                innerRect.bottom,
+                intArrayOf(
+                    Color.argb(235, 255, 243, 176),
+                    Color.argb(165, 212, 175, 55),
+                    Color.argb(190, 120, 85, 19),
+                    Color.argb(210, 255, 243, 176)
+                ),
+                floatArrayOf(0f, 0.34f, 0.72f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(clipPath, innerBevelStroke)
     }
 
     private fun buildIconSourcePath(pack: ParsedPack, fileName: String): String {

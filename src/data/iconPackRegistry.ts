@@ -10,6 +10,7 @@ import hilmArtifactsManifest from "../../public/assets/icon-packs/hilm-artifacts
 import tronNeonManifest from "../../public/assets/icon-packs/tron-neon/manifest.json";
 import cyberpunkHoloManifest from "../../public/assets/icon-packs/cyberpunk-holo/manifest.json";
 import obsidianCoreManifest from "../../public/assets/icon-packs/obsidian-core/manifest.json";
+import liquidGoldObsidianManifest from "../../public/assets/icon-packs/liquid-gold-obsidian/manifest.json";
 
 interface RawManifest {
   id?: string;
@@ -60,6 +61,10 @@ export const ICON_PACK_REGISTRY: IconPackDescriptor[] = [
   buildIllustratedDescriptor(
     titaniumLiquidManifest as RawManifest,
     "/assets/icon-packs/titanium-liquid"
+  ),
+  buildIllustratedDescriptor(
+    liquidGoldObsidianManifest as RawManifest,
+    "/assets/icon-packs/liquid-gold-obsidian"
   ),
   {
     id: "nosso-universo",
@@ -134,8 +139,16 @@ export function isLunaHolographicIconPack(packId: IconPackId): boolean {
   return packId === "luna-holographic";
 }
 
+export function isLiquidGoldObsidianIconPack(packId: IconPackId): boolean {
+  return packId === "liquid-gold-obsidian";
+}
+
 export function isCardlessIconPack(packId: IconPackId): boolean {
-  return isArtifactIconPack(packId) || isLunaHolographicIconPack(packId);
+  return (
+    isArtifactIconPack(packId) ||
+    isLunaHolographicIconPack(packId) ||
+    isLiquidGoldObsidianIconPack(packId)
+  );
 }
 
 export function usesExpandedGlyphScale(packId: IconPackId): boolean {

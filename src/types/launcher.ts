@@ -25,6 +25,7 @@ export type BuiltInIconPackId =
   | "cyberpunk-holo"
   | "tron-neon"
   | "titanium-liquid"
+  | "liquid-gold-obsidian"
   | "nosso-universo"
   | "monochrome-hud"
   | "orbital-glow"

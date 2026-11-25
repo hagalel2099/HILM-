@@ -216,6 +216,7 @@ class ShortcutStorage(context: Context) {
                     "obsidian-core", "obsidian_core" -> IconPackInfo.STYLE_OBSIDIAN_CORE
                     "cyberpunk-holo", "cyberpunk_holo" -> IconPackInfo.STYLE_CYBERPUNK_HOLO
                     "tron-neon", "tron_neon" -> IconPackInfo.STYLE_TRON_NEON
+                    "liquid-gold-obsidian", "liquid_gold_obsidian", IconPackInfo.LEGACY_STYLE_LIQUID_GOLD_OBSIDIAN, IconPackInfo.STYLE_LIQUID_GOLD_OBSIDIAN -> IconPackInfo.STYLE_LIQUID_GOLD_OBSIDIAN
                     "luna-holographic", "luna_holographic", IconPackInfo.STYLE_LUNA_HOLOGRAPHIC -> IconPackInfo.STYLE_HILM_ARTIFACTS
                     "titanium-liquid" -> IconPackInfo.ASSET_PACK_PREFIX + "titanium_liquid"
                     "nosso-universo" -> IconPackInfo.STYLE_NOSSO_UNIVERSO
