@@ -3,7 +3,7 @@
   "name": "Obsidian Core · Power Within Darkness",
   "subtitle": "Artefatos tridimensionais de obsidiana negra vulcânica com núcleos internos de energia âmbar incandescente, fissuras luminosas e reflexos quentes.",
   "author": "HILM Studio",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "format": "png-rgba-256",
   "fallbackStyle": "obsidian_core",
   "previewIcons": [
@@ -129,19 +129,30 @@
       "keywords": ["settings", "ajustes", "configuracoes"]
     },
     {
+      "key": "chrome",
+      "label": "Chrome",
+      "file": "chrome.png",
+      "packages": [
+        "com.android.chrome",
+        "com.chrome.beta",
+        "com.chrome.dev",
+        "com.chrome.canary"
+      ],
+      "keywords": ["chrome"]
+    },
+    {
       "key": "browser",
       "label": "Navegador",
       "file": "browser.png",
       "iconKeys": ["globe"],
       "packages": [
-        "com.android.chrome",
         "com.sec.android.app.sbrowser",
         "org.mozilla.firefox",
         "com.brave.browser",
         "com.opera.browser",
         "com.microsoft.emmx"
       ],
-      "keywords": ["chrome", "browser", "firefox", "opera", "brave", "safari"]
+      "keywords": ["browser", "firefox", "opera", "brave", "safari"]
     },
     {
       "key": "contacts",
@@ -232,16 +243,34 @@
     },
     {
       "key": "files",
-      "label": "Arquivos",
+      "label": "Gerenciador de arquivos",
       "file": "files.png",
       "iconKeys": ["folder"],
       "packages": [
         "com.android.documentsui",
         "com.google.android.apps.nbu.files",
         "com.sec.android.app.myfiles",
-        "com.mi.android.globalFileexplorer"
+        "com.mi.android.globalFileexplorer",
+        "com.alphainventor.filemanager",
+        "com.cxinventor.file.explorer",
+        "com.lonelycatgames.Xplore",
+        "pl.solidexplorer2",
+        "nextapp.fx",
+        "me.zhanghai.android.files",
+        "com.amaze.filemanager",
+        "bin.mt.plus",
+        "com.ace.ex.file.manager"
       ],
-      "keywords": ["documentsui", "files", "myfiles", "arquivos"]
+      "keywords": [
+        "documentsui",
+        "files",
+        "myfiles",
+        "filemanager",
+        "file.explorer",
+        "globalfileexplorer",
+        "gerenciador",
+        "arquivos"
+      ]
     },
     {
       "key": "github",
@@ -282,6 +311,96 @@
       "iconKeys": ["bank"],
       "packages": ["com.nu.production"],
       "keywords": ["nubank", "nu.production"]
+    },
+    {
+      "key": "andftp",
+      "label": "AndFTP",
+      "file": "andftp.png",
+      "packages": ["lysesoft.andftp", "lysesoft.andftppro"],
+      "keywords": ["andftp", "lysesoft"]
+    },
+    {
+      "key": "colornote",
+      "label": "ColorNote",
+      "file": "colornote.png",
+      "packages": ["com.socialnmobile.dictapps.notepad.color.note"],
+      "keywords": ["colornote", "color.note", "socialnmobile"]
+    },
+    {
+      "key": "videoconverter",
+      "label": "Conversor de vídeo",
+      "file": "videoconverter.png",
+      "packages": [
+        "com.inverseai.video_converter",
+        "com.clogica.videoconverter",
+        "com.bdroid.videoconverter",
+        "com.aroon.videoconverter",
+        "com.keuwl.videoconverter",
+        "com.video.converter",
+        "com.camerasideas.videoconverter",
+        "video.converter.videocompressor",
+        "com.vidma.converter",
+        "com.kk.videoconverter",
+        "com.apowersoft.videoconverter",
+        "com.andev.videoconverter",
+        "com.video.converter.mp4.compressor",
+        "com.funs.videoconverter",
+        "com.naing.videoconverter"
+      ],
+      "keywords": [
+        "videoconverter",
+        "video_converter",
+        "video.converter",
+        "videocompressor",
+        "mp4converter",
+        "conversor"
+      ]
+    },
+    {
+      "key": "kodi",
+      "label": "Kodi",
+      "file": "kodi.png",
+      "packages": ["org.xbmc.kodi"],
+      "keywords": ["kodi", "xbmc"]
+    },
+    {
+      "key": "mercadopago",
+      "label": "Mercado Pago",
+      "file": "mercadopago.png",
+      "packages": ["com.mercadopago.wallet"],
+      "keywords": ["mercadopago", "mercado.pago"]
+    },
+    {
+      "key": "meuinss",
+      "label": "Meu INSS",
+      "file": "meuinss.png",
+      "packages": ["br.gov.dataprev.meuinss"],
+      "keywords": ["meuinss", "dataprev"]
+    },
+    {
+      "key": "rar",
+      "label": "RAR",
+      "file": "rar.png",
+      "packages": ["com.rarlab.rar"],
+      "keywords": ["rarlab", ".rar", "winrar"]
+    },
+    {
+      "key": "snaptube",
+      "label": "SnapTube",
+      "file": "snaptube.png",
+      "packages": [
+        "com.snaptube.premium",
+        "com.snaptube.video",
+        "com.snaptube.downloader"
+      ],
+      "keywords": ["snaptube"]
+    },
+    {
+      "key": "xplayer",
+      "label": "XPlayer",
+      "file": "xplayer.png",
+      "packages": ["video.player.videoplayer", "xplayer.video.player"],
+      "keywords": ["xplayer", "video.player.videoplayer"]
     }
   ]
 }

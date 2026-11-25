@@ -55,9 +55,26 @@ class HilmPortalOverlayView @JvmOverloads constructor(
     private var activeEffect: HilmTransitionEffect = HilmTransitionEffect.PORTAL
     private var launchDispatched: Boolean = false
     private var wasCancelled: Boolean = false
+    var lunaThemeMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                wellShader = null
+                wellShaderRadius = -1f
+                applyThemePaletteToPaints()
+            }
+        }
+
     private var onLaunchTrigger: (() -> Unit)? = null
     private var onFinishedCallback: (() -> Unit)? = null
     private var hiddenOriginRef: WeakReference<View>? = null
+
+    private fun applyThemePaletteToPaints() {
+        cyanRingPaint.color = Color.parseColor(if (lunaThemeMode) "#00E5FF" else "#22D3EE")
+        cyanFinePaint.color = Color.parseColor(if (lunaThemeMode) "#D9F7FF" else "#A5F3FC")
+        orangeRingPaint.color = Color.parseColor(if (lunaThemeMode) "#398BFF" else "#FB923C")
+        amberTickPaint.color = Color.parseColor(if (lunaThemeMode) "#FFB45C" else "#F59E0B")
+    }
 
     private var originX: Float = 0f
     private var originY: Float = 0f
@@ -362,11 +379,20 @@ class HilmPortalOverlayView @JvmOverloads constructor(
         drawWell(canvas, wellRadius, fadeOut * 0.65f)
 
         val spread = baseRadius * 0.6f + maxExpandRadius * 0.72f * eased
-        digitalMotes.forEach { mote ->
+        digitalMotes.forEachIndexed { idx, mote ->
             val r = spread * mote.distanceFactor
             val mx = originX + cos(mote.angleRad) * r
             val my = originY + sin(mote.angleRad) * r
-            motePaint.color = mote.color
+            motePaint.color = if (lunaThemeMode) {
+                when (idx % 4) {
+                    0 -> Color.parseColor("#00E5FF")
+                    1 -> Color.parseColor("#398BFF")
+                    2 -> Color.parseColor("#D9F7FF")
+                    else -> Color.parseColor("#FFB45C")
+                }
+            } else {
+                mote.color
+            }
             motePaint.alpha = (230 * fadeOut).toInt().coerceIn(0, 255)
             val dotR = mote.radiusDp * density * (1f - 0.35f * eased)
             canvas.drawCircle(mx, my, dotR, motePaint)
@@ -581,20 +607,37 @@ class HilmPortalOverlayView @JvmOverloads constructor(
         if (wellShader != null && wellShaderRadius > 0f) return
         val unitR = max(radius, 80f * density)
         wellShaderRadius = unitR
-        wellShader = RadialGradient(
-            0f,
-            0f,
-            unitR,
-            intArrayOf(
-                Color.argb(220, 3, 9, 20),
-                Color.argb(175, 7, 22, 38),
-                Color.argb(72, 34, 211, 238),
-                Color.argb(46, 251, 146, 60),
-                Color.TRANSPARENT
-            ),
-            floatArrayOf(0f, 0.42f, 0.68f, 0.84f, 1f),
-            Shader.TileMode.CLAMP
-        )
+        wellShader = if (lunaThemeMode) {
+            RadialGradient(
+                0f,
+                0f,
+                unitR,
+                intArrayOf(
+                    Color.argb(225, 5, 7, 11),
+                    Color.argb(180, 10, 20, 36),
+                    Color.argb(82, 0, 229, 255),
+                    Color.argb(48, 57, 139, 255),
+                    Color.TRANSPARENT
+                ),
+                floatArrayOf(0f, 0.42f, 0.68f, 0.84f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        } else {
+            RadialGradient(
+                0f,
+                0f,
+                unitR,
+                intArrayOf(
+                    Color.argb(220, 3, 9, 20),
+                    Color.argb(175, 7, 22, 38),
+                    Color.argb(72, 34, 211, 238),
+                    Color.argb(46, 251, 146, 60),
+                    Color.TRANSPARENT
+                ),
+                floatArrayOf(0f, 0.42f, 0.68f, 0.84f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
     }
 
     private fun renderIconSnapshot(drawable: Drawable?, sizePx: Int): Bitmap? {

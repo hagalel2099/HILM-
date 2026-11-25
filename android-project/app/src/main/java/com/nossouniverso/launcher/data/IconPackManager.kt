@@ -99,6 +99,16 @@ class IconPackManager(
 
         packs.add(
             IconPackInfo(
+                id = IconPackInfo.STYLE_LUNA_HOLOGRAPHIC,
+                title = "Luna Holográfico (Luz & Sombra)",
+                subtitle = "Símbolos flutuantes sem moldura em ciano luminoso (#00E5FF) e azul elétrico (#398BFF).",
+                author = "HILM · Tema Luna",
+                kind = IconPackKind.BUILT_IN_STYLE,
+                isBuiltIn = true
+            )
+        )
+        packs.add(
+            IconPackInfo(
                 id = IconPackInfo.STYLE_NOSSO_UNIVERSO,
                 title = "Nosso Universo Padrão (HUD Ciano & Âmbar)",
                 subtitle = "Tonalização técnica ciano integrada às molduras HUD.",
@@ -414,6 +424,11 @@ class IconPackManager(
     ): Drawable {
         return when {
             packId == IconPackInfo.STYLE_SYSTEM_DEFAULT -> fallback
+            packId == IconPackInfo.STYLE_LUNA_HOLOGRAPHIC -> renderUnifiedLunaHolographicIcon(
+                cacheIdentity = "${packageName.lowercase()}/${activityName.lowercase()}",
+                packageName = packageName,
+                fallback = fallback
+            )
             packId == IconPackInfo.LEGACY_STYLE_HILM_ARTIFACTS -> resolveFromManagedPack(
                 IconPackInfo.STYLE_HILM_ARTIFACTS,
                 packageName,
@@ -460,6 +475,11 @@ class IconPackManager(
             "none", "original", "system" -> fallback
             "hud_cyan" -> applyHudCyanTint(fallback)
             "monochrome" -> applyMonochromeSilver(fallback)
+            "luna_holographic", "luna-holographic" -> renderUnifiedLunaHolographicIcon(
+                cacheIdentity = "$packId:$normalizedPkg/$normalizedAct",
+                packageName = appPackage,
+                fallback = fallback
+            )
             "hilm_artifacts" -> renderHilmArtifactIcon(
                 packageName = appPackage,
                 activityName = activityName,
@@ -2664,6 +2684,236 @@ class IconPackManager(
             .replace(Regex("[^a-z0-9_-]+"), "_")
             .trim('_')
             .take(40)
+    }
+
+    private fun isLunaWarmAccentApp(packageName: String): Boolean {
+        val pkg = packageName.lowercase()
+        val warmKeywords = listOf(
+            "camera", "cam", "spotify", "music", "audio", "notes", "keep",
+            "settings", "calendar", "instagram", "youtube", "mercadopago", "gallery"
+        )
+        if (warmKeywords.any { pkg.contains(it) }) return true
+        return abs(pkg.hashCode()) % 4 == 0
+    }
+
+    /**
+     * Tema Luna — Entre Luz e Sombra | HILM:
+     * Floating luminous cyan (#00E5FF) & electric blue (#398BFF) symbols directly over
+     * transparency / faint navy mist (#0A1424) with ZERO solid square card, selective warm
+     * copper/amber glints (#C47A48 / #FFB45C), and automatic adaptation for all apps.
+     */
+    private fun renderUnifiedLunaHolographicIcon(
+        cacheIdentity: String,
+        packageName: String,
+        fallback: Drawable
+    ): Drawable {
+        val size = 192
+        val cacheKey = "luna_holo_v1:$cacheIdentity#$size"
+        bitmapCache.get(cacheKey)?.let { cached ->
+            return BitmapDrawable(context.resources, cached)
+        }
+
+        val diskFile = diskCacheFileForKey(cacheKey)
+        if (diskFile.exists()) {
+            try {
+                FileInputStream(diskFile).use { stream ->
+                    BitmapFactory.decodeStream(stream)?.let { decoded ->
+                        bitmapCache.put(cacheKey, decoded)
+                        return BitmapDrawable(context.resources, decoded)
+                    }
+                }
+            } catch (_: Exception) {
+                // Re-render cleanly if disk entry is unreadable
+            }
+        }
+
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        val cx = size / 2f
+        val cy = size / 2f
+
+        // Discreet circular navy mist for legibility over glowing areas without any visible card
+        val mistRadius = size * 0.44f
+        val mistPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                cx,
+                cy,
+                mistRadius,
+                intArrayOf(
+                    Color.argb(122, 10, 20, 36),
+                    Color.argb(56, 5, 7, 11),
+                    Color.argb(0, 5, 7, 11)
+                ),
+                floatArrayOf(0f, 0.62f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(cx, cy, mistRadius, mistPaint)
+
+        // Subtle broken holographic telemetry arc around floating symbol
+        val arcR = size * 0.40f
+        val arcRect = RectF(cx - arcR, cy - arcR, cx + arcR, cy + arcR)
+        val arcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.0f
+            strokeCap = Paint.Cap.ROUND
+            color = Color.argb(95, 57, 139, 255)
+        }
+        canvas.drawArc(arcRect, -42f, 76f, false, arcPaint)
+        arcPaint.color = Color.argb(115, 0, 229, 255)
+        canvas.drawArc(arcRect, 138f, 74f, false, arcPaint)
+
+        val warmAccent = isLunaWarmAccentApp(packageName)
+        val prepared = prepareForegroundSymbol(fallback, 142)
+
+        if (prepared.isIsolatedSilhouette) {
+            val drawSize = (size * 0.68f).toInt()
+            val offset = (size - drawSize) / 2f
+            val destRect = RectF(offset, offset, offset + drawSize, offset + drawSize)
+            val alphaMask = prepared.bitmap.extractAlpha()
+
+            // Soft electric-blue depth shadow behind glyph
+            val blueGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                color = Color.argb(150, 57, 139, 255)
+                maskFilter = BlurMaskFilter(9.5f, BlurMaskFilter.Blur.NORMAL)
+            }
+            canvas.drawBitmap(alphaMask, null, destRect, blueGlowPaint)
+
+            // Focused holographic cyan aura
+            val cyanGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                color = Color.argb(175, 0, 229, 255)
+                maskFilter = BlurMaskFilter(4.5f, BlurMaskFilter.Blur.NORMAL)
+            }
+            canvas.drawBitmap(alphaMask, null, destRect, cyanGlowPaint)
+
+            // Luminance-preserving holographic cyan & bluish-white symbol body
+            val holoBmp = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
+            val hCanvas = Canvas(holoBmp)
+            val lumaMatrix = ColorMatrix(
+                floatArrayOf(
+                    0.12f, 0.24f, 0.08f, 0f, 52f,
+                    0.32f, 0.52f, 0.16f, 0f, 118f,
+                    0.36f, 0.58f, 0.22f, 0f, 136f,
+                    0f, 0f, 0f, 1f, 0f
+                )
+            )
+            val basePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                colorFilter = ColorMatrixColorFilter(lumaMatrix)
+            }
+            hCanvas.drawBitmap(prepared.bitmap, null, RectF(0f, 0f, drawSize.toFloat(), drawSize.toFloat()), basePaint)
+
+            val holoFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+                shader = LinearGradient(
+                    0f,
+                    0f,
+                    drawSize.toFloat(),
+                    drawSize.toFloat(),
+                    intArrayOf(
+                        Color.argb(205, 217, 247, 255),
+                        Color.argb(185, 0, 229, 255),
+                        Color.argb(180, 57, 139, 255)
+                    ),
+                    floatArrayOf(0f, 0.48f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            hCanvas.drawRect(0f, 0f, drawSize.toFloat(), drawSize.toFloat(), holoFillPaint)
+
+            // Thin crisp ice-cyan top highlight rim
+            val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                color = Color.argb(115, 217, 247, 255)
+            }
+            canvas.drawBitmap(
+                alphaMask,
+                null,
+                RectF(destRect.left - 0.8f, destRect.top - 0.8f, destRect.right - 0.8f, destRect.bottom - 0.8f),
+                rimPaint
+            )
+            canvas.drawBitmap(holoBmp, null, destRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+
+            if (warmAccent) {
+                // Restrained copper/amber spark at top-right orbital node
+                val glintX = cx + size * 0.24f
+                val glintY = cy - size * 0.24f
+                val amberHalo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.argb(165, 196, 122, 72)
+                    maskFilter = BlurMaskFilter(4f, BlurMaskFilter.Blur.NORMAL)
+                }
+                canvas.drawCircle(glintX, glintY, 4.4f, amberHalo)
+                val amberCore = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.parseColor("#FFB45C")
+                }
+                canvas.drawCircle(glintX, glintY, 2.6f, amberCore)
+            }
+
+            holoBmp.recycle()
+            alphaMask.recycle()
+        } else {
+            // Legacy full-bleed third-party artwork: clip inside a translucent optical glass circle (no square frame)
+            val lensR = size * 0.34f
+            val destRect = RectF(cx - lensR, cy - lensR, cx + lensR, cy + lensR)
+            val clipPath = Path().apply { addCircle(cx, cy, lensR, Path.Direction.CW) }
+
+            canvas.save()
+            canvas.clipPath(clipPath)
+            val cyanDuotone = ColorMatrix().apply { setSaturation(0.28f) }
+            val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                colorFilter = ColorMatrixColorFilter(cyanDuotone)
+            }
+            canvas.drawBitmap(prepared.bitmap, null, destRect, artPaint)
+
+            val glassTint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = LinearGradient(
+                    destRect.left,
+                    destRect.top,
+                    destRect.right,
+                    destRect.bottom,
+                    Color.argb(95, 0, 229, 255),
+                    Color.argb(115, 10, 20, 36),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            canvas.drawRect(destRect, glassTint)
+            canvas.restore()
+
+            val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 2.2f
+                shader = LinearGradient(
+                    destRect.left,
+                    destRect.top,
+                    destRect.right,
+                    destRect.bottom,
+                    Color.argb(215, 217, 247, 255),
+                    Color.argb(190, 0, 229, 255),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            canvas.drawCircle(cx, cy, lensR, ringPaint)
+
+            if (warmAccent) {
+                val sparkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.parseColor("#FFB45C")
+                }
+                canvas.drawCircle(cx + lensR * 0.72f, cy - lensR * 0.72f, 2.8f, sparkPaint)
+            }
+        }
+
+        if (!prepared.bitmap.isRecycled) {
+            prepared.bitmap.recycle()
+        }
+
+        bitmapCache.put(cacheKey, out)
+        try {
+            renderDiskCacheDir.mkdirs()
+            FileOutputStream(diskFile).use { fos ->
+                out.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+        } catch (_: Exception) {
+            // Disk cache write is best-effort
+        }
+        return BitmapDrawable(context.resources, out)
     }
 
     private fun applyHudCyanTint(source: Drawable): Drawable {

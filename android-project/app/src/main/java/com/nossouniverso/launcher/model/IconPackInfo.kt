@@ -36,6 +36,7 @@ data class IconPackInfo(
         const val STYLE_CYBERPUNK_HOLO = "asset_pack:cyberpunk_holo"
         const val STYLE_TRON_NEON = "asset_pack:tron_neon"
         const val LEGACY_STYLE_HILM_ARTIFACTS = "builtin_hilm_artifacts"
+        const val STYLE_LUNA_HOLOGRAPHIC = "builtin_luna_holographic"
         const val STYLE_NOSSO_UNIVERSO = "builtin_nosso_universo"
         const val STYLE_MONOCHROME_HUD = "builtin_monochrome_hud"
         const val STYLE_SYSTEM_DEFAULT = "builtin_system_default"

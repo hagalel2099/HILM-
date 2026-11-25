@@ -9,4 +9,11 @@
     <color name="hud_text_primary">#F1F5F9</color>
     <color name="hud_text_secondary">#94A3B8</color>
     <color name="hilm_violet">#8B5CF6</color>
+    <color name="luna_bg_black">#05070B</color>
+    <color name="luna_navy">#0A1424</color>
+    <color name="luna_cyan">#00E5FF</color>
+    <color name="luna_electric_blue">#398BFF</color>
+    <color name="luna_copper">#C47A48</color>
+    <color name="luna_amber">#FFB45C</color>
+    <color name="luna_white_blue">#D9F7FF</color>
 </resources>

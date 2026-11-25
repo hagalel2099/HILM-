@@ -3,6 +3,8 @@ package com.nossouniverso.launcher.ui.drawer
 import android.annotation.SuppressLint
 import android.content.DialogInterface
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -17,6 +19,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.GridLayoutManager
@@ -26,6 +29,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.nossouniverso.launcher.R
+import com.nossouniverso.launcher.data.ShortcutStorage
 import com.nossouniverso.launcher.model.AppInfo
 import com.nossouniverso.launcher.model.HilmTransitionConfig
 import com.nossouniverso.launcher.ui.views.HilmPortalOverlayView
@@ -74,8 +78,10 @@ class AppDrawerBottomSheet(
         if (isLaunchMode && portalOverlay == null) {
             val decor = bottomSheetDialog.window?.decorView as? ViewGroup
             if (decor != null) {
+                val isLuna = ShortcutStorage(requireContext()).getLauncherTheme() == ShortcutStorage.THEME_LUNA
                 val overlay = HilmPortalOverlayView(requireContext()).apply {
                     elevation = 32f * resources.displayMetrics.density
+                    lunaThemeMode = isLuna
                 }
                 decor.addView(
                     overlay,
@@ -105,6 +111,21 @@ class AppDrawerBottomSheet(
         val recentHeader = view.findViewById<TextView>(R.id.txtRecentHeader)
         val recentRecycler = view.findViewById<RecyclerView>(R.id.recyclerRecentApps)
         val recycler = view.findViewById<RecyclerView>(R.id.recyclerApps)
+
+        val isLuna = ShortcutStorage(requireContext()).getLauncherTheme() == ShortcutStorage.THEME_LUNA
+        if (isLuna) {
+            view.setBackgroundColor(Color.parseColor("#F205070B"))
+            titleView.setTextColor(ContextCompat.getColor(requireContext(), R.color.luna_white_blue))
+            recentHeader.setTextColor(ContextCompat.getColor(requireContext(), R.color.luna_cyan))
+            val strokePx = (resources.displayMetrics.density).toInt().coerceAtLeast(1)
+            searchEdit.background = GradientDrawable().apply {
+                setColor(Color.parseColor("#CC0A1424"))
+                cornerRadius = 10f * resources.displayMetrics.density
+                setStroke(strokePx, Color.parseColor("#6600E5FF"))
+            }
+            searchEdit.setTextColor(ContextCompat.getColor(requireContext(), R.color.luna_white_blue))
+            searchEdit.setHintTextColor(Color.parseColor("#88D9F7FF"))
+        }
 
         titleView.text = title
 

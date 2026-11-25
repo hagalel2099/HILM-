@@ -20,6 +20,7 @@ export type SlotId =
 
 export type BuiltInIconPackId =
   | "hilm-artifacts"
+  | "luna-holographic"
   | "obsidian-core"
   | "cyberpunk-holo"
   | "tron-neon"
@@ -52,8 +53,11 @@ export interface IconPackDescriptor {
   icons?: IconPackIconEntry[];
 }
 
+export type LauncherThemeId = "default" | "luna-entre-luz-e-sombra";
+
 export type WallpaperId =
   | "ref-horizon"
+  | "luna-shadow-light"
   | "hilm-void"
   | "obsidian-grid"
   | "solar-nebula"
@@ -91,6 +95,7 @@ export interface ShortcutSlotConfig {
 
 export interface LauncherPersistedState {
   slots: Record<SlotId, ShortcutSlotConfig>;
+  themeId?: LauncherThemeId;
   iconPack: IconPackId;
   wallpaperId: WallpaperId;
   customWallpaperUrl?: string;

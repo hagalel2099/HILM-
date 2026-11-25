@@ -51,10 +51,28 @@ class HudDockSlotView @JvmOverloads constructor(
     var transparentHudMode: Boolean = false
         set(value) {
             field = value
-            val pad = ((if (value) 4.5f else 9f) * density).toInt()
-            iconView.setPadding(pad, pad, pad, pad)
+            updateIconPadding()
             invalidate()
         }
+
+    var lunaThemeMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                updateIconPadding()
+                invalidate()
+            }
+        }
+
+    private fun updateIconPadding() {
+        val padDp = when {
+            transparentHudMode || (lunaThemeMode && !isCenterDrawerButton) -> 4.5f
+            lunaThemeMode && isCenterDrawerButton -> 8.5f
+            else -> 9f
+        }
+        val pad = (padDp * density).toInt()
+        iconView.setPadding(pad, pad, pad, pad)
+    }
 
     var innerAccentColor: Int = Color.parseColor("#F59E0B")
         set(value) {
@@ -169,14 +187,43 @@ class HudDockSlotView @JvmOverloads constructor(
             return
         }
 
+        if (lunaThemeMode) {
+            if (isCenterDrawerButton) {
+                bgPaint.color = Color.rgb(10, 20, 36)
+                bgPaint.alpha = 110
+                canvas.drawCircle(cx, cy, r, bgPaint)
+            }
+            cyanPaint.strokeWidth = (if (isEditModeActive) 1.7f else 1.25f) * density
+            cyanPaint.color = when {
+                isEditModeActive && !isCenterDrawerButton -> Color.parseColor("#FFB45C")
+                isCenterDrawerButton -> Color.argb(215, 0, 229, 255)
+                transparentHudMode -> Color.argb(72, 0, 229, 255)
+                else -> Color.argb(120, 57, 139, 255)
+            }
+            canvas.drawArc(outerRect, 24f, 132f, false, cyanPaint)
+            canvas.drawArc(outerRect, 204f, 132f, false, cyanPaint)
+            if (isCenterDrawerButton) {
+                val innerR = r * 0.84f
+                val innerRect = RectF(cx - innerR, cy - innerR, cx + innerR, cy + innerR)
+                amberPaint.color = Color.argb(190, 255, 180, 92)
+                amberPaint.strokeWidth = 1.4f * density
+                canvas.drawArc(innerRect, 148f, 34f, false, amberPaint)
+                canvas.drawArc(innerRect, 328f, 34f, false, amberPaint)
+            }
+            super.onDraw(canvas)
+            return
+        }
+
         val bgAlphaRatio = if (isCenterDrawerButton) {
             0.90f
         } else {
             (panelOpacityPercent / 100f).coerceAtLeast(0.55f)
         }
+        bgPaint.color = Color.rgb(8, 14, 23)
         bgPaint.alpha = (bgAlphaRatio * 255f).toInt().coerceIn(0, 255)
         canvas.drawCircle(cx, cy, r, bgPaint)
 
+        cyanPaint.strokeWidth = 1.8f * density
         cyanPaint.color = if (isEditModeActive && !isCenterDrawerButton) {
             Color.parseColor("#F59E0B")
         } else {
@@ -187,6 +234,8 @@ class HudDockSlotView @JvmOverloads constructor(
 
         val innerR = r * 0.84f
         val innerRect = RectF(cx - innerR, cy - innerR, cx + innerR, cy + innerR)
+        amberPaint.color = innerAccentColor
+        amberPaint.strokeWidth = 1.6f * density
         canvas.drawArc(innerRect, 145f, 40f, false, amberPaint)
         canvas.drawArc(innerRect, 325f, 40f, false, amberPaint)
 

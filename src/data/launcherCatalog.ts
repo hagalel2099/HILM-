@@ -214,11 +214,32 @@ export const ICON_PACKS: {
   description: pack.description,
 }));
 
+export const LAUNCHER_THEMES = [
+  {
+    id: "default" as const,
+    name: "Nosso Universo Padrão",
+    subtitle: "HUD espacial com núcleo central orbital e placas octogonais.",
+    badge: "Original",
+  },
+  {
+    id: "luna-entre-luz-e-sombra" as const,
+    name: "Tema Luna — Entre Luz e Sombra",
+    subtitle:
+      "Projeção holográfica pessoal em ciano (#00E5FF) e azul elétrico (#398BFF) ao redor da personagem.",
+    badge: "Exclusivo HILM",
+  },
+];
+
 export const WALLPAPERS = [
   {
     id: "ref-horizon" as const,
     name: "Horizonte Espacial",
     description: "Linhas perspectivas em azul profundo fiel à Referência 1.",
+  },
+  {
+    id: "luna-shadow-light" as const,
+    name: "Luna — Entre Luz e Sombra",
+    description: "Imagem original da Luna em projeção holográfica sem recortes.",
   },
   {
     id: "hilm-void" as const,

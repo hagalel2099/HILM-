@@ -4,12 +4,13 @@ import { motion, useReducedMotion } from "motion/react";
 import type {
   IconPackId,
   InstalledAppItem,
+  LauncherThemeId,
   SlotId,
   TransitionConfig,
 } from "../types/launcher";
 import { DEFAULT_LAUNCHER_STATE, SLOT_LABELS } from "../data/launcherCatalog";
 import {
-  isArtifactIconPack,
+  isCardlessIconPack,
   usesExpandedGlyphScale,
 } from "../data/iconPackRegistry";
 import { AppGlyph } from "./AppGlyph";
@@ -18,6 +19,7 @@ import { getHilmIconItemMotion } from "./HilmTransitionPreview";
 interface AppDrawerModalProps {
   apps: InstalledAppItem[];
   iconPack: IconPackId;
+  themeId?: LauncherThemeId;
   targetSlot: SlotId | null;
   transition?: TransitionConfig;
   onClose: () => void;
@@ -28,6 +30,7 @@ interface AppDrawerModalProps {
 export function AppDrawerModal({
   apps,
   iconPack,
+  themeId = "default",
   targetSlot,
   transition = DEFAULT_LAUNCHER_STATE.transition,
   onClose,
@@ -37,6 +40,8 @@ export function AppDrawerModal({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("Todos");
   const prefersReducedMotion = Boolean(useReducedMotion());
+  const isLunaTheme = themeId === "luna-entre-luz-e-sombra";
+  const isCardless = isCardlessIconPack(iconPack);
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(apps.map((a) => a.category)));
@@ -57,14 +62,26 @@ export function AppDrawerModal({
 
   return (
     <div
-      className="absolute inset-0 z-30 flex flex-col bg-[#060A12]/95 backdrop-blur-md text-slate-100"
+      className={`absolute inset-0 z-30 flex flex-col backdrop-blur-md ${
+        isLunaTheme
+          ? "bg-[#05070B]/90 text-[#D9F7FF]"
+          : "bg-[#060A12]/95 text-slate-100"
+      }`}
       role="dialog"
       aria-modal="true"
       aria-label="Gaveta de Aplicativos"
     >
-      <div className="flex items-center justify-between px-4 pt-9 pb-3 border-b border-cyan-500/20">
+      <div
+        className={`flex items-center justify-between px-4 pt-9 pb-3 border-b ${
+          isLunaTheme ? "border-[#00E5FF]/25" : "border-cyan-500/20"
+        }`}
+      >
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold tracking-wide text-cyan-300 truncate">
+          <h3
+            className={`font-display text-sm font-semibold tracking-wide truncate ${
+              isLunaTheme ? "text-[#00E5FF]" : "text-cyan-300"
+            }`}
+          >
             {targetSlot ? `Selecionar para ${SLOT_LABELS[targetSlot]}` : "Aplicativos Instalados"}
           </h3>
           <p className="text-[11px] text-slate-400 mt-0.5 truncate">
@@ -83,7 +100,11 @@ export function AppDrawerModal({
         </button>
       </div>
 
-      <div className="px-4 py-2.5 space-y-2 border-b border-slate-800/80">
+      <div
+        className={`px-4 py-2.5 space-y-2 border-b ${
+          isLunaTheme ? "border-[#0A1424]" : "border-slate-800/80"
+        }`}
+      >
         <div className="relative flex items-center">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
           <input
@@ -91,7 +112,11 @@ export function AppDrawerModal({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar aplicativo..."
-            className="w-full h-10 pl-9 pr-3 rounded-lg bg-[#0D1422] border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-400"
+            className={`w-full h-10 pl-9 pr-3 rounded-lg text-xs placeholder:text-slate-500 focus:outline-none ${
+              isLunaTheme
+                ? "bg-[#0A1424]/75 border border-[#00E5FF]/30 text-[#D9F7FF] focus:border-[#00E5FF]"
+                : "bg-[#0D1422] border border-slate-700/80 text-slate-100 focus:border-cyan-400"
+            }`}
           />
         </div>
 
@@ -103,8 +128,12 @@ export function AppDrawerModal({
               onClick={() => setCategory(cat)}
               className={`px-2.5 py-1 text-[11px] font-medium rounded-md whitespace-nowrap shrink-0 transition-colors ${
                 category === cat
-                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/50"
-                  : "bg-slate-900/80 text-slate-400 border border-slate-800 hover:text-slate-200"
+                  ? isLunaTheme
+                    ? "bg-[#00E5FF]/15 text-[#D9F7FF] border border-[#00E5FF]/55"
+                    : "bg-cyan-500/20 text-cyan-300 border border-cyan-400/50"
+                  : isLunaTheme
+                    ? "bg-[#0A1424]/75 text-slate-300 border border-[#398BFF]/20 hover:text-[#D9F7FF]"
+                    : "bg-slate-900/80 text-slate-400 border border-slate-800 hover:text-slate-200"
               }`}
             >
               {cat}
@@ -132,7 +161,11 @@ export function AppDrawerModal({
                   initial={itemMotion.initial}
                   animate={itemMotion.animate}
                   transition={itemMotion.transition}
-                  className="group relative flex flex-col items-center p-2 rounded-xl bg-[#0B121E]/70 border border-slate-800/70 hover:border-cyan-400/50 transition-colors"
+                  className={`group relative flex flex-col items-center p-2 rounded-xl transition-colors ${
+                    isLunaTheme
+                      ? "bg-[#0A1424]/30 border border-[#00E5FF]/15 hover:border-[#00E5FF]/55"
+                      : "bg-[#0B121E]/70 border border-slate-800/70 hover:border-cyan-400/50"
+                  }`}
                 >
                   <button
                     type="button"
@@ -145,7 +178,7 @@ export function AppDrawerModal({
                     <div
                       data-portal-glyph="true"
                       className={
-                        isArtifactIconPack(iconPack)
+                        isCardless
                           ? "w-12 h-12 flex items-center justify-center"
                           : "w-11 h-11 rounded-full bg-[#060A12] border border-cyan-500/30 flex items-center justify-center"
                       }
@@ -154,7 +187,7 @@ export function AppDrawerModal({
                         app={app}
                         iconPack={iconPack}
                         sizeClass={
-                          isArtifactIconPack(iconPack)
+                          isCardless
                             ? "w-11 h-11"
                             : usesExpandedGlyphScale(iconPack)
                               ? "w-8 h-8"
@@ -162,7 +195,11 @@ export function AppDrawerModal({
                         }
                       />
                     </div>
-                    <span className="text-[11px] text-slate-200 truncate w-full text-center">
+                    <span
+                      className={`text-[11px] truncate w-full text-center ${
+                        isLunaTheme ? "text-[#D9F7FF]" : "text-slate-200"
+                      }`}
+                    >
                       {app.label}
                     </span>
                   </button>
@@ -172,7 +209,11 @@ export function AppDrawerModal({
                       onClick={() => onPinToSlot(app)}
                       title="Fixar na tela inicial"
                       aria-label={`Fixar ${app.label} na tela inicial`}
-                      className="mt-1 px-1.5 py-0.5 text-[10px] text-amber-300/90 hover:text-amber-200 flex items-center gap-0.5 whitespace-nowrap"
+                      className={`mt-1 px-1.5 py-0.5 text-[10px] flex items-center gap-0.5 whitespace-nowrap ${
+                        isLunaTheme
+                          ? "text-[#FFB45C]/90 hover:text-[#FFB45C]"
+                          : "text-amber-300/90 hover:text-amber-200"
+                      }`}
                     >
                       <Plus className="w-3 h-3" />
                       <span>Fixar</span>

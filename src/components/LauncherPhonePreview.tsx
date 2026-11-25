@@ -112,6 +112,10 @@ export function LauncherPhonePreview({
   const portalSeqRef = useRef(0);
   const prefersReducedMotion = Boolean(useReducedMotion());
   const effectiveTransitionsEnabled = state.transition.enabled && !prefersReducedMotion;
+  const isLunaTheme =
+    state.themeId === "luna-entre-luz-e-sombra" ||
+    state.wallpaperId === "luna-shadow-light";
+  const activeThemeId = isLunaTheme ? "luna-entre-luz-e-sombra" : "default";
 
   const coreStatus: HilmCoreStatus = useMemo(() => {
     if (
@@ -130,8 +134,15 @@ export function LauncherPhonePreview({
     return "nominal";
   }, [portalLaunch, updatePhase, isEditMode]);
 
-  const statusPrimaryStroke =
-    coreStatus === "alert"
+  const statusPrimaryStroke = isLunaTheme
+    ? coreStatus === "alert"
+      ? "#FFB45C"
+      : coreStatus === "resolved"
+        ? "#D9F7FF"
+        : coreStatus === "syncing"
+          ? "#398BFF"
+          : "#00E5FF"
+    : coreStatus === "alert"
       ? "#F59E0B"
       : coreStatus === "resolved"
         ? "#34D399"
@@ -200,6 +211,10 @@ export function LauncherPhonePreview({
       };
     }
     switch (state.wallpaperId) {
+      case "luna-shadow-light":
+        return {
+          backgroundColor: "#05070B",
+        };
       case "hilm-void":
         return {
           backgroundImage:
@@ -617,27 +632,43 @@ export function LauncherPhonePreview({
           className={`relative w-full h-[44px] px-3 flex items-center justify-center gap-2 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
             isSwapSelected ? "ring-2 ring-amber-400" : isDropTarget ? "ring-2 ring-cyan-300" : ""
           }`}
-          style={{
-            backgroundColor: `rgba(8, 14, 24, ${Math.max(0.45, state.panelOpacity / 100)})`,
-            clipPath:
-              "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
-            boxShadow: isBeingDragged
-              ? "inset 0 0 0 1.8px rgba(34, 211, 238, 0.95), 0 0 16px rgba(34, 211, 238, 0.35)"
-              : isEditMode
-                ? "inset 0 0 0 1.5px rgba(245, 158, 11, 0.85)"
-                : "inset 0 0 0 1.2px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.55)",
-          }}
+          style={
+            isLunaTheme
+              ? {
+                  backgroundColor: "transparent",
+                  borderBottom: isEditMode
+                    ? "1.5px solid rgba(255, 180, 92, 0.85)"
+                    : "1px solid rgba(0, 229, 255, 0.34)",
+                  backgroundImage:
+                    "linear-gradient(180deg, rgba(10, 20, 36, 0.08) 0%, rgba(10, 20, 36, 0.28) 100%)",
+                  boxShadow: isBeingDragged
+                    ? "0 6px 16px rgba(0, 229, 255, 0.28)"
+                    : undefined,
+                }
+              : {
+                  backgroundColor: `rgba(8, 14, 24, ${Math.max(0.45, state.panelOpacity / 100)})`,
+                  clipPath:
+                    "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
+                  boxShadow: isBeingDragged
+                    ? "inset 0 0 0 1.8px rgba(34, 211, 238, 0.95), 0 0 16px rgba(34, 211, 238, 0.35)"
+                    : isEditMode
+                      ? "inset 0 0 0 1.5px rgba(245, 158, 11, 0.85)"
+                      : "inset 0 0 0 1.2px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.55)",
+                }
+          }
         >
-          <span
-            aria-hidden="true"
-            className="hud-breathe-plate pointer-events-none absolute inset-0"
-            style={{
-              animationDelay: `${-0.3 * PLATE_SLOTS.indexOf(slotId)}s`,
-              clipPath:
-                "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
-              boxShadow: "inset 0 0 0 1.4px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.82)",
-            }}
-          />
+          {!isLunaTheme && (
+            <span
+              aria-hidden="true"
+              className="hud-breathe-plate pointer-events-none absolute inset-0"
+              style={{
+                animationDelay: `${-0.3 * PLATE_SLOTS.indexOf(slotId)}s`,
+                clipPath:
+                  "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
+                boxShadow: "inset 0 0 0 1.4px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.82)",
+              }}
+            />
+          )}
           {isEditMode && <GripVertical className="w-3.5 h-3.5 text-amber-400 shrink-0 relative z-10" />}
           {app ? (
             <>
@@ -690,7 +721,13 @@ export function LauncherPhonePreview({
                   }
                 />
               </motion.span>
-              <span className="font-display text-[11px] font-semibold tracking-wider uppercase text-slate-100 truncate">
+              <span
+                className={`font-display text-[11px] font-semibold tracking-wider uppercase truncate ${
+                  isLunaTheme
+                    ? "text-[#D9F7FF] drop-shadow-[0_1px_4px_rgba(5,7,11,0.95)]"
+                    : "text-slate-100"
+                }`}
+              >
                 {slot.customLabel || app.label}
               </span>
             </>
@@ -892,9 +929,15 @@ export function LauncherPhonePreview({
               cy="24"
               r="21.5"
               fill="none"
-              stroke={isEditMode ? "#F59E0B" : "rgba(255, 255, 255, 0.28)"}
-              strokeWidth="1.2"
-              strokeDasharray="18 6"
+              stroke={
+                isEditMode
+                  ? "#F59E0B"
+                  : isLunaTheme
+                    ? "rgba(0, 229, 255, 0.34)"
+                    : "rgba(255, 255, 255, 0.28)"
+              }
+              strokeWidth={isLunaTheme ? "0.95" : "1.2"}
+              strokeDasharray={isLunaTheme ? "12 10" : "18 6"}
             />
           </svg>
           {app ? (
@@ -1035,35 +1078,69 @@ export function LauncherPhonePreview({
           className={`relative w-[50px] h-[50px] rounded-full flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
             isSwapSelected ? "ring-2 ring-amber-400" : isDropTarget ? "ring-2 ring-cyan-300" : ""
           }`}
-          style={{
-            backgroundColor: `rgba(8, 14, 23, ${Math.max(0.55, state.panelOpacity / 100)})`,
-            boxShadow: isBeingDragged ? "0 0 18px rgba(34, 211, 238, 0.45)" : undefined,
-          }}
+          style={
+            isLunaTheme
+              ? {
+                  backgroundColor: "transparent",
+                  boxShadow: isBeingDragged ? "0 0 18px rgba(0, 229, 255, 0.45)" : undefined,
+                }
+              : {
+                  backgroundColor: `rgba(8, 14, 23, ${Math.max(0.55, state.panelOpacity / 100)})`,
+                  boxShadow: isBeingDragged ? "0 0 18px rgba(34, 211, 238, 0.45)" : undefined,
+                }
+          }
         >
           <svg
             viewBox="0 0 56 56"
             className="hud-breathe-ring absolute inset-0 w-full h-full pointer-events-none"
             style={{ animationDelay: slotId === "dock_1" || slotId === "dock_5" ? "-0.8s" : "-0.4s" }}
           >
-            <circle
-              cx="28"
-              cy="28"
-              r="25"
-              fill="none"
-              stroke={statusPrimaryStroke}
-              strokeWidth="1.7"
-              strokeDasharray="24 6"
-            />
-            <circle
-              cx="28"
-              cy="28"
-              r="21"
-              fill="none"
-              stroke="#F59E0B"
-              strokeWidth="1.2"
-              strokeDasharray="10 18"
-              opacity="0.85"
-            />
+            {isLunaTheme ? (
+              <>
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="25"
+                  fill="none"
+                  stroke={statusPrimaryStroke}
+                  strokeOpacity="0.48"
+                  strokeWidth="1.05"
+                  strokeDasharray="20 12 6 12"
+                />
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="21.5"
+                  fill="none"
+                  stroke="#398BFF"
+                  strokeOpacity="0.32"
+                  strokeWidth="0.85"
+                  strokeDasharray="8 16"
+                />
+              </>
+            ) : (
+              <>
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="25"
+                  fill="none"
+                  stroke={statusPrimaryStroke}
+                  strokeWidth="1.7"
+                  strokeDasharray="24 6"
+                />
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="21"
+                  fill="none"
+                  stroke="#F59E0B"
+                  strokeWidth="1.2"
+                  strokeDasharray="10 18"
+                  opacity="0.85"
+                />
+              </>
+            )}
           </svg>
           {app ? (
             <motion.span
@@ -1197,16 +1274,48 @@ export function LauncherPhonePreview({
         className="relative w-full h-full rounded-[26px] overflow-hidden flex flex-col justify-between"
         style={wallpaperStyle}
       >
-        {/* Reference 1 Vector HUD Frame (Clock removed, wallpaper 100% unaltered) */}
-        <HudSvgFrame status={coreStatus} />
+        {/* Original Luna Portrait Wallpaper (never modified, cropped, or framed) */}
+        {state.wallpaperId === "luna-shadow-light" && (
+          <img
+            src="/assets/themes/luna/wallpaper.png"
+            alt="Luna — Entre Luz e Sombra"
+            className="pointer-events-none absolute inset-0 w-full h-full object-cover object-top select-none"
+          />
+        )}
+
+        {/* Discreet Edge Gradient Scrims ONLY for legibility without covering Luna */}
+        {isLunaTheme && (
+          <>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-[12%] bg-gradient-to-b from-[#05070B]/55 via-[#05070B]/15 to-transparent"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-[#05070B]/88 via-[#05070B]/46 to-transparent"
+            />
+          </>
+        )}
+
+        {/* Reference 1 Vector HUD Frame or Luna Delicate Holographic Frame */}
+        <HudSvgFrame status={coreStatus} themeId={activeThemeId} />
 
         {/* 1. Native Android Status Bar (Preserved!) */}
-        <div className="relative z-20 flex items-center justify-between px-4 pt-2 pb-1 text-[11px] font-medium text-slate-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
+        <div
+          className={`relative z-20 flex items-center justify-between px-4 pt-2 pb-1 text-[11px] font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)] ${
+            isLunaTheme ? "text-[#D9F7FF]" : "text-slate-100"
+          }`}
+        >
           <div className="flex items-center gap-1.5 font-mono-tabular">
             <span>{clockText}</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/90" aria-hidden="true" />
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isLunaTheme ? "bg-[#00E5FF]" : "bg-cyan-400/90"
+              }`}
+              aria-hidden="true"
+            />
           </div>
-          <div className="flex items-center gap-2 text-slate-200">
+          <div className="flex items-center gap-2">
             <Wifi className="w-3.5 h-3.5" />
             <Signal className="w-3.5 h-3.5" />
             <Battery className="w-4 h-4" />
@@ -1244,10 +1353,51 @@ export function LauncherPhonePreview({
           )}
         </AnimatePresence>
 
-        {/* 2. Central Núcleo HILM (Sempre livre e visível mesmo com as gavetas laterais abertas) */}
-        <div className="relative z-10 flex-1 flex items-center justify-center pt-5">
-          <HilmCore status={coreStatus} onClick={handleToggleCoreUpdatePopover} />
-        </div>
+        {/* 2. Center Area: Default HILM Core OR Open Luna Portrait Stage (zero duplicate status widgets) */}
+        {isLunaTheme ? (
+          <div className="relative z-10 flex-1 flex flex-col justify-between pointer-events-none">
+            <div className="flex items-start justify-end px-4 pt-2">
+              {/* Compact Top-Right Luna Orbital Core Trigger (Opens Central Update Popover) */}
+              <motion.button
+                type="button"
+                onClick={handleToggleCoreUpdatePopover}
+                aria-label="Central HILM e atualizações"
+                title="Central HILM · Tema Luna"
+                whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
+                whileTap={prefersReducedMotion ? undefined : { scale: 0.9 }}
+                transition={hilmSpring}
+                className="pointer-events-auto relative w-10 h-10 rounded-full flex items-center justify-center bg-[#0A1424]/30 backdrop-blur-[2px] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00E5FF]"
+              >
+                <svg viewBox="0 0 40 40" className="hud-breathe-ring w-full h-full">
+                  <circle
+                    cx="20"
+                    cy="20"
+                    r="16.5"
+                    fill="none"
+                    stroke={statusPrimaryStroke}
+                    strokeWidth="1.2"
+                    strokeDasharray="18 8"
+                  />
+                  <circle
+                    cx="20"
+                    cy="20"
+                    r="11.5"
+                    fill="none"
+                    stroke="#398BFF"
+                    strokeWidth="1"
+                    strokeDasharray="8 10"
+                  />
+                  <circle cx="20" cy="20" r="3" fill="#D9F7FF" />
+                  <circle cx="31" cy="11" r="1.4" fill="#C47A48" />
+                </svg>
+              </motion.button>
+            </div>
+          </div>
+        ) : (
+          <div className="relative z-10 flex-1 flex items-center justify-center pt-5">
+            <HilmCore status={coreStatus} onClick={handleToggleCoreUpdatePopover} />
+          </div>
+        )}
 
         {/* Transparent Hit-Zone directly over the Existing HUD Side Rails */}
         <button
@@ -1326,21 +1476,22 @@ export function LauncherPhonePreview({
                 <svg viewBox="0 0 44 44" className="hud-breathe-ring w-full h-full">
                   <polygon
                     points="22,3 37,12 37,32 22,41 7,32 7,12"
-                    fill="rgba(8, 14, 24, 0.9)"
+                    fill={isLunaTheme ? "rgba(10, 20, 36, 0.36)" : "rgba(8, 14, 24, 0.9)"}
                     stroke={statusPrimaryStroke}
-                    strokeWidth="1.6"
+                    strokeWidth={isLunaTheme ? "1.1" : "1.6"}
                   />
                   <polygon
                     points="22,9 32,15 32,29 22,35 12,29 12,15"
                     fill="none"
-                    stroke="#94A3B8"
+                    stroke={isLunaTheme ? "#398BFF" : "#94A3B8"}
+                    strokeOpacity={isLunaTheme ? "0.7" : "1"}
                     strokeWidth="1"
                   />
                   <circle
                     cx="22"
                     cy="22"
-                    r="4"
-                    fill={statusPrimaryStroke}
+                    r={isLunaTheme ? "3.2" : "4"}
+                    fill={isLunaTheme ? "#D9F7FF" : statusPrimaryStroke}
                   />
                 </svg>
               </motion.button>
@@ -1361,34 +1512,71 @@ export function LauncherPhonePreview({
             whileHover={prefersReducedMotion ? undefined : { scale: 1.1 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.88 }}
             transition={hilmSpring}
-            className="relative w-[62px] h-[62px] rounded-full flex items-center justify-center bg-[#070D17]/90 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+            className={`relative w-[62px] h-[62px] rounded-full flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+              isLunaTheme ? "bg-[#0A1424]/30 backdrop-blur-[2px]" : "bg-[#070D17]/90"
+            }`}
           >
             <svg viewBox="0 0 68 68" className="hud-breathe-ring w-full h-full">
-              <circle
-                cx="34"
-                cy="34"
-                r="30"
-                fill="none"
-                stroke={statusPrimaryStroke}
-                strokeWidth="2"
-                strokeDasharray="28 8"
-              />
-              <circle
-                cx="34"
-                cy="34"
-                r="24"
-                fill="none"
-                stroke="#F59E0B"
-                strokeWidth="1.5"
-                strokeDasharray="12 18"
-              />
-              <polygon
-                points="34,19 46,27 42,42 26,42 22,27"
-                fill="rgba(34, 211, 238, 0.14)"
-                stroke="#CBD5E1"
-                strokeWidth="1.4"
-              />
-              <polygon points="34,26 40,36 28,36" fill={statusPrimaryStroke} />
+              {isLunaTheme ? (
+                <>
+                  <circle
+                    cx="34"
+                    cy="34"
+                    r="30"
+                    fill="none"
+                    stroke={statusPrimaryStroke}
+                    strokeWidth="1.25"
+                    strokeDasharray="24 10"
+                  />
+                  <circle
+                    cx="34"
+                    cy="34"
+                    r="23"
+                    fill="none"
+                    stroke="#398BFF"
+                    strokeOpacity="0.7"
+                    strokeWidth="1"
+                    strokeDasharray="10 14"
+                  />
+                  <polygon
+                    points="34,20 46,28 42,42 26,42 22,28"
+                    fill="rgba(0, 229, 255, 0.08)"
+                    stroke="#D9F7FF"
+                    strokeOpacity="0.85"
+                    strokeWidth="1.15"
+                  />
+                  <polygon points="34,27 39,36 29,36" fill={statusPrimaryStroke} />
+                  <circle cx="52" cy="18" r="1.4" fill="#FFB45C" />
+                </>
+              ) : (
+                <>
+                  <circle
+                    cx="34"
+                    cy="34"
+                    r="30"
+                    fill="none"
+                    stroke={statusPrimaryStroke}
+                    strokeWidth="2"
+                    strokeDasharray="28 8"
+                  />
+                  <circle
+                    cx="34"
+                    cy="34"
+                    r="24"
+                    fill="none"
+                    stroke="#F59E0B"
+                    strokeWidth="1.5"
+                    strokeDasharray="12 18"
+                  />
+                  <polygon
+                    points="34,19 46,27 42,42 26,42 22,27"
+                    fill="rgba(34, 211, 238, 0.14)"
+                    stroke="#CBD5E1"
+                    strokeWidth="1.4"
+                  />
+                  <polygon points="34,26 40,36 28,36" fill={statusPrimaryStroke} />
+                </>
+              )}
             </svg>
           </motion.button>
 
@@ -1518,6 +1706,7 @@ export function LauncherPhonePreview({
               <AppDrawerModal
                 apps={INSTALLED_APPS_CATALOG}
                 iconPack={state.iconPack}
+                themeId={activeThemeId}
                 targetSlot={drawerTargetSlot}
                 transition={state.transition}
                 onClose={() => {
@@ -1558,7 +1747,7 @@ export function LauncherPhonePreview({
             </motion.div>
           )}
         </AnimatePresence>
-        {/* Compact Update Popover (exclusively triggered by tapping the central HILM nucleus) */}
+        {/* Compact Update Popover (exclusively triggered by tapping the central HILM nucleus or Luna Orbital node) */}
         <AnimatePresence>
           {showCoreUpdatePopover && (
             <motion.div
@@ -1567,7 +1756,11 @@ export function LauncherPhonePreview({
               animate={popoverMotion.animate}
               exit={popoverMotion.exit}
               transition={popoverMotion.transition}
-              className="absolute inset-x-6 top-[382px] z-30 rounded-xl bg-[#070C15]/95 border border-cyan-400/50 px-3.5 py-2.5 backdrop-blur-md shadow-2xl shadow-black/80"
+              className={`absolute inset-x-6 z-30 rounded-xl px-3.5 py-2.5 backdrop-blur-md shadow-2xl shadow-black/80 ${
+                isLunaTheme
+                  ? "bottom-[170px] bg-[#05070B]/92 border border-[#00E5FF]/55"
+                  : "top-[382px] bg-[#070C15]/95 border border-cyan-400/50"
+              }`}
             >
             <div className="flex items-center justify-between gap-2">
               <span className="font-display text-[11px] font-semibold tracking-wider text-cyan-300 uppercase">
@@ -1816,7 +2009,11 @@ export function LauncherPhonePreview({
         </AnimatePresence>
 
         {/* HILM Portal Holographic Expansion Layer */}
-        <HilmPortalOverlay launch={portalLaunch} iconPack={state.iconPack} />
+        <HilmPortalOverlay
+          launch={portalLaunch}
+          iconPack={state.iconPack}
+          themeId={activeThemeId}
+        />
       </div>
     </div>
   );

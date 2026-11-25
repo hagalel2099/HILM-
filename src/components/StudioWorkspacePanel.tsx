@@ -17,12 +17,14 @@ import type {
   AndroidProjectTreeResponse,
   IconPackId,
   LauncherPersistedState,
+  LauncherThemeId,
   TransitionConfig,
   WallpaperId,
 } from "../types/launcher";
 import {
   ACCEPTANCE_CRITERIA,
   INSTALLED_APPS_CATALOG,
+  LAUNCHER_THEMES,
   SLOT_IDS,
   SLOT_LABELS,
   TRANSITION_EFFECTS,
@@ -39,6 +41,7 @@ interface StudioWorkspacePanelProps {
   state: LauncherPersistedState;
   isEditMode: boolean;
   onToggleEditMode: (active: boolean) => void;
+  onSelectTheme: (themeId: LauncherThemeId) => void;
   onSelectIconPack: (pack: IconPackId) => void;
   onSelectWallpaper: (wallpaperId: WallpaperId, customUrl?: string) => void;
   onChangeOpacity: (opacity: number) => void;
@@ -53,6 +56,7 @@ export function StudioWorkspacePanel({
   state,
   isEditMode,
   onToggleEditMode,
+  onSelectTheme,
   onSelectIconPack,
   onSelectWallpaper,
   onChangeOpacity,
@@ -139,6 +143,7 @@ export function StudioWorkspacePanel({
     const payload = {
       schema: "nosso_universo_layout_v1",
       exportedAt: new Date().toISOString(),
+      themeId: state.themeId || "default",
       iconPack: state.iconPack,
       wallpaperId: state.wallpaperId,
       panelOpacity: state.panelOpacity,
@@ -241,6 +246,57 @@ export function StudioWorkspacePanel({
       <div className="flex-1 overflow-y-auto p-6 space-y-8 hud-scroll">
         {activeTab === "personalizacao" && (
           <>
+            {/* Section 0: Exclusive Launcher Theme Switcher */}
+            <section className="space-y-3.5 pb-6 border-b border-slate-800/80">
+              <div>
+                <h2 className="font-display text-base font-semibold text-slate-100 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#00E5FF]" />
+                  <span>Tema Exclusivo do Launcher</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Alterne instantaneamente entre a HUD padrão do Nosso Universo e o Tema Luna — Entre Luz e Sombra.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {LAUNCHER_THEMES.map((theme) => {
+                  const activeTheme = state.themeId || "default";
+                  const selected = activeTheme === theme.id;
+                  const isLunaCard = theme.id === "luna-entre-luz-e-sombra";
+                  return (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => onSelectTheme(theme.id)}
+                      className={`p-3.5 rounded-xl text-left border transition-colors cursor-pointer ${
+                        selected
+                          ? isLunaCard
+                            ? "bg-[#00E5FF]/10 border-[#00E5FF]/70 shadow-[0_0_20px_rgba(0,229,255,0.12)]"
+                            : "bg-cyan-500/10 border-cyan-400/60"
+                          : "bg-[#0B111C] border-slate-800 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-slate-100">
+                          {theme.name}
+                        </span>
+                        <span
+                          className={`text-[10px] font-mono-tabular shrink-0 ${
+                            selected ? "text-[#00E5FF]" : "text-slate-400"
+                          }`}
+                        >
+                          {selected ? "Ativo" : theme.badge}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1 leading-snug">
+                        {theme.subtitle}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
             {/* Section 1: Wallpaper & Transparency */}
             <section className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">

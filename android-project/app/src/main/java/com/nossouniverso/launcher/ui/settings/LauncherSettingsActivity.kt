@@ -15,8 +15,10 @@ import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import com.nossouniverso.launcher.NossoUniversoApp
 import com.nossouniverso.launcher.R
+import com.nossouniverso.launcher.data.ShortcutStorage
 import com.nossouniverso.launcher.model.HilmTransitionConfig
 import com.nossouniverso.launcher.model.HilmTransitionEffect
+import com.nossouniverso.launcher.model.IconPackInfo
 import com.nossouniverso.launcher.ui.views.HilmTransitionAnimator
 import com.nossouniverso.launcher.ui.views.TransitionPreviewView
 import java.nio.charset.StandardCharsets
@@ -28,6 +30,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
     private lateinit var btnSetDefaultLauncher: Button
     private lateinit var txtSettingsActivePack: TextView
     private lateinit var btnOpenIconPackManager: Button
+    private lateinit var radioLauncherTheme: RadioGroup
     private lateinit var radioIconPacks: RadioGroup
     private lateinit var seekOpacity: SeekBar
 
@@ -71,6 +74,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
             val ok = raw.isNotBlank() && app.shortcutStorage.importBackupJson(raw)
             if (ok) {
                 app.iconPackManager.clearCache()
+                setupThemeSelector()
                 setupIconPacks()
                 seekOpacity.progress = (app.shortcutStorage.getPanelOpacityPercent() - 25).coerceIn(0, 70)
                 loadTransitionsSection(replayPreview = true)
@@ -92,6 +96,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
         btnSetDefaultLauncher = findViewById(R.id.btnSetDefaultLauncher)
         txtSettingsActivePack = findViewById(R.id.txtSettingsActivePack)
         btnOpenIconPackManager = findViewById(R.id.btnOpenIconPackManager)
+        radioLauncherTheme = findViewById(R.id.radioLauncherTheme)
         radioIconPacks = findViewById(R.id.radioIconPacks)
         seekOpacity = findViewById(R.id.seekOpacity)
 
@@ -131,6 +136,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
             finish()
         }
 
+        setupThemeSelector()
         setupIconPacks()
         setupOpacitySlider()
         setupTransitionsSection()
@@ -139,8 +145,44 @@ class LauncherSettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshDefaultStatus()
+        setupThemeSelector()
         setupIconPacks()
         updateAccessibilityBanner()
+    }
+
+    private fun setupThemeSelector() {
+        radioLauncherTheme.setOnCheckedChangeListener(null)
+        val currentTheme = app.shortcutStorage.getLauncherTheme()
+        radioLauncherTheme.check(
+            if (currentTheme == ShortcutStorage.THEME_LUNA) R.id.rbThemeLuna else R.id.rbThemeDefault
+        )
+        radioLauncherTheme.setOnCheckedChangeListener { _, checkedId ->
+            val targetTheme = if (checkedId == R.id.rbThemeLuna) {
+                ShortcutStorage.THEME_LUNA
+            } else {
+                ShortcutStorage.THEME_DEFAULT
+            }
+            if (targetTheme == app.shortcutStorage.getLauncherTheme()) return@setOnCheckedChangeListener
+
+            app.shortcutStorage.setLauncherTheme(targetTheme)
+            if (targetTheme == ShortcutStorage.THEME_LUNA) {
+                app.shortcutStorage.setSelectedIconPackId(IconPackInfo.STYLE_LUNA_HOLOGRAPHIC)
+                if (app.shortcutStorage.getPanelOpacityPercent() > 50) {
+                    app.shortcutStorage.setPanelOpacityPercent(40)
+                    seekOpacity.progress = 15
+                }
+            } else {
+                if (app.shortcutStorage.getSelectedIconPackId() == IconPackInfo.STYLE_LUNA_HOLOGRAPHIC) {
+                    app.shortcutStorage.setSelectedIconPackId(IconPackInfo.STYLE_HILM_ARTIFACTS)
+                }
+                if (app.shortcutStorage.getPanelOpacityPercent() <= 45) {
+                    app.shortcutStorage.setPanelOpacityPercent(78)
+                    seekOpacity.progress = 53
+                }
+            }
+            app.iconPackManager.clearCache()
+            setupIconPacks()
+        }
     }
 
     override fun finish() {

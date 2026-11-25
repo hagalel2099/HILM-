@@ -45,6 +45,15 @@ export const ICON_PACK_REGISTRY: IconPackDescriptor[] = [
     hilmArtifactsManifest as RawManifest,
     "/assets/icon-packs/hilm-artifacts"
   ),
+  {
+    id: "luna-holographic",
+    name: "Luna Holográfico (Luz & Sombra)",
+    description:
+      "Símbolos flutuantes em ciano holográfico (#00E5FF), azul elétrico (#398BFF) e branco azulado (#D9F7FF), sem caixas pesadas.",
+    author: "HILM · Tema Luna",
+    version: "1.0.0",
+    kind: "hud-style",
+  },
   buildIllustratedDescriptor(
     obsidianCoreManifest as RawManifest,
     "/assets/icon-packs/obsidian-core"
@@ -130,8 +139,16 @@ export function isArtifactIconPack(packId: IconPackId): boolean {
   return packId === "hilm-artifacts";
 }
 
+export function isLunaHolographicIconPack(packId: IconPackId): boolean {
+  return packId === "luna-holographic";
+}
+
+export function isCardlessIconPack(packId: IconPackId): boolean {
+  return isArtifactIconPack(packId) || isLunaHolographicIconPack(packId);
+}
+
 export function usesExpandedGlyphScale(packId: IconPackId): boolean {
-  return isIllustratedIconPack(packId) || isArtifactIconPack(packId);
+  return isIllustratedIconPack(packId) || isCardlessIconPack(packId);
 }
 
 function resolvePackEntryUrl(

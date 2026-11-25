@@ -3,8 +3,10 @@ package com.nossouniverso.launcher.ui.views
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.util.TypedValue
@@ -49,6 +51,26 @@ class HudPlateButton @JvmOverloads constructor(
         set(value) {
             field = value.coerceIn(15, 95)
             invalidate()
+        }
+
+    var lunaThemeMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                labelView.setTextColor(
+                    ContextCompat.getColor(
+                        context,
+                        if (value) R.color.luna_white_blue else R.color.hud_text_primary
+                    )
+                )
+                labelView.setShadowLayer(
+                    if (value) 5f else 0f,
+                    0f,
+                    1.5f,
+                    Color.parseColor("#E605070B")
+                )
+                invalidate()
+            }
         }
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -151,6 +173,12 @@ class HudPlateButton @JvmOverloads constructor(
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
 
+        if (lunaThemeMode) {
+            drawLunaHoloPlate(canvas, w, h)
+            super.onDraw(canvas)
+            return
+        }
+
         val inset = 3f * density
         val chamfer = 11f * density
         val path = Path().apply {
@@ -192,5 +220,37 @@ class HudPlateButton @JvmOverloads constructor(
         canvas.drawLine(w * 0.62f, h - inset, w * 0.75f, h - inset, amberAccentPaint)
 
         super.onDraw(canvas)
+    }
+
+    private fun drawLunaHoloPlate(canvas: Canvas, w: Float, h: Float) {
+        val edge = 4f * density
+        val maxAlpha = if (isSlotEmpty) 42 else ((panelOpacityPercent / 100f) * 115f).toInt().coerceIn(28, 120)
+        fillPaint.shader = LinearGradient(
+            0f,
+            0f,
+            0f,
+            h,
+            Color.argb((maxAlpha * 0.28f).toInt(), 5, 7, 11),
+            Color.argb(maxAlpha, 10, 20, 36),
+            Shader.TileMode.CLAMP
+        )
+        canvas.drawRoundRect(edge, 2f * density, w - edge, h - 3f * density, 10f * density, 10f * density, fillPaint)
+        fillPaint.shader = null
+
+        val lineY = h - 3f * density
+        cyanStrokePaint.strokeWidth = (if (isEditModeActive) 1.7f else 1.25f) * density
+        cyanStrokePaint.color = if (isEditModeActive) {
+            Color.parseColor("#FFB45C")
+        } else if (isSlotEmpty) {
+            Color.argb(95, 0, 229, 255)
+        } else {
+            Color.argb(185, 0, 229, 255)
+        }
+        canvas.drawLine(edge + 6f * density, lineY, w - edge - 6f * density, lineY, cyanStrokePaint)
+
+        // Delicate top-left blue accent tick (no solid card box)
+        silverStrokePaint.color = if (isSlotEmpty) Color.argb(65, 57, 139, 255) else Color.argb(150, 57, 139, 255)
+        silverStrokePaint.strokeWidth = 1.0f * density
+        canvas.drawLine(edge, 5f * density, edge + 10f * density, 5f * density, silverStrokePaint)
     }
 }

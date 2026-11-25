@@ -17,7 +17,7 @@ import {
   getPackAllIconEntries,
   getPackPreviewUrls,
   importIconPackFromZipFile,
-  isArtifactIconPack,
+  isCardlessIconPack,
   isRuntimeImportedPack,
   removeRuntimeImportedPack,
 } from "../data/iconPackRegistry";
@@ -206,7 +206,7 @@ export function IconPackManagerPanel({
                         className="w-10 h-10 object-contain shrink-0 drop-shadow-[0_4px_10px_rgba(34,211,238,0.2)]"
                       />
                     ))
-                  ) : isArtifactIconPack(pack.id) ? (
+                  ) : isCardlessIconPack(pack.id) ? (
                     SAMPLE_APPS_FOR_HUD.map((sampleApp) => (
                       <div
                         key={sampleApp.packageName}
@@ -358,7 +358,7 @@ export function IconPackManagerPanel({
                     >
                       <div
                         className={
-                          isArtifactIconPack(inspectingPack.id)
+                          isCardlessIconPack(inspectingPack.id)
                             ? "w-14 h-14 flex items-center justify-center"
                             : "w-12 h-12 rounded-xl bg-[#0C1322] border border-slate-800 flex items-center justify-center"
                         }
@@ -367,7 +367,7 @@ export function IconPackManagerPanel({
                           app={app}
                           iconPack={inspectingPack.id}
                           sizeClass={
-                            isArtifactIconPack(inspectingPack.id) ? "w-12 h-12" : "w-6 h-6"
+                            isCardlessIconPack(inspectingPack.id) ? "w-12 h-12" : "w-6 h-6"
                           }
                         />
                       </div>

@@ -20,6 +20,7 @@ import type { IconPackId, InstalledAppItem } from "../types/launcher";
 import {
   isArtifactIconPack,
   isIllustratedIconPack,
+  isLunaHolographicIconPack,
   resolveIllustratedIconUrl,
 } from "../data/iconPackRegistry";
 import { HilmArtifactGlyph } from "./HilmArtifactGlyph";
@@ -30,6 +31,8 @@ interface AppGlyphProps {
   customIconDataUrl?: string;
   sizeClass?: string;
 }
+
+const LUNA_WARM_ACCENT_KEYS = new Set(["camera", "music", "settings", "notes", "terminal"]);
 
 export function AppGlyph({
   app,
@@ -64,12 +67,16 @@ export function AppGlyph({
     return <HilmArtifactGlyph app={app} sizeClass={sizeClass} />;
   }
 
+  const isLunaHolo = isLunaHolographicIconPack(iconPack);
   const illustratedFallback = isIllustratedIconPack(iconPack);
   const isObsidianFallback = illustratedFallback && iconPack === "obsidian-core";
   const isTronFallback = illustratedFallback && iconPack === "tron-neon";
   const isCyberpunkFallback = illustratedFallback && iconPack === "cyberpunk-holo";
 
   const colorStyle = (() => {
+    if (isLunaHolo) {
+      return { color: "#00E5FF" };
+    }
     if (isObsidianFallback) {
       return { color: "#FFB020" };
     }
@@ -96,17 +103,23 @@ export function AppGlyph({
   })();
 
   const props = {
-    className: illustratedFallback
-      ? isObsidianFallback
-        ? "relative z-10 w-[54%] h-[54%] drop-shadow-[0_0_6px_rgba(255,140,26,0.75)]"
-        : isCyberpunkFallback
-          ? "w-[56%] h-[56%] drop-shadow-[0_0_7px_rgba(236,72,153,0.9)]"
-          : isTronFallback
-            ? "w-[56%] h-[56%] drop-shadow-[0_0_6px_rgba(34,211,238,0.85)]"
-            : "w-[58%] h-[58%] drop-shadow-[0_1px_2px_rgba(34,211,238,0.45)]"
-      : sizeClass,
+    className: isLunaHolo
+      ? "relative z-10 w-[72%] h-[72%] drop-shadow-[0_0_7px_rgba(0,229,255,0.68)]"
+      : illustratedFallback
+        ? isObsidianFallback
+          ? "relative z-10 w-[54%] h-[54%] drop-shadow-[0_0_6px_rgba(255,140,26,0.75)]"
+          : isCyberpunkFallback
+            ? "w-[56%] h-[56%] drop-shadow-[0_0_7px_rgba(236,72,153,0.9)]"
+            : isTronFallback
+              ? "w-[56%] h-[56%] drop-shadow-[0_0_6px_rgba(34,211,238,0.85)]"
+              : "w-[58%] h-[58%] drop-shadow-[0_1px_2px_rgba(34,211,238,0.45)]"
+        : sizeClass,
     style: colorStyle,
-    strokeWidth: illustratedFallback || iconPack === "nosso-universo" ? 1.85 : 2,
+    strokeWidth: isLunaHolo
+      ? 1.75
+      : illustratedFallback || iconPack === "nosso-universo"
+        ? 1.85
+        : 2,
   };
 
   const glyphNode = (() => {
@@ -146,6 +159,59 @@ export function AppGlyph({
         return <Settings {...props} />;
     }
   })();
+
+  if (isLunaHolo) {
+    const hasWarmGlint = LUNA_WARM_ACCENT_KEYS.has(app.iconKey);
+    return (
+      <span
+        className={`${sizeClass} relative flex items-center justify-center shrink-0 select-none`}
+      >
+        {/* Ultra-discreet dark-navy radial mist behind symbol (no square box) */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-[-12%] rounded-full bg-[radial-gradient(circle,rgba(10,20,36,0.72)_0%,rgba(5,7,11,0.34)_52%,transparent_76%)]"
+        />
+        {/* Delicate holographic projection contour arc */}
+        <svg
+          viewBox="0 0 40 40"
+          className="pointer-events-none absolute inset-0 w-full h-full opacity-80"
+          aria-hidden="true"
+        >
+          <circle
+            cx="20"
+            cy="20"
+            r="17.5"
+            fill="none"
+            stroke="#398BFF"
+            strokeOpacity="0.34"
+            strokeWidth="0.9"
+            strokeDasharray="16 10 5 10"
+          />
+          <path
+            d="M 8 11 A 15 15 0 0 1 16 6.5"
+            fill="none"
+            stroke="#D9F7FF"
+            strokeOpacity="0.65"
+            strokeWidth="1.05"
+            strokeLinecap="round"
+          />
+        </svg>
+        {/* Bluish-white inner glint */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[14%] left-[18%] w-1 h-1 rounded-full bg-[#D9F7FF] opacity-85 shadow-[0_0_5px_#00E5FF]"
+        />
+        {/* Selective copper/amber micro-glint on curated apps only */}
+        {hasWarmGlint && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-[15%] right-[16%] w-1.5 h-1.5 rounded-full bg-[#FFB45C] ring-1 ring-[#C47A48]/80 shadow-[0_0_6px_rgba(255,180,92,0.8)]"
+          />
+        )}
+        {glyphNode}
+      </span>
+    );
+  }
 
   if (isObsidianFallback) {
     return (

@@ -139,8 +139,11 @@ class ShortcutStorage(context: Context) {
             )
         }
         val transition = getTransitionConfig()
+        val theme = getLauncherTheme()
         return JSONObject().apply {
             put("schema", "nosso_universo_layout_v1")
+            put("themeId", if (theme == THEME_LUNA) "luna-entre-luz-e-sombra" else "default")
+            put("launcherTheme", theme)
             put("iconPack", getSelectedIconPackId())
             put("panelOpacity", getPanelOpacityPercent())
             put(
@@ -197,6 +200,15 @@ class ShortcutStorage(context: Context) {
             if (root.has("panelOpacity")) {
                 setPanelOpacityPercent(root.optInt("panelOpacity", 78))
             }
+            val importedThemeRaw = root.optString("themeId")
+                .ifBlank { root.optString("launcherTheme") }
+            if (importedThemeRaw.isNotBlank()) {
+                val mappedTheme = when (importedThemeRaw.lowercase()) {
+                    "luna-entre-luz-e-sombra", "luna_entre_luz_e_sombra", THEME_LUNA -> THEME_LUNA
+                    else -> THEME_DEFAULT
+                }
+                setLauncherTheme(mappedTheme)
+            }
             val importedPack = root.optString("iconPack")
             if (importedPack.isNotBlank()) {
                 val mappedPack = when (importedPack) {
@@ -204,6 +216,7 @@ class ShortcutStorage(context: Context) {
                     "obsidian-core", "obsidian_core" -> IconPackInfo.STYLE_OBSIDIAN_CORE
                     "cyberpunk-holo", "cyberpunk_holo" -> IconPackInfo.STYLE_CYBERPUNK_HOLO
                     "tron-neon", "tron_neon" -> IconPackInfo.STYLE_TRON_NEON
+                    "luna-holographic", "luna_holographic", IconPackInfo.STYLE_LUNA_HOLOGRAPHIC -> IconPackInfo.STYLE_LUNA_HOLOGRAPHIC
                     "titanium-liquid" -> IconPackInfo.ASSET_PACK_PREFIX + "titanium_liquid"
                     "nosso-universo" -> IconPackInfo.STYLE_NOSSO_UNIVERSO
                     "monochrome-hud" -> IconPackInfo.STYLE_MONOCHROME_HUD
@@ -228,6 +241,20 @@ class ShortcutStorage(context: Context) {
         } catch (_: Exception) {
             false
         }
+    }
+
+    fun getLauncherTheme(): String {
+        val raw = prefs.getString(KEY_LAUNCHER_THEME, THEME_DEFAULT) ?: THEME_DEFAULT
+        return if (raw == THEME_LUNA || raw == "luna-entre-luz-e-sombra") THEME_LUNA else THEME_DEFAULT
+    }
+
+    fun setLauncherTheme(themeId: String) {
+        val clean = if (themeId == THEME_LUNA || themeId == "luna-entre-luz-e-sombra") {
+            THEME_LUNA
+        } else {
+            THEME_DEFAULT
+        }
+        prefs.edit().putString(KEY_LAUNCHER_THEME, clean).apply()
     }
 
     fun getSelectedIconPackId(): String {
@@ -276,8 +303,12 @@ class ShortcutStorage(context: Context) {
     }
 
     companion object {
+        const val THEME_DEFAULT = "default"
+        const val THEME_LUNA = "luna_entre_luz_e_sombra"
+
         private const val PREFS_NAME = "nosso_universo_prefs"
         private const val KEY_SLOTS = "shortcut_slots_v1"
+        private const val KEY_LAUNCHER_THEME = "launcher_theme_v1"
         private const val KEY_ICON_PACK = "selected_icon_pack_v1"
         private const val KEY_PANEL_OPACITY = "hud_panel_opacity_v1"
         private const val KEY_RECENT_PACKAGES = "recent_packages_v1"

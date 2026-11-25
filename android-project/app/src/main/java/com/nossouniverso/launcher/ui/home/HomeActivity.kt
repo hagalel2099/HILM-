@@ -10,6 +10,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageInstaller
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -22,6 +23,7 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -31,9 +33,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.TooltipCompat
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
 import com.nossouniverso.launcher.NossoUniversoApp
 import com.nossouniverso.launcher.R
+import com.nossouniverso.launcher.data.ShortcutStorage
 import com.nossouniverso.launcher.model.AppInfo
 import com.nossouniverso.launcher.model.HilmTransitionConfig
 import com.nossouniverso.launcher.model.ShortcutSlot
@@ -61,6 +66,10 @@ class HomeActivity : AppCompatActivity() {
 
     private lateinit var app: NossoUniversoApp
     private lateinit var homeRoot: View
+    private lateinit var imgThemeWallpaper: ImageView
+    private lateinit var scrimLunaTop: View
+    private lateinit var scrimLunaBottom: View
+    private lateinit var btnLunaOrbitalCore: ImageButton
     private lateinit var hudFrameView: HudFrameView
     private lateinit var hilmCoreView: HilmCoreView
     private lateinit var editModeBar: LinearLayout
@@ -253,6 +262,7 @@ class HomeActivity : AppCompatActivity() {
         hudFrameView.panelOpacityPercent = opacityPercent
         plateViews.values.forEach { it.panelOpacityPercent = opacityPercent }
         dockViews.values.forEach { it.panelOpacityPercent = opacityPercent }
+        applyLauncherTheme()
         reloadAppsAndRender()
     }
 
@@ -350,6 +360,26 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun bindViews() {
+        imgThemeWallpaper = findViewById(R.id.imgThemeWallpaper)
+        scrimLunaTop = findViewById(R.id.scrimLunaTop)
+        scrimLunaBottom = findViewById(R.id.scrimLunaBottom)
+        btnLunaOrbitalCore = findViewById(R.id.btnLunaOrbitalCore)
+
+        scrimLunaTop.background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(Color.parseColor("#9905070B"), Color.parseColor("#3305070B"), Color.TRANSPARENT)
+        )
+        scrimLunaBottom.background = GradientDrawable(
+            GradientDrawable.Orientation.BOTTOM_TOP,
+            intArrayOf(Color.parseColor("#EB05070B"), Color.parseColor("#990A1424"), Color.TRANSPARENT)
+        )
+        val density = resources.displayMetrics.density
+        btnLunaOrbitalCore.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.parseColor("#990A1424"))
+            setStroke((1.2f * density).toInt().coerceAtLeast(1), Color.parseColor("#8800E5FF"))
+        }
+
         hudFrameView = findViewById(R.id.hudFrameView)
         hilmCoreView = findViewById(R.id.hilmCoreView)
         editModeBar = findViewById(R.id.editModeBar)
@@ -456,6 +486,19 @@ class HomeActivity : AppCompatActivity() {
             true
         }
 
+        btnLunaOrbitalCore.setOnClickListener {
+            if (isEditMode) {
+                toggleEditMode(false)
+            } else {
+                toggleCoreUpdatePopover()
+            }
+        }
+
+        btnLunaOrbitalCore.setOnLongClickListener {
+            openSettingsScreen()
+            true
+        }
+
         btnCloseUpdatePopover.setOnClickListener {
             hideUpdatePopover()
         }
@@ -478,6 +521,58 @@ class HomeActivity : AppCompatActivity() {
             }
             view.setOnDragListener { _, event -> handleSlotDrag(position, event) }
         }
+    }
+
+    private fun applyLauncherTheme() {
+        val isLuna = app.shortcutStorage.getLauncherTheme() == ShortcutStorage.THEME_LUNA
+        homeRoot.setBackgroundColor(if (isLuna) Color.parseColor("#05070B") else Color.TRANSPARENT)
+        imgThemeWallpaper.visibility = if (isLuna) View.VISIBLE else View.GONE
+        scrimLunaTop.visibility = if (isLuna) View.VISIBLE else View.GONE
+        scrimLunaBottom.visibility = if (isLuna) View.VISIBLE else View.GONE
+        btnLunaOrbitalCore.visibility = if (isLuna) View.VISIBLE else View.GONE
+
+        // Keep hilmCoreView bounds INVISIBLE (not GONE) in Luna mode so side drawers stay anchored seamlessly
+        hilmCoreView.visibility = if (isLuna) View.INVISIBLE else View.VISIBLE
+        hilmCoreView.isClickable = !isLuna
+        hilmCoreView.isFocusable = !isLuna
+
+        hudFrameView.lunaThemeMode = isLuna
+        hilmPortalOverlay.lunaThemeMode = isLuna
+        plateViews.values.forEach { it.lunaThemeMode = isLuna }
+        dockViews.values.forEach { it.lunaThemeMode = isLuna }
+        dockCenterDrawer.lunaThemeMode = isLuna
+
+        if (isLuna) {
+            btnLunaOrbitalCore.setColorFilter(Color.parseColor("#00E5FF"))
+            btnHubControl.setColorFilter(Color.parseColor("#00E5FF"))
+        } else {
+            btnHubControl.clearColorFilter()
+        }
+
+        val rootLayout = homeRoot as? ConstraintLayout ?: return
+        val marginPx = (if (isLuna) 14f else 4f) * resources.displayMetrics.density
+        val constraints = ConstraintSet()
+        constraints.clone(rootLayout)
+        constraints.clear(R.id.coreUpdatePopover, ConstraintSet.TOP)
+        constraints.clear(R.id.coreUpdatePopover, ConstraintSet.BOTTOM)
+        if (isLuna) {
+            constraints.connect(
+                R.id.coreUpdatePopover,
+                ConstraintSet.BOTTOM,
+                R.id.platesContainer,
+                ConstraintSet.TOP,
+                marginPx.toInt()
+            )
+        } else {
+            constraints.connect(
+                R.id.coreUpdatePopover,
+                ConstraintSet.TOP,
+                R.id.hilmCoreView,
+                ConstraintSet.BOTTOM,
+                marginPx.toInt()
+            )
+        }
+        constraints.applyTo(rootLayout)
     }
 
     private fun openSettingsScreen() {

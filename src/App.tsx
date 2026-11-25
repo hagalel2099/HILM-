@@ -5,6 +5,7 @@ import type {
   IconPackId,
   InstalledAppItem,
   LauncherPersistedState,
+  LauncherThemeId,
   SlotId,
   TransitionConfig,
   TransitionEffectId,
@@ -45,6 +46,10 @@ function loadInitialState(): LauncherPersistedState {
     const parsed = JSON.parse(raw) as Partial<LauncherPersistedState>;
     return {
       slots: { ...DEFAULT_LAUNCHER_STATE.slots, ...(parsed.slots || {}) },
+      themeId:
+        parsed.themeId === "luna-entre-luz-e-sombra"
+          ? "luna-entre-luz-e-sombra"
+          : "default",
       iconPack: parsed.iconPack || DEFAULT_LAUNCHER_STATE.iconPack,
       wallpaperId: parsed.wallpaperId || DEFAULT_LAUNCHER_STATE.wallpaperId,
       customWallpaperUrl: parsed.customWallpaperUrl,
@@ -156,6 +161,29 @@ export default function App() {
     }));
   };
 
+  const handleSelectTheme = (themeId: LauncherThemeId) => {
+    setState((prev) => {
+      if (themeId === "luna-entre-luz-e-sombra") {
+        return {
+          ...prev,
+          themeId,
+          wallpaperId: "luna-shadow-light",
+          iconPack: "luna-holographic",
+          panelOpacity: 40,
+        };
+      }
+      return {
+        ...prev,
+        themeId: "default",
+        wallpaperId:
+          prev.wallpaperId === "luna-shadow-light" ? "ref-horizon" : prev.wallpaperId,
+        iconPack:
+          prev.iconPack === "luna-holographic" ? "hilm-artifacts" : prev.iconPack,
+        panelOpacity: prev.panelOpacity <= 45 ? 78 : prev.panelOpacity,
+      };
+    });
+  };
+
   const handleSelectIconPack = (iconPack: IconPackId) => {
     setState((prev) => ({ ...prev, iconPack }));
   };
@@ -164,6 +192,10 @@ export default function App() {
     setState((prev) => ({
       ...prev,
       wallpaperId,
+      themeId:
+        wallpaperId === "luna-shadow-light"
+          ? "luna-entre-luz-e-sombra"
+          : prev.themeId,
       customWallpaperUrl:
         wallpaperId === "custom" ? customUrl : prev.customWallpaperUrl,
     }));
@@ -188,6 +220,12 @@ export default function App() {
   const handleImportState = (imported: Partial<LauncherPersistedState>) => {
     setState((prev) => ({
       slots: { ...DEFAULT_LAUNCHER_STATE.slots, ...(imported.slots || prev.slots) },
+      themeId:
+        imported.themeId === "luna-entre-luz-e-sombra"
+          ? "luna-entre-luz-e-sombra"
+          : imported.themeId === "default"
+            ? "default"
+            : prev.themeId,
       iconPack: imported.iconPack || prev.iconPack,
       wallpaperId: imported.wallpaperId || prev.wallpaperId,
       customWallpaperUrl: imported.customWallpaperUrl ?? prev.customWallpaperUrl,
@@ -351,6 +389,7 @@ export default function App() {
             state={state}
             isEditMode={isEditMode}
             onToggleEditMode={setIsEditMode}
+            onSelectTheme={handleSelectTheme}
             onSelectIconPack={handleSelectIconPack}
             onSelectWallpaper={handleSelectWallpaper}
             onChangeOpacity={handleChangeOpacity}

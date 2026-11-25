@@ -43,4 +43,8 @@
     <string name="transitions_applied_toast">Transição visual aplicada.</string>
     <string name="transitions_accessibility_note">Redução de animações ativa nas configurações de acessibilidade do Android. Os efeitos ficam suspensos enquanto essa opção do sistema estiver ligada.</string>
     <string name="transitions_android_scope_note">Aplicadas nas gavetas, painéis, telas internas e abertura de apps do HILM. Animações internas de outros aplicativos seguem o próprio app e o Android.</string>
+    <string name="theme_section">Tema Exclusivo do Launcher</string>
+    <string name="theme_default_title">Nosso Universo Padrão (HUD Clássico)</string>
+    <string name="theme_luna_title">Tema Luna — Entre Luz e Sombra | HILM</string>
+    <string name="luna_orbital_core_desc">Central HILM e configurações do Tema Luna</string>
 </resources>

@@ -27,6 +27,14 @@ class HudFrameView @JvmOverloads constructor(
             invalidate()
         }
 
+    var lunaThemeMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                invalidate()
+            }
+        }
+
     private val density = resources.displayMetrics.density
 
     private val cyanPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -52,6 +60,12 @@ class HudFrameView @JvmOverloads constructor(
         strokeCap = Paint.Cap.SQUARE
     }
 
+    private val electricBluePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#398BFF")
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
     private val dotMatrixPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#4D64748B")
         style = Paint.Style.FILL
@@ -67,15 +81,56 @@ class HudFrameView @JvmOverloads constructor(
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
 
+        if (lunaThemeMode) {
+            drawLunaHoloFrame(canvas, w, h)
+            return
+        }
+
         drawTopOrnamentalHeader(canvas, w)
         drawSideRails(canvas, w, h)
         drawBottomSpectrumMatrix(canvas, w, h)
+    }
+
+    private fun drawLunaHoloFrame(canvas: Canvas, w: Float, h: Float) {
+        val margin = 12f * density
+        val topY = paddingTop + 10f * density
+        val bottomY = h - paddingBottom - 8f * density
+        val cornerLen = 22f * density
+
+        // Subtle holographic cyan upper corner ticks leaving center halo completely unobstructed
+        cyanPaint.color = Color.parseColor("#00E5FF")
+        cyanPaint.strokeWidth = 1.2f * density
+        cyanPaint.alpha = 135
+        canvas.drawLine(margin, topY + cornerLen * 0.45f, margin, topY, cyanPaint)
+        canvas.drawLine(margin, topY, margin + cornerLen, topY, cyanPaint)
+        canvas.drawLine(w - margin - cornerLen, topY, w - margin, topY, cyanPaint)
+        canvas.drawLine(w - margin, topY, w - margin, topY + cornerLen * 0.45f, cyanPaint)
+
+        // Slim side-drawer handle indicators (subtle electric blue & restrained copper glint)
+        val midY = h * 0.40f
+        val railSpan = 36f * density
+        electricBluePaint.strokeWidth = 1.5f * density
+        electricBluePaint.alpha = 155
+        canvas.drawLine(5f * density, midY - railSpan, 5f * density, midY + railSpan, electricBluePaint)
+        canvas.drawLine(w - 5f * density, midY - railSpan, w - 5f * density, midY + railSpan, electricBluePaint)
+
+        amberPaint.color = Color.parseColor("#C47A48")
+        amberPaint.strokeWidth = 1.6f * density
+        amberPaint.alpha = 185
+        canvas.drawLine(8.5f * density, midY - 12f * density, 8.5f * density, midY - 2f * density, amberPaint)
+        canvas.drawLine(w - 8.5f * density, midY + 2f * density, w - 8.5f * density, midY + 12f * density, amberPaint)
+
+        // Discreet bottom horizon hairline
+        cyanPaint.alpha = 72
+        cyanPaint.strokeWidth = 1.0f * density
+        canvas.drawLine(margin + 18f * density, bottomY, w - margin - 18f * density, bottomY, cyanPaint)
     }
 
     private fun drawTopOrnamentalHeader(canvas: Canvas, w: Float) {
         val topY = paddingTop + 14f * density
         val margin = 18f * density
 
+        cyanPaint.color = Color.parseColor("#22D3EE")
         cyanPaint.strokeWidth = 1.5f * density
         cyanPaint.alpha = 200
 
@@ -88,6 +143,7 @@ class HudFrameView @JvmOverloads constructor(
         canvas.drawPath(path, cyanPaint)
 
         // Amber edge ticks
+        amberPaint.color = Color.parseColor("#F59E0B")
         amberPaint.strokeWidth = 1.5f * density
         amberPaint.alpha = 210
         canvas.drawLine(margin + 30f * density, topY + 4f * density, margin + 52f * density, topY + 4f * density, amberPaint)
@@ -117,6 +173,7 @@ class HudFrameView @JvmOverloads constructor(
         silverPaint.alpha = 185
         cyanPaint.strokeWidth = 1.8f * density
         cyanPaint.alpha = 210
+        amberPaint.color = Color.parseColor("#F59E0B")
         amberPaint.strokeWidth = 2f * density
         amberPaint.alpha = 220
 

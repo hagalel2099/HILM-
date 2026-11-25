@@ -1,18 +1,17 @@
 import { useMemo } from "react";
+import type { LauncherThemeId } from "../types/launcher";
 import type { HilmCoreStatus } from "./HilmCore";
 
 interface HudSvgFrameProps {
   status?: HilmCoreStatus;
+  themeId?: LauncherThemeId;
 }
 
 /**
- * Reproduz a arquitetura HUD da Referência 1 em SVG vetorial transparente:
- * - Moldura ornamental superior (sem o relógio grande)
- * - Trilhos laterais esquerdo e direito
- * - Matriz pontilhada inferior atrás do dock
- * O núcleo central HILM e o papel de parede permanecem livres de scrims ou filtros de cor.
+ * Reproduz a arquitetura HUD da Referência 1 em SVG vetorial transparente,
+ * ou a moldura holográfica mínima e elegante do Tema Luna — Entre Luz e Sombra.
  */
-export function HudSvgFrame({ status = "nominal" }: HudSvgFrameProps) {
+export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgFrameProps) {
   const spectrumCols = useMemo(() => {
     const cols: { x: number; rows: number }[] = [];
     const count = 38;
@@ -26,14 +25,89 @@ export function HudSvgFrame({ status = "nominal" }: HudSvgFrameProps) {
     return cols;
   }, []);
 
-  const primaryStroke =
-    status === "alert"
+  const isLunaTheme = themeId === "luna-entre-luz-e-sombra";
+
+  const primaryStroke = isLunaTheme
+    ? status === "alert"
+      ? "#FFB45C"
+      : status === "resolved"
+        ? "#D9F7FF"
+        : status === "syncing"
+          ? "#398BFF"
+          : "#00E5FF"
+    : status === "alert"
       ? "#F59E0B"
       : status === "resolved"
         ? "#34D399"
         : status === "syncing"
           ? "#38BDF8"
           : "#22D3EE";
+
+  if (isLunaTheme) {
+    return (
+      <svg
+        viewBox="0 0 360 760"
+        preserveAspectRatio="xMidYMid slice"
+        data-hilm-status={status}
+        className="absolute inset-0 w-full h-full pointer-events-none select-none z-10"
+        aria-hidden="true"
+      >
+        <defs>
+          <filter id="lunaHoloGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="1.8" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <linearGradient id="lunaRailGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#00E5FF" stopOpacity="0.1" />
+            <stop offset="50%" stopColor="#398BFF" stopOpacity="0.65" />
+            <stop offset="100%" stopColor="#00E5FF" stopOpacity="0.1" />
+          </linearGradient>
+        </defs>
+
+        {/* Subtle Top Holographic Hairline Corners (leaving Luna's crown completely clear) */}
+        <g opacity="0.72" filter="url(#lunaHoloGlow)">
+          <path d="M 16 42 L 28 36 L 96 36" fill="none" stroke={primaryStroke} strokeWidth="1.1" />
+          <path d="M 264 36 L 332 36 L 344 42" fill="none" stroke={primaryStroke} strokeWidth="1.1" />
+          <line x1="36" y1="39" x2="54" y2="39" stroke="#C47A48" strokeWidth="1.1" opacity="0.85" />
+        </g>
+
+        {/* Minimal Left & Right Holographic Edge Brackets */}
+        <g opacity="0.68">
+          <path
+            d="M 5 170 L 11 178 L 11 258 L 6 264 L 6 296 L 11 302 L 11 372 L 5 380"
+            fill="none"
+            stroke="url(#lunaRailGrad)"
+            strokeWidth="1.2"
+          />
+          <line x1="7.5" y1="268" x2="7.5" y2="292" stroke={primaryStroke} strokeWidth="1.6" />
+          <circle cx="7.5" cy="250" r="1.1" fill="#FFB45C" opacity="0.85" />
+
+          <path
+            d="M 355 170 L 349 178 L 349 258 L 354 264 L 354 296 L 349 302 L 349 372 L 355 380"
+            fill="none"
+            stroke="url(#lunaRailGrad)"
+            strokeWidth="1.2"
+          />
+          <line x1="352.5" y1="268" x2="352.5" y2="292" stroke={primaryStroke} strokeWidth="1.6" />
+          <circle cx="352.5" cy="250" r="1.1" fill="#C47A48" opacity="0.85" />
+        </g>
+
+        {/* Discreet Bottom Horizon Line above navigation bar */}
+        <line
+          x1="28"
+          y1="714"
+          x2="332"
+          y2="714"
+          stroke={primaryStroke}
+          strokeWidth="0.7"
+          strokeOpacity="0.28"
+        />
+      </svg>
+    );
+  }
 
   return (
     <svg
