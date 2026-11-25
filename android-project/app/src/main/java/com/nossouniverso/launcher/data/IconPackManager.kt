@@ -3468,9 +3468,9 @@ class IconPackManager(
                         if (nearOuter) {
                             val q = (if (y >= halfSz) 2 else 0) or (if (x >= halfSz) 1 else 0)
                             val px = srcPx[idx]
-                            qSumR[q] += (px ushr 16) and 0xFF
-                            qSumG[q] += (px ushr 8) and 0xFF
-                            qSumB[q] += px and 0xFF
+                            qSumR[q] += ((px ushr 16) and 0xFF).tolong()
+                            qSumG[q] += ((px ushr 8) and 0xFF).tolong()
+                            qSumB[q] += (px and 0xFF).tolong()
                             qCount[q]++
                         }
                     }
