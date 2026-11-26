@@ -34,7 +34,48 @@ interface AppGlyphProps {
   sizeClass?: string;
 }
 
-const LUNA_WARM_ACCENT_KEYS = new Set(["camera", "music", "settings", "notes", "terminal"]);
+type LunaWarmMode = "copper-amber" | "copper-rim" | "amber-glint" | "cool";
+
+const LUNA_WARM_AFFINITY_KEYS = new Set([
+  "camera",
+  "music",
+  "settings",
+  "notes",
+  "terminal",
+  "bank",
+]);
+
+function resolveLunaWarmProfile(packageName: string, iconKey: string): {
+  mode: LunaWarmMode;
+  angleDeg: number;
+} {
+  let hash = 0;
+  for (let i = 0; i < packageName.length; i++) {
+    hash = (hash * 31 + packageName.charCodeAt(i)) | 0;
+  }
+  const absHash = Math.abs(hash);
+  const angles = [-42, 36, 138, -144];
+  const angleDeg = angles[absHash % angles.length];
+
+  if (LUNA_WARM_AFFINITY_KEYS.has(iconKey)) {
+    return {
+      mode: absHash % 3 === 0 ? "copper-rim" : "copper-amber",
+      angleDeg,
+    };
+  }
+
+  const bucket = absHash % 5;
+  const mode: LunaWarmMode =
+    bucket === 0
+      ? "copper-amber"
+      : bucket <= 2
+        ? "copper-rim"
+        : bucket === 3
+          ? "amber-glint"
+          : "cool";
+
+  return { mode, angleDeg };
+}
 
 export function AppGlyph({
   app,
@@ -43,7 +84,8 @@ export function AppGlyph({
   sizeClass = "w-5 h-5",
 }: AppGlyphProps) {
   const rawId = useId();
-  const goldGradId = `hilm-gold-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const safeId = rawId.replace(/[^a-zA-Z0-9_-]/g, "");
+  const goldGradId = `hilm-gold-${safeId}`;
   if (customIconDataUrl) {
     return (
       <img
@@ -72,6 +114,7 @@ export function AppGlyph({
   }
 
   const isLunaHolo = isLunaHolographicIconPack(iconPack);
+  const lunaProfile = isLunaHolo ? resolveLunaWarmProfile(app.packageName, app.iconKey) : null;
   const isLiquidGold = isLiquidGoldObsidianIconPack(iconPack);
   const illustratedFallback = isIllustratedIconPack(iconPack);
   const isObsidianFallback = illustratedFallback && iconPack === "obsidian-core";
@@ -110,9 +153,12 @@ export function AppGlyph({
     }
   })();
 
+  const lunaDropShadowClass =
+    "relative z-10 w-[82%] h-[82%] drop-shadow-[0_0_5px_rgba(0,229,255,0.92)] drop-shadow-[0_0_12px_rgba(57,139,255,0.48)]";
+
   const props = {
     className: isLunaHolo
-      ? "relative z-10 w-[72%] h-[72%] drop-shadow-[0_0_7px_rgba(0,229,255,0.68)]"
+      ? lunaDropShadowClass
       : isLiquidGold
         ? "relative z-10 w-[62%] h-[62%]"
         : illustratedFallback
@@ -131,7 +177,7 @@ export function AppGlyph({
     fillOpacity: isLiquidGold ? 0.92 : undefined,
     stroke: isLiquidGold ? `url(#${goldGradId})` : undefined,
     strokeWidth: isLunaHolo
-      ? 1.75
+      ? 1.24
       : isLiquidGold
         ? 2.8
         : illustratedFallback || iconPack === "nosso-universo"
@@ -139,99 +185,272 @@ export function AppGlyph({
           : 2,
   };
 
+  const renderLunaProjectionGlyph = () => {
+    const svgBaseProps = {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      className: lunaDropShadowClass,
+      strokeLinecap: "round" as const,
+      strokeLinejoin: "round" as const,
+      "aria-hidden": true as const,
+    };
+
+    switch (app.iconKey) {
+      case "phone":
+        return (
+          <svg {...svgBaseProps}>
+            <path
+              d="M6.4 3.6h2.7c.5 0 .9.34 1.02.82l.72 2.88c.1.42-.04.86-.37 1.14l-1.45 1.2a11.4 11.4 0 0 0 5.34 5.34l1.2-1.45c.28-.33.72-.47 1.14-.37l2.88.72c.48.12.82.52.82 1.02v2.7a1.5 1.5 0 0 1-1.64 1.5C10.56 18.62 5.38 13.44 4.9 5.24A1.5 1.5 0 0 1 6.4 3.6z"
+              stroke="#00E5FF"
+              strokeWidth={1.25}
+            />
+            <path d="M14.2 5.2a4.6 4.6 0 0 1 4.6 4.6" stroke="#398BFF" strokeWidth={1.15} />
+            <path d="M14.2 8.2a1.8 1.8 0 0 1 1.6 1.6" stroke="#FFB45C" strokeWidth={1.25} />
+          </svg>
+        );
+      case "message":
+        return (
+          <svg {...svgBaseProps}>
+            <path
+              d="M5.2 4.6h13.6a2.2 2.2 0 0 1 2.2 2.2v8.4a2.2 2.2 0 0 1-2.2 2.2H9.6L5 20.6v-3.2H5.2A2.2 2.2 0 0 1 3 15.2V6.8a2.2 2.2 0 0 1 2.2-2.2z"
+              stroke="#00E5FF"
+              strokeWidth={1.25}
+            />
+            <path d="M7.8 9.6h8.4" stroke="#D9F7FF" strokeWidth={1.2} />
+            <path d="M7.8 12.8h5.2" stroke="#398BFF" strokeWidth={1.18} />
+            <circle cx="15.8" cy="12.8" r="0.85" fill="#FFB45C" stroke="none" />
+          </svg>
+        );
+      case "chat":
+        return (
+          <svg {...svgBaseProps}>
+            <path
+              d="M12 3.2a8.8 8.8 0 0 0-7.6 13.25L3.2 20.8l4.5-1.18A8.8 8.8 0 1 0 12 3.2z"
+              stroke="#00E5FF"
+              strokeWidth={1.25}
+            />
+            <path
+              d="M9.4 8.9c-.2-.38-.38-.38-.58-.38h-.4c-.2 0-.4.1-.58.3-.2.28-.68.78-.68 1.78s.78 2.15.96 2.34c.12.2 1.56 2.45 3.92 3.34 1.86.68 2.34.58 2.84.48.48-.1 1.26-.5 1.46-.98.2-.48.2-.88.1-.98-.1-.1-.22-.18-.48-.3l-1.26-.58c-.2-.1-.38-.1-.58.1l-.48.58c-.2.2-.3.2-.58.1-.3-.1-1.08-.4-1.96-1.18-.68-.58-1.18-1.36-1.28-1.66-.1-.28 0-.38.1-.48l.38-.38c.1-.2.2-.3.2-.4.1-.1 0-.28 0-.38l-.58-1.36z"
+              stroke="#D9F7FF"
+              strokeWidth={1.15}
+            />
+            <path d="M18.6 6.2a8.9 8.9 0 0 1 2 4.1" stroke="#C47A48" strokeWidth={1.1} />
+          </svg>
+        );
+      case "instagram":
+        return (
+          <svg {...svgBaseProps}>
+            <rect x="3.5" y="3.5" width="17" height="17" rx="5" stroke="#00E5FF" strokeWidth={1.25} />
+            <circle cx="12" cy="12" r="3.9" stroke="#D9F7FF" strokeWidth={1.25} />
+            <circle cx="16.8" cy="7.2" r="0.95" fill="#FFB45C" stroke="none" />
+            <path d="M7.2 3.5h5.2" stroke="#398BFF" strokeWidth={1.15} />
+          </svg>
+        );
+      case "youtube":
+        return (
+          <svg {...svgBaseProps}>
+            <rect x="2.6" y="5.4" width="18.8" height="13.2" rx="4.2" stroke="#398BFF" strokeWidth={1.25} />
+            <path d="M7.2 5.4h9.6" stroke="#00E5FF" strokeWidth={1.2} />
+            <polygon points="10.2,9 15.8,12 10.2,15" stroke="#D9F7FF" strokeWidth={1.25} />
+            <circle cx="18.2" cy="8.2" r="0.75" fill="#C47A48" stroke="none" />
+          </svg>
+        );
+      case "music":
+        if (app.packageName === "com.spotify.music") {
+          return (
+            <svg {...svgBaseProps}>
+              <circle cx="12" cy="12" r="9.1" stroke="#00E5FF" strokeWidth={1.22} />
+              <path d="M7.4 9.6c3-.9 6.6-.7 9.4.8" stroke="#D9F7FF" strokeWidth={1.28} />
+              <path d="M8.2 12.6c2.5-.7 5.5-.5 7.8.7" stroke="#00E5FF" strokeWidth={1.22} />
+              <path d="M9.1 15.4c1.9-.5 4.2-.3 5.9.6" stroke="#398BFF" strokeWidth={1.18} />
+              <circle cx="17.8" cy="6.6" r="0.8" fill="#FFB45C" stroke="none" />
+            </svg>
+          );
+        }
+        return (
+          <svg {...svgBaseProps}>
+            <path d="M9.5 16.5V5.8l9-1.6v10.5" stroke="#00E5FF" strokeWidth={1.25} />
+            <circle cx="7.2" cy="17.2" r="2.3" stroke="#D9F7FF" strokeWidth={1.22} />
+            <circle cx="16.2" cy="15.4" r="2.3" stroke="#398BFF" strokeWidth={1.22} />
+            <path d="M9.5 9.2l9-1.6" stroke="#C47A48" strokeWidth={1.1} />
+          </svg>
+        );
+      case "globe":
+        if (app.packageName === "com.android.chrome") {
+          return (
+            <svg {...svgBaseProps}>
+              <circle cx="12" cy="12" r="9.1" stroke="#00E5FF" strokeWidth={1.22} />
+              <circle cx="12" cy="12" r="3.5" stroke="#D9F7FF" strokeWidth={1.25} />
+              <path d="M12 8.5h8.3" stroke="#00E5FF" strokeWidth={1.18} />
+              <path d="M8.9 13.7L4.8 6.7" stroke="#398BFF" strokeWidth={1.18} />
+              <path d="M15.1 13.7l-4.1 7.1" stroke="#C47A48" strokeWidth={1.15} />
+            </svg>
+          );
+        }
+        return (
+          <svg {...svgBaseProps}>
+            <circle cx="12" cy="12" r="9.1" stroke="#00E5FF" strokeWidth={1.22} />
+            <ellipse cx="12" cy="12" rx="3.9" ry="9.1" stroke="#398BFF" strokeWidth={1.15} />
+            <path d="M3.2 12h17.6" stroke="#D9F7FF" strokeWidth={1.15} />
+            <circle cx="17.4" cy="7.5" r="0.8" fill="#FFB45C" stroke="none" />
+          </svg>
+        );
+      case "camera":
+        return (
+          <svg {...svgBaseProps}>
+            <path
+              d="M4.2 8.2h2.9l1.4-2.1h7l1.4 2.1h2.9a1.8 1.8 0 0 1 1.8 1.8v8.1a1.8 1.8 0 0 1-1.8 1.8H4.2a1.8 1.8 0 0 1-1.8-1.8V10a1.8 1.8 0 0 1 1.8-1.8z"
+              stroke="#00E5FF"
+              strokeWidth={1.25}
+            />
+            <circle cx="12" cy="13.8" r="3.6" stroke="#D9F7FF" strokeWidth={1.25} />
+            <circle cx="12" cy="13.8" r="1.2" stroke="#398BFF" strokeWidth={1.1} />
+            <circle cx="18.1" cy="10.7" r="0.8" fill="#FFB45C" stroke="none" />
+          </svg>
+        );
+      case "image":
+        return (
+          <svg {...svgBaseProps}>
+            <rect x="3.4" y="4.4" width="17.2" height="15.2" rx="2.8" stroke="#00E5FF" strokeWidth={1.25} />
+            <path d="M4.2 16.5l4.6-4.7 3.4 3.4 2.7-2.6 4.7 4.2" stroke="#D9F7FF" strokeWidth={1.22} />
+            <circle cx="8.6" cy="9.1" r="1.45" stroke="#FFB45C" strokeWidth={1.2} />
+            <path d="M13.5 4.4h4.5" stroke="#398BFF" strokeWidth={1.15} />
+          </svg>
+        );
+      case "map":
+        return (
+          <svg {...svgBaseProps}>
+            <path
+              d="M12 20.5s6.2-5.4 6.2-10.4a6.2 6.2 0 1 0-12.4 0c0 5 6.2 10.4 6.2 10.4z"
+              stroke="#00E5FF"
+              strokeWidth={1.25}
+            />
+            <circle cx="12" cy="10.1" r="2.3" stroke="#D9F7FF" strokeWidth={1.22} />
+            <path d="M6.2 19.6c1.9.7 3.8 1 5.8 1s3.9-.3 5.8-1" stroke="#398BFF" strokeWidth={1.12} />
+            <circle cx="12" cy="10.1" r="0.65" fill="#FFB45C" stroke="none" />
+          </svg>
+        );
+      case "calendar":
+        return (
+          <svg {...svgBaseProps}>
+            <rect x="3.5" y="5" width="17" height="15.5" rx="2.6" stroke="#00E5FF" strokeWidth={1.25} />
+            <path d="M3.5 9.5h17" stroke="#398BFF" strokeWidth={1.18} />
+            <path d="M8.2 3.4v3.1M15.8 3.4v3.1" stroke="#D9F7FF" strokeWidth={1.25} />
+            <circle cx="8.5" cy="13.4" r="0.85" fill="#D9F7FF" stroke="none" />
+            <circle cx="12" cy="13.4" r="0.85" fill="#00E5FF" stroke="none" />
+            <circle cx="15.5" cy="13.4" r="0.85" fill="#FFB45C" stroke="none" />
+            <path d="M8.2 16.8h4.5" stroke="#C47A48" strokeWidth={1.15} />
+          </svg>
+        );
+      case "notes":
+        return (
+          <svg {...svgBaseProps}>
+            <path
+              d="M6.2 3.5h8.6l4.4 4.4v11.1a1.6 1.6 0 0 1-1.6 1.6H6.2a1.6 1.6 0 0 1-1.6-1.6V5.1a1.6 1.6 0 0 1 1.6-1.6z"
+              stroke="#00E5FF"
+              strokeWidth={1.25}
+            />
+            <path d="M14.8 3.5v4.4h4.4" stroke="#398BFF" strokeWidth={1.18} />
+            <path d="M8 11.4h8" stroke="#D9F7FF" strokeWidth={1.18} />
+            <path d="M8 14.6h6" stroke="#C47A48" strokeWidth={1.15} />
+            <path d="M8 17.4h3.5" stroke="#FFB45C" strokeWidth={1.15} />
+          </svg>
+        );
+      case "folder":
+        return (
+          <svg {...svgBaseProps}>
+            <path
+              d="M3.5 7a2 2 0 0 1 2-2h4.2l2 2.2h6.8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V7z"
+              stroke="#00E5FF"
+              strokeWidth={1.25}
+            />
+            <path d="M3.6 10.2h16.8" stroke="#398BFF" strokeWidth={1.15} />
+            <path d="M7.5 14.5h4.8" stroke="#FFB45C" strokeWidth={1.2} />
+          </svg>
+        );
+      case "code":
+        return (
+          <svg {...svgBaseProps}>
+            <path d="M8.5 8.2L4.2 12l4.3 3.8" stroke="#00E5FF" strokeWidth={1.28} />
+            <path d="M15.5 8.2L19.8 12l-4.3 3.8" stroke="#398BFF" strokeWidth={1.28} />
+            <path d="M13.6 6.2L10.4 17.8" stroke="#D9F7FF" strokeWidth={1.22} />
+            <circle cx="12" cy="4.2" r="0.8" fill="#FFB45C" stroke="none" />
+          </svg>
+        );
+      case "terminal":
+        return (
+          <svg {...svgBaseProps}>
+            <rect x="3" y="4.6" width="18" height="14.8" rx="2.6" stroke="#398BFF" strokeWidth={1.22} />
+            <path d="M6.8 9.4l3.3 2.7-3.3 2.7" stroke="#D9F7FF" strokeWidth={1.28} />
+            <path d="M12.2 14.8h4.8" stroke="#FFB45C" strokeWidth={1.28} />
+            <path d="M6.5 4.6h6.5" stroke="#00E5FF" strokeWidth={1.22} />
+          </svg>
+        );
+      case "discord":
+        return (
+          <svg {...svgBaseProps}>
+            <path
+              stroke="#00E5FF"
+              strokeWidth={1.25}
+              d="M19.2 6.2A14 14 0 0 0 15.3 5l-.5 1a13 13 0 0 0-5.6 0l-.5-1A14 14 0 0 0 4.8 6.2C2.4 9.8 1.8 13.3 2.1 16.8a14.4 14.4 0 0 0 4.4 2.2l.9-1.5a9.3 9.3 0 0 1-1.5-.7l.4-.3a10.4 10.4 0 0 0 11.4 0l.4.3c-.5.3-1 .5-1.5.7l.9 1.5a14.4 14.4 0 0 0 4.4-2.2c.4-4-.7-7.5-2.7-10.6z"
+            />
+            <circle cx="9.2" cy="12.4" r="1.4" stroke="#D9F7FF" strokeWidth={1.2} />
+            <circle cx="14.8" cy="12.4" r="1.4" stroke="#D9F7FF" strokeWidth={1.2} />
+            <path d="M9.6 6.2h4.8" stroke="#C47A48" strokeWidth={1.1} />
+          </svg>
+        );
+      case "bank":
+        return (
+          <svg {...svgBaseProps}>
+            <path
+              stroke="#00E5FF"
+              strokeWidth={1.25}
+              d="M4.5 18.5V6.2c0-.9 1.1-1.4 1.7-.7l6.6 8.3V5.5"
+            />
+            <path
+              stroke="#D9F7FF"
+              strokeWidth={1.25}
+              d="M19.5 5.5v12.3c0 .9-1.1 1.4-1.7.7l-6.6-8.3v8.3"
+            />
+            <circle cx="19.2" cy="5.2" r="0.8" fill="#FFB45C" stroke="none" />
+          </svg>
+        );
+      case "settings":
+      default:
+        return (
+          <svg {...svgBaseProps}>
+            <circle cx="12" cy="12" r="2.9" stroke="#D9F7FF" strokeWidth={1.25} />
+            <path
+              stroke="#00E5FF"
+              strokeWidth={1.22}
+              d="M12 3.6v2.1M12 18.3v2.1M3.6 12h2.1M18.3 12h2.1M6.1 6.1l1.5 1.5M16.4 16.4l1.5 1.5M17.9 6.1l-1.5 1.5M7.6 16.4l-1.5 1.5"
+            />
+            <circle cx="12" cy="12" r="6.3" stroke="#398BFF" strokeWidth={1.15} strokeDasharray="4.2 2.4" />
+            <circle cx="12" cy="12" r="0.75" fill="#C47A48" stroke="none" />
+          </svg>
+        );
+    }
+  };
+
   const glyphNode = (() => {
+    if (isLunaHolo) {
+      return renderLunaProjectionGlyph();
+    }
+
     switch (app.iconKey) {
       case "phone":
         return <Phone {...props} />;
       case "message":
         return <MessageSquare {...props} />;
       case "chat":
-        if (isLunaHolo && app.packageName === "com.whatsapp") {
-          return (
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className={props.className}
-              style={props.style}
-              stroke="currentColor"
-              strokeWidth={1.65}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 3a9 9 0 0 0-7.75 13.56L3 21l4.6-1.2A9 9 0 1 0 12 3z" />
-              <path
-                d="M9.5 8.8c-.2-.4-.4-.4-.6-.4h-.4c-.2 0-.4.1-.6.3-.2.3-.7.8-.7 1.8s.8 2.2 1 2.4c.1.2 1.6 2.5 4 3.4 1.9.7 2.4.6 2.9.5.5-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1-.1-.1-.2-.2-.5-.3l-1.3-.6c-.2-.1-.4-.1-.6.1l-.5.6c-.2.2-.3.2-.6.1-.3-.1-1.1-.4-2-1.2-.7-.6-1.2-1.4-1.3-1.7-.1-.3 0-.4.1-.5l.4-.4c.1-.2.2-.3.2-.4.1-.1 0-.3 0-.4l-.6-1.4z"
-                stroke="#D9F7FF"
-                strokeWidth={1.3}
-              />
-            </svg>
-          );
-        }
         return <MessageCircle {...props} />;
       case "instagram":
         return <Instagram {...props} />;
       case "youtube":
-        if (isLunaHolo) {
-          return (
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className={props.className}
-              style={props.style}
-              stroke="currentColor"
-              strokeWidth={1.65}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <rect x="2.5" y="5.5" width="19" height="13" rx="4.2" stroke="#398BFF" />
-              <polygon points="10,9 16,12 10,15" stroke="#D9F7FF" strokeWidth={1.6} />
-            </svg>
-          );
-        }
         return <Play {...props} />;
       case "music":
-        if (isLunaHolo && app.packageName === "com.spotify.music") {
-          return (
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className={props.className}
-              style={props.style}
-              stroke="currentColor"
-              strokeLinecap="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="9.2" strokeWidth={1.55} stroke="#00E5FF" />
-              <path d="M7.4 9.6c3-.9 6.6-.7 9.4.8" stroke="#D9F7FF" strokeWidth={1.7} />
-              <path d="M8.2 12.6c2.5-.7 5.5-.5 7.8.7" stroke="#00E5FF" strokeWidth={1.6} />
-              <path d="M9.1 15.4c1.9-.5 4.2-.3 5.9.6" stroke="#398BFF" strokeWidth={1.5} />
-            </svg>
-          );
-        }
         return <Music {...props} />;
       case "globe":
-        if (isLunaHolo && app.packageName === "com.android.chrome") {
-          return (
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className={props.className}
-              style={props.style}
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="9.2" strokeWidth={1.6} stroke="#00E5FF" />
-              <circle cx="12" cy="12" r="3.6" stroke="#D9F7FF" strokeWidth={1.6} />
-              <path d="M12 8.4h8.4" stroke="#00E5FF" strokeWidth={1.55} />
-              <path d="M8.9 13.8L4.7 6.6" stroke="#398BFF" strokeWidth={1.55} />
-              <path d="M15.1 13.8l-4.2 7.2" stroke="#00E5FF" strokeWidth={1.55} />
-            </svg>
-          );
-        }
         return <Globe {...props} />;
       case "camera":
         return <Camera {...props} />;
@@ -250,28 +469,6 @@ export function AppGlyph({
       case "terminal":
         return <Terminal {...props} />;
       case "discord":
-        if (isLunaHolo) {
-          return (
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className={props.className}
-              style={props.style}
-              stroke="currentColor"
-              strokeWidth={1.6}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path
-                stroke="#00E5FF"
-                d="M19.2 6.2A14 14 0 0 0 15.3 5l-.5 1a13 13 0 0 0-5.6 0l-.5-1A14 14 0 0 0 4.8 6.2C2.4 9.8 1.8 13.3 2.1 16.8a14.4 14.4 0 0 0 4.4 2.2l.9-1.5a9.3 9.3 0 0 1-1.5-.7l.4-.3a10.4 10.4 0 0 0 11.4 0l.4.3c-.5.3-1 .5-1.5.7l.9 1.5a14.4 14.4 0 0 0 4.4-2.2c.4-4-.7-7.5-2.7-10.6z"
-              />
-              <circle cx="9.2" cy="12.4" r="1.4" stroke="#D9F7FF" strokeWidth={1.45} />
-              <circle cx="14.8" cy="12.4" r="1.4" stroke="#D9F7FF" strokeWidth={1.45} />
-            </svg>
-          );
-        }
         return (
           <svg
             viewBox="0 0 24 24"
@@ -286,30 +483,6 @@ export function AppGlyph({
           </svg>
         );
       case "bank":
-        if (isLunaHolo) {
-          return (
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className={props.className}
-              style={props.style}
-              stroke="currentColor"
-              strokeWidth={1.6}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path
-                stroke="#00E5FF"
-                d="M4.5 18.5V6.2c0-.9 1.1-1.4 1.7-.7l6.6 8.3V5.5"
-              />
-              <path
-                stroke="#D9F7FF"
-                d="M19.5 5.5v12.3c0 .9-1.1 1.4-1.7.7l-6.6-8.3v8.3"
-              />
-            </svg>
-          );
-        }
         return (
           <svg
             viewBox="0 0 24 24"
@@ -329,55 +502,43 @@ export function AppGlyph({
     }
   })();
 
-  if (isLunaHolo) {
-    const hasWarmGlint = LUNA_WARM_ACCENT_KEYS.has(app.iconKey);
+  if (isLunaHolo && lunaProfile) {
+    const showWarmLight = lunaProfile.mode !== "cool";
+    const isCopperLead = lunaProfile.mode === "copper-rim";
+    const isDual = lunaProfile.mode === "copper-amber";
+
     return (
       <span
         className={`${sizeClass} relative flex items-center justify-center shrink-0 select-none`}
       >
-        {/* Ultra-discreet dark-navy radial mist behind symbol (no square box) */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-[-12%] rounded-full bg-[radial-gradient(circle,rgba(10,20,36,0.72)_0%,rgba(5,7,11,0.34)_52%,transparent_76%)]"
-        />
-        {/* Delicate holographic projection contour arc */}
-        <svg
-          viewBox="0 0 40 40"
-          className="pointer-events-none absolute inset-0 w-full h-full opacity-80"
-          aria-hidden="true"
-        >
-          <circle
-            cx="20"
-            cy="20"
-            r="17.5"
-            fill="none"
-            stroke="#398BFF"
-            strokeOpacity="0.34"
-            strokeWidth="0.9"
-            strokeDasharray="16 10 5 10"
-          />
-          <path
-            d="M 8 11 A 15 15 0 0 1 16 6.5"
-            fill="none"
-            stroke="#D9F7FF"
-            strokeOpacity="0.65"
-            strokeWidth="1.05"
-            strokeLinecap="round"
-          />
-        </svg>
-        {/* Bluish-white inner glint */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute top-[14%] left-[18%] w-1 h-1 rounded-full bg-[#D9F7FF] opacity-85 shadow-[0_0_5px_#00E5FF]"
-        />
-        {/* Selective copper/amber micro-glint on curated apps only */}
-        {hasWarmGlint && (
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute bottom-[15%] right-[16%] w-1.5 h-1.5 rounded-full bg-[#FFB45C] ring-1 ring-[#C47A48]/80 shadow-[0_0_6px_rgba(255,180,92,0.8)]"
-          />
-        )}
         {glyphNode}
+        {showWarmLight && (
+          <svg
+            viewBox="0 0 40 40"
+            className="pointer-events-none absolute inset-0 w-full h-full"
+            aria-hidden="true"
+          >
+            <g transform={`rotate(${lunaProfile.angleDeg} 20 20)`}>
+              <circle
+                cx="35.5"
+                cy="20"
+                r="1.15"
+                fill={isCopperLead ? "#C47A48" : "#FFB45C"}
+                fillOpacity="0.9"
+                className="drop-shadow-[0_0_4px_rgba(255,180,92,0.85)]"
+              />
+              {isDual && (
+                <circle
+                  cx="4.8"
+                  cy="20"
+                  r="0.9"
+                  fill="#C47A48"
+                  fillOpacity="0.8"
+                />
+              )}
+            </g>
+          </svg>
+        )}
       </span>
     );
   }

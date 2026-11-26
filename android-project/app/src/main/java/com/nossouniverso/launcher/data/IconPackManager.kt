@@ -3190,22 +3190,61 @@ class IconPackManager(
             .take(40)
     }
 
-    private fun isLunaWarmAccentApp(packageName: String): Boolean {
+    private enum class LunaLightAccentMode {
+        AMBER_SPARK,
+        COPPER_DETAIL,
+        DUAL_MICRO_SPARK,
+        COOL_PURE
+    }
+
+    private data class LunaLightProfile(
+        val mode: LunaLightAccentMode,
+        val angleDeg: Float,
+        val warmWeight: Float
+    )
+
+    private fun resolveLunaLightProfile(packageName: String): LunaLightProfile {
         val pkg = packageName.lowercase()
+        val hash = abs(pkg.hashCode())
+        val angles = floatArrayOf(-42f, 38f, 138f, -142f)
+        val angleDeg = angles[hash % angles.size]
+
         val warmKeywords = listOf(
             "camera", "cam", "spotify", "music", "audio", "notes", "keep",
-            "settings", "calendar", "instagram", "youtube", "mercadopago", "gallery"
+            "settings", "calendar", "instagram", "youtube", "mercadopago",
+            "mercadolivre", "mercadolibre", "gallery", "photos", "clock",
+            "alarm", "rar", "videoconverter"
         )
-        if (warmKeywords.any { pkg.contains(it) }) return true
-        return abs(pkg.hashCode()) % 4 == 0
+        val mode = if (warmKeywords.any { pkg.contains(it) }) {
+            when (hash % 3) {
+                0 -> LunaLightAccentMode.COPPER_DETAIL
+                1 -> LunaLightAccentMode.AMBER_SPARK
+                else -> LunaLightAccentMode.DUAL_MICRO_SPARK
+            }
+        } else {
+            when (hash % 5) {
+                0 -> LunaLightAccentMode.DUAL_MICRO_SPARK
+                1, 2 -> LunaLightAccentMode.COPPER_DETAIL
+                3 -> LunaLightAccentMode.AMBER_SPARK
+                else -> LunaLightAccentMode.COOL_PURE
+            }
+        }
+
+        val warmWeight = when (mode) {
+            LunaLightAccentMode.DUAL_MICRO_SPARK -> 0.85f
+            LunaLightAccentMode.COPPER_DETAIL -> 0.65f
+            LunaLightAccentMode.AMBER_SPARK -> 0.55f
+            LunaLightAccentMode.COOL_PURE -> 0f
+        }
+        return LunaLightProfile(mode = mode, angleDeg = angleDeg, warmWeight = warmWeight)
     }
 
     /**
      * Tema Luna — Entre Luz e Sombra | HILM:
-     * Floating thin-line luminous cyan (#00E5FF) & electric blue (#398BFF) wireframe
-     * symbols directly over transparency / ultra-discreet navy mist (#0A1424) with
-     * ZERO 3D shading fills, ZERO solid square/circle cards, crisp #D9F7FF line
-     * highlights, and selective warm copper/amber micro-glints (#C47A48 / #FFB45C).
+     * Pure floating holographic light projections drawn with razor-thin luminous cyan (#00E5FF)
+     * & electric blue (#398BFF) filaments over 100% transparency, with discreet soft stroke halos
+     * and delicate copper (#C47A48) & amber (#FFB45C) light details.
+     * ZERO spheres, ZERO glass lenses, ZERO metallic rings, ZERO thick borders or solid plates.
      */
     private fun renderUnifiedLunaHolographicIcon(
         cacheIdentity: String,
@@ -3213,7 +3252,7 @@ class IconPackManager(
         fallback: Drawable
     ): Drawable {
         val size = 208
-        val cacheKey = "luna_holo_v3:$cacheIdentity#$size"
+        val cacheKey = "luna_holo_v5:$cacheIdentity#$size"
         bitmapCache.get(cacheKey)?.let { cached ->
             return BitmapDrawable(context.resources, cached)
         }
@@ -3237,42 +3276,11 @@ class IconPackManager(
         val cx = size / 2f
         val cy = size / 2f
 
-        // Discreet circular navy mist for legibility without any solid card
-        val mistRadius = size * 0.44f
-        val mistPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = RadialGradient(
-                cx,
-                cy,
-                mistRadius,
-                intArrayOf(
-                    Color.argb(92, 10, 20, 36),
-                    Color.argb(38, 5, 7, 11),
-                    Color.argb(0, 5, 7, 11)
-                ),
-                floatArrayOf(0f, 0.58f, 1f),
-                Shader.TileMode.CLAMP
-            )
-        }
-        canvas.drawCircle(cx, cy, mistRadius, mistPaint)
+        val profile = resolveLunaLightProfile(packageName)
 
-        // Delicate broken holographic orbital arc
-        val arcR = size * 0.425f
-        val arcRect = RectF(cx - arcR, cy - arcR, cx + arcR, cy + arcR)
-        val arcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 1.7f
-            strokeCap = Paint.Cap.ROUND
-            color = Color.argb(96, 57, 139, 255)
-        }
-        canvas.drawArc(arcRect, -40f, 74f, false, arcPaint)
-        arcPaint.color = Color.argb(122, 0, 229, 255)
-        canvas.drawArc(arcRect, 140f, 72f, false, arcPaint)
-
-        val warmAccent = isLunaWarmAccentApp(packageName)
-
-        // Prefer razor-sharp floating holographic line vectors for recognized key apps
-        if (drawLunaCuratedVectorSymbol(canvas, packageName.lowercase(), cx, cy, size * 0.56f)) {
-            drawLunaOptionalWarmGlint(canvas, cx, cy, size, warmAccent)
+        // Curated minimalist light-drawn symbols for key apps
+        if (drawLunaCuratedVectorSymbol(canvas, packageName.lowercase(), cx, cy, size * 0.72f, profile)) {
+            drawLunaLightSparks(canvas, cx, cy, size, profile)
             bitmapCache.put(cacheKey, out)
             try {
                 renderDiskCacheDir.mkdirs()
@@ -3285,10 +3293,11 @@ class IconPackManager(
             return BitmapDrawable(context.resources, out)
         }
 
-        // Universal Thin-Line Holographic Wireframe Extractor for all other apps:
-        // Strips 3D shading gradients and solid opaque plates, projecting pure cyan contours.
-        val prepared = prepareForegroundSymbol(fallback, 148)
-        val drawSize = (size * if (prepared.isIsolatedSilhouette) 0.68f else 0.64f).toInt()
+        // Universal Thin-Line Holographic Light Extractor (Sobel + 1px NMS thinning):
+        // Strips background plates, 3D spheres, thick borders, and solid surfaces completely,
+        // projecting clean floating light filaments directly over transparency.
+        val prepared = prepareForegroundSymbol(fallback, 152)
+        val drawSize = (size * 0.74f).toInt()
         val offset = (size - drawSize) / 2f
         val destRect = RectF(offset, offset, offset + drawSize, offset + drawSize)
 
@@ -3322,27 +3331,26 @@ class IconPackManager(
             }
         }
 
-        val luma = FloatArray(nPixels)
-        val colorEdge = FloatArray(nPixels)
-        val isRim = BooleanArray(nPixels)
+        val srcA = FloatArray(nPixels)
+        val srcR = FloatArray(nPixels)
+        val srcG = FloatArray(nPixels)
+        val srcB = FloatArray(nPixels)
         var opaqueCount = 0
-        var minL = 1f
-        var maxL = 0f
-        var sumL = 0f
+        var sumLuma = 0f
 
         for (i in 0 until nPixels) {
             val px = srcPx[i]
-            val a = (px ushr 24) and 0xFF
-            if (a > 28) {
+            val a = ((px ushr 24) and 0xFF) / 255f
+            srcA[i] = a
+            if (a > 0.10f) {
                 opaqueCount++
-                val r = (px ushr 16) and 0xFF
-                val g = (px ushr 8) and 0xFF
-                val b = px and 0xFF
-                val l = (0.299f * r + 0.587f * g + 0.114f * b) / 255f
-                luma[i] = l
-                sumL += l
-                if (l < minL) minL = l
-                if (l > maxL) maxL = l
+                val r = ((px ushr 16) and 0xFF).toFloat()
+                val g = ((px ushr 8) and 0xFF).toFloat()
+                val b = (px and 0xFF).toFloat()
+                srcR[i] = r
+                srcG[i] = g
+                srcB[i] = b
+                sumLuma += (0.299f * r + 0.587f * g + 0.114f * b) / 255f
             }
         }
 
@@ -3352,237 +3360,250 @@ class IconPackManager(
             return BitmapDrawable(context.resources, out)
         }
 
-        val avgLuma = sumL / opaqueCount.toFloat()
+        val avgLuma = sumLuma / opaqueCount.toFloat()
         val opaqueRatio = opaqueCount.toFloat() / nPixels.toFloat()
 
-        // Detect perimeter contours (2px) & gate out smooth 3D shading gradients (maxDiff < 32)
-        var interiorCount = 0
-        for (y in 0 until drawSize) {
+        // Step 1: Separate outer perimeter (card silhouette) from internal symbol edges
+        val isOuterBoundary = BooleanArray(nPixels)
+        val internalMag = FloatArray(nPixels)
+        val alphaEdgeMag = FloatArray(nPixels)
+        val gradAngle = FloatArray(nPixels)
+        var internalStrongCount = 0
+        var outerBoundaryCount = 0
+
+        val minColorGrad = if (avgLuma < 0.36f) 48f else 72f
+
+        for (y in 1 until drawSize - 1) {
             val row = y * drawSize
-            for (x in 0 until drawSize) {
+            val rowU = (y - 1) * drawSize
+            val rowD = (y + 1) * drawSize
+            for (x in 1 until drawSize - 1) {
                 val idx = row + x
-                val px = srcPx[idx]
-                val a = (px ushr 24) and 0xFF
-                if (a <= 28) continue
+                val aC = srcA[idx]
+                if (aC < 0.08f) continue
 
-                val r = (px ushr 16) and 0xFF
-                val g = (px ushr 8) and 0xFF
-                val b = px and 0xFF
+                val nearTransparent =
+                    srcA[idx - 1] < 0.14f || srcA[idx + 1] < 0.14f ||
+                        srcA[rowU + x] < 0.14f || srcA[rowD + x] < 0.14f ||
+                        x <= 2 || y <= 2 || x >= drawSize - 3 || y >= drawSize - 3
 
-                var maxDiff = 0
-                var nearTransparent = (x < 2 || y < 2 || x >= drawSize - 2 || y >= drawSize - 2)
-                for (dy in -2..2) {
-                    val ny = y + dy
-                    if (ny !in 0 until drawSize) {
-                        nearTransparent = true
-                        continue
-                    }
-                    val nRow = ny * drawSize
-                    for (dx in -2..2) {
-                        if (dx == 0 && dy == 0) continue
-                        val nx = x + dx
-                        if (nx !in 0 until drawSize) {
-                            nearTransparent = true
-                            continue
-                        }
-                        val nPx = srcPx[nRow + nx]
-                        val nA = (nPx ushr 24) and 0xFF
-                        if (nA <= 28) {
-                            if (abs(dx) <= 1 && abs(dy) <= 1 || (abs(dx) + abs(dy) <= 3)) {
-                                nearTransparent = true
-                            }
-                        } else if (abs(dx) <= 1 && abs(dy) <= 1) {
-                            val nr = (nPx ushr 16) and 0xFF
-                            val ng = (nPx ushr 8) and 0xFF
-                            val nb = nPx and 0xFF
-                            val diff = max(abs(r - nr), max(abs(g - ng), abs(b - nb)))
-                            if (diff > maxDiff) maxDiff = diff
-                        }
-                    }
+                // Sobel alpha gradient
+                val agx = -srcA[rowU + x - 1] + srcA[rowU + x + 1] -
+                    2f * srcA[idx - 1] + 2f * srcA[idx + 1] -
+                    srcA[rowD + x - 1] + srcA[rowD + x + 1]
+                val agy = -srcA[rowU + x - 1] - 2f * srcA[rowU + x] - srcA[rowU + x + 1] +
+                    srcA[rowD + x - 1] + 2f * srcA[rowD + x] + srcA[rowD + x + 1]
+                val aMag = sqrt(agx * agx + agy * agy) / 4f
+
+                if (nearTransparent) {
+                    isOuterBoundary[idx] = true
+                    outerBoundaryCount++
+                    alphaEdgeMag[idx] = aMag.coerceIn(0f, 1f)
+                    gradAngle[idx] = atan2(agy, agx)
                 }
-                isRim[idx] = nearTransparent
-                if (!nearTransparent) interiorCount++
-                // Gate smooth 3D lighting ramps (diff < 32) so only real symbol seams become lines
-                colorEdge[idx] = if (maxDiff >= 32) {
-                    ((maxDiff - 32) / 110f).coerceIn(0f, 1f)
-                } else {
-                    0f
+
+                // Only measure interior RGB Sobel when all 3x3 neighbors are reasonably opaque
+                val allOpaque = srcA[rowU + x - 1] > 0.35f && srcA[rowU + x] > 0.35f && srcA[rowU + x + 1] > 0.35f &&
+                    srcA[idx - 1] > 0.35f && srcA[idx + 1] > 0.35f &&
+                    srcA[rowD + x - 1] > 0.35f && srcA[rowD + x] > 0.35f && srcA[rowD + x + 1] > 0.35f
+
+                if (allOpaque) {
+                    val rgx = -srcR[rowU + x - 1] + srcR[rowU + x + 1] -
+                        2f * srcR[idx - 1] + 2f * srcR[idx + 1] -
+                        srcR[rowD + x - 1] + srcR[rowD + x + 1]
+                    val rgy = -srcR[rowU + x - 1] - 2f * srcR[rowU + x] - srcR[rowU + x + 1] +
+                        srcR[rowD + x - 1] + 2f * srcR[rowD + x] + srcR[rowD + x + 1]
+
+                    val ggx = -srcG[rowU + x - 1] + srcG[rowU + x + 1] -
+                        2f * srcG[idx - 1] + 2f * srcG[idx + 1] -
+                        srcG[rowD + x - 1] + srcG[rowD + x + 1]
+                    val ggy = -srcG[rowU + x - 1] - 2f * srcG[rowU + x] - srcG[rowU + x + 1] +
+                        srcG[rowD + x - 1] + 2f * srcG[rowD + x] + srcG[rowD + x + 1]
+
+                    val bgx = -srcB[rowU + x - 1] + srcB[rowU + x + 1] -
+                        2f * srcB[idx - 1] + 2f * srcB[idx + 1] -
+                        srcB[rowD + x - 1] + srcB[rowD + x + 1]
+                    val bgy = -srcB[rowU + x - 1] - 2f * srcB[rowU + x] - srcB[rowU + x + 1] +
+                        srcB[rowD + x - 1] + 2f * srcB[rowD + x] + srcB[rowD + x + 1]
+
+                    val mR = sqrt(rgx * rgx + rgy * rgy)
+                    val mG = sqrt(ggx * ggx + ggy * ggy)
+                    val mB = sqrt(bgx * bgx + bgy * bgy)
+
+                    val maxC = max(mR, max(mG, mB))
+                    if (maxC >= minColorGrad) {
+                        val norm = ((maxC - minColorGrad) / 320f).coerceIn(0f, 1f)
+                        internalMag[idx] = norm
+                        // Dominant channel determines clean normal angle for 1px NMS thinning
+                        val (dxC, dyC) = when (maxC) {
+                            mR -> rgx to rgy
+                            mG -> ggx to ggy
+                            else -> bgx to bgy
+                        }
+                        gradAngle[idx] = atan2(dyC, dxC)
+                        if (norm > 0.22f) internalStrongCount++
+                    }
                 }
             }
         }
 
-        val interiorRatio = interiorCount.toFloat() / opaqueCount.toFloat()
-        val isSparseLineGlyph = prepared.isIsolatedSilhouette &&
-            (opaqueRatio < 0.27f || interiorRatio < 0.24f)
+        // Suppress enclosing card outline whenever the app icon wraps an inner symbol inside a card/circle
+        val hasEnclosingPlate = !prepared.isIsolatedSilhouette ||
+            (opaqueRatio > 0.44f && internalStrongCount > max(32, (outerBoundaryCount * 0.35f).toInt()))
+
+        val rawEdge = FloatArray(nPixels)
+        for (i in 0 until nPixels) {
+            rawEdge[i] = if (hasEnclosingPlate) {
+                internalMag[i]
+            } else {
+                max(internalMag[i], alphaEdgeMag[i] * 0.92f)
+            }
+        }
+
+        // Step 2: 1-pixel Non-Maximum Suppression -> razor-thin crisp light filaments (zero thick borders)
+        val nmsEdge = FloatArray(nPixels)
+        for (y in 2 until drawSize - 2) {
+            val row = y * drawSize
+            for (x in 2 until drawSize - 2) {
+                val idx = row + x
+                val m = rawEdge[idx]
+                if (m < 0.14f) continue
+
+                var deg = Math.toDegrees(gradAngle[idx].toDouble()).toFloat()
+                if (deg < 0f) deg += 180f
+
+                val (n1, n2) = when {
+                    deg < 22.5f || deg >= 157.5f -> rawEdge[idx - 1] to rawEdge[idx + 1]
+                    deg < 67.5f -> rawEdge[(y - 1) * drawSize + x - 1] to rawEdge[(y + 1) * drawSize + x + 1]
+                    deg < 112.5f -> rawEdge[(y - 1) * drawSize + x] to rawEdge[(y + 1) * drawSize + x]
+                    else -> rawEdge[(y - 1) * drawSize + x + 1] to rawEdge[(y + 1) * drawSize + x - 1]
+                }
+
+                if (m >= n1 && m >= n2) {
+                    nmsEdge[idx] = m
+                }
+            }
+        }
+
+        // Step 3: Anti-aliased 1.5px light filament spread so thin lines remain crisp & recognizable at small sizes
+        val lightMap = FloatArray(nPixels)
+        for (y in 2 until drawSize - 2) {
+            val row = y * drawSize
+            for (x in 2 until drawSize - 2) {
+                val idx = row + x
+                val peak = nmsEdge[idx]
+                if (peak <= 0f) continue
+                val boostedPeak = (0.58f + 0.42f * peak).coerceIn(0f, 1f)
+                if (boostedPeak > lightMap[idx]) lightMap[idx] = boostedPeak
+                val wing = boostedPeak * 0.48f
+                val neighbors = intArrayOf(idx - 1, idx + 1, idx - drawSize, idx + drawSize)
+                for (nb in neighbors) {
+                    if (wing > lightMap[nb]) lightMap[nb] = wing
+                }
+            }
+        }
+
+        // Fallback safety for pure flat low-contrast shapes: project outer 1.5px light outline
+        var activeLightCount = 0
+        for (v in lightMap) if (v > 0.2f) activeLightCount++
+        if (activeLightCount < 24) {
+            for (i in 0 until nPixels) {
+                if (isOuterBoundary[i] && alphaEdgeMag[i] > 0.15f) {
+                    lightMap[i] = max(lightMap[i], (0.65f + 0.35f * alphaEdgeMag[i]).coerceIn(0f, 1f))
+                }
+            }
+        }
 
         val outPx = IntArray(nPixels)
         val glowPx = IntArray(nPixels)
+        val warmGlowPx = IntArray(nPixels)
 
-        if (isSparseLineGlyph) {
-            // Pure floating wireframe/glyph (Settings, Phone, Notes, Material monochrome):
-            // Clean single-stroke glowing cyan & #D9F7FF edge highlights, zero fill card.
-            val span = maxL - minL
-            val isDark = avgLuma < 0.40f && span < 0.42f
-            for (y in 0 until drawSize) {
-                val row = y * drawSize
-                for (x in 0 until drawSize) {
-                    val idx = row + x
-                    val px = srcPx[idx]
-                    val a = (px ushr 24) and 0xFF
-                    if (a < 10) continue
+        val angleRad = Math.toRadians(profile.angleDeg.toDouble())
+        val ux = cos(angleRad).toFloat()
+        val uy = sin(angleRad).toFloat()
+        val invHalf = 1f / max(1f, drawSize * 0.5f)
 
-                    val diag = ((x + y).toFloat() / (2f * drawSize)).coerceIn(0f, 1f)
-                    val edge = colorEdge[idx]
-                    val boost = when {
-                        isRim[idx] -> 0.85f
-                        edge > 0.25f -> 0.92f
-                        isDark -> 0.72f
-                        span >= 0.28f -> (0.45f + 0.50f * ((luma[idx] - minL) / span)).coerceIn(0.45f, 0.95f)
-                        else -> 0.72f
-                    }
-                    val cR = ((1f - boost) * 57f + max(0f, boost - 0.65f) / 0.35f * 217f).toInt().coerceIn(0, 255)
-                    val cG = (165 + boost * 82f - diag * 10f).toInt().coerceIn(0, 255)
-                    outPx[idx] = Color.argb(a, cR, cG, 255)
-                    glowPx[idx] = Color.argb((a * 0.75f).toInt(), 0, 229, 255)
+        for (y in 0 until drawSize) {
+            val row = y * drawSize
+            val ny = (y - drawSize * 0.5f) * invHalf
+            for (x in 0 until drawSize) {
+                val idx = row + x
+                val intensity = lightMap[idx]
+                if (intensity <= 0.04f) continue
+
+                val nx = (x - drawSize * 0.5f) * invHalf
+                val dir = (((nx * ux + ny * uy) - 0.36f) / 0.64f).coerceIn(0f, 1f)
+
+                val outA = (intensity * 250f).toInt().coerceIn(0, 255)
+                // Primary light spectrum: #398BFF electric blue -> #00E5FF cyan -> #E6FBFF luminous core
+                val coreMix = ((intensity - 0.62f) / 0.38f).coerceIn(0f, 1f)
+                val baseR = (57f * (1f - intensity) + 230f * coreMix).toInt().coerceIn(0, 255)
+                val baseG = (145f + 102f * intensity).toInt().coerceIn(0, 255)
+                val baseB = 255
+
+                // Subtle localized warm light detail (#C47A48 copper -> #FFB45C amber) on ~12% edge accent
+                val warmMix = if (profile.warmWeight > 0f && dir > 0.12f) {
+                    (dir * dir * profile.warmWeight * 0.72f).coerceIn(0f, 0.76f)
+                } else {
+                    0f
                 }
-            }
-        } else {
-            // Dense / badge / 3D / multicolor icon: convert strictly into translucent floating line-art.
-            // Sample outer ring to recognize thin contrasting inner details vs background plate.
-            val qSumR = LongArray(4)
-            val qSumG = LongArray(4)
-            val qSumB = LongArray(4)
-            val qCount = LongArray(4)
-            val halfSz = drawSize / 2
-            for (y in 3 until drawSize - 3) {
-                val row = y * drawSize
-                for (x in 3 until drawSize - 3) {
-                    val idx = row + x
-                    val a = (srcPx[idx] ushr 24) and 0xFF
-                    if (a > 120 && !isRim[idx] && colorEdge[idx] < 0.10f) {
-                        val nearOuter =
-                            ((srcPx[idx - 3] ushr 24) and 0xFF) < 40 ||
-                                ((srcPx[idx + 3] ushr 24) and 0xFF) < 40 ||
-                                ((srcPx[(y - 3) * drawSize + x] ushr 24) and 0xFF) < 40 ||
-                                ((srcPx[(y + 3) * drawSize + x] ushr 24) and 0xFF) < 40
-                        if (nearOuter) {
-                            val q = (if (y >= halfSz) 2 else 0) or (if (x >= halfSz) 1 else 0)
-                            val px = srcPx[idx]
-                            qSumR[q] += ((px ushr 16) and 0xFF).toLong()
-                            qSumG[q] += ((px ushr 8) and 0xFF).toLong()
-                            qSumB[q] += (px and 0xFF).toLong()
-                            qCount[q]++
-                        }
-                    }
+
+                if (warmMix > 0.15f) {
+                    val amberRatio = ((dir - 0.55f) / 0.45f).coerceIn(0f, 1f)
+                    val wR = 196f + (255f - 196f) * amberRatio
+                    val wG = 122f + (180f - 122f) * amberRatio
+                    val wB = 72f + (92f - 72f) * amberRatio
+                    val fR = (baseR * (1f - warmMix) + wR * warmMix).toInt().coerceIn(0, 255)
+                    val fG = (baseG * (1f - warmMix) + wG * warmMix).toInt().coerceIn(0, 255)
+                    val fB = (baseB * (1f - warmMix) + wB * warmMix).toInt().coerceIn(0, 255)
+                    outPx[idx] = Color.argb(outA, fR, fG, fB)
+                    warmGlowPx[idx] = Color.argb((outA * warmMix).toInt().coerceIn(0, 255), wR.toInt(), wG.toInt(), wB.toInt())
+                } else {
+                    outPx[idx] = Color.argb(outA, baseR, baseG, baseB)
                 }
-            }
-
-            var totR = 0L
-            var totG = 0L
-            var totB = 0L
-            var totS = 0L
-            for (q in 0 until 4) {
-                totR += qSumR[q]
-                totG += qSumG[q]
-                totB += qSumB[q]
-                totS += qCount[q]
-            }
-            val fallbackR = if (totS > 0L) (totR / totS).toInt() else 40
-            val fallbackG = if (totS > 0L) (totG / totS).toInt() else 60
-            val fallbackB = if (totS > 0L) (totB / totS).toInt() else 80
-            val qR = IntArray(4) { q -> if (qCount[q] > 0L) (qSumR[q] / qCount[q]).toInt() else fallbackR }
-            val qG = IntArray(4) { q -> if (qCount[q] > 0L) (qSumG[q] / qCount[q]).toInt() else fallbackG }
-            val qB = IntArray(4) { q -> if (qCount[q] > 0L) (qSumB[q] / qCount[q]).toInt() else fallbackB }
-
-            fun localBgDist(x: Int, y: Int, r: Int, g: Int, b: Int): Float {
-                val tx = (((x.toFloat() / max(1, drawSize - 1)) - 0.25f) * 2f).coerceIn(0f, 1f)
-                val ty = (((y.toFloat() / max(1, drawSize - 1)) - 0.25f) * 2f).coerceIn(0f, 1f)
-                val refR = (qR[0] * (1f - tx) + qR[1] * tx) * (1f - ty) + (qR[2] * (1f - tx) + qR[3] * tx) * ty
-                val refG = (qG[0] * (1f - tx) + qG[1] * tx) * (1f - ty) + (qG[2] * (1f - tx) + qG[3] * tx) * ty
-                val refB = (qB[0] * (1f - tx) + qB[1] * tx) * (1f - ty) + (qB[2] * (1f - tx) + qB[3] * tx) * ty
-                return (abs(r - refR) + abs(g - refG) + abs(b - refB)) / (3f * 255f)
-            }
-
-            // Detect pixels belonging to thin internal strokes (letters/waves/glyph lines)
-            val nearInternalEdge = BooleanArray(nPixels)
-            for (y in 2 until drawSize - 2) {
-                val row = y * drawSize
-                for (x in 2 until drawSize - 2) {
-                    val idx = row + x
-                    if (colorEdge[idx] > 0.18f) {
-                        for (dy in -2..2) {
-                            val nRow = (y + dy) * drawSize
-                            for (dx in -2..2) {
-                                nearInternalEdge[nRow + x + dx] = true
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (y in 0 until drawSize) {
-                val row = y * drawSize
-                for (x in 0 until drawSize) {
-                    val idx = row + x
-                    val px = srcPx[idx]
-                    val a = (px ushr 24) and 0xFF
-                    if (a < 10) continue
-
-                    val r = (px ushr 16) and 0xFF
-                    val g = (px ushr 8) and 0xFF
-                    val b = px and 0xFF
-                    val edge = colorEdge[idx]
-                    val dBg = localBgDist(x, y, r, g, b)
-
-                    if (edge > 0.14f) {
-                        // Razor-sharp internal wireframe contour (#00E5FF -> #D9F7FF)
-                        val e = ((edge - 0.14f) / 0.60f).coerceIn(0.35f, 1f)
-                        val cR = ((e - 0.35f) / 0.65f * 217f).toInt().coerceIn(0, 255)
-                        val cG = (212 + e * 35f).toInt().coerceIn(0, 255)
-                        outPx[idx] = Color.argb((a * (0.65f + 0.35f * e)).toInt(), cR, cG, 255)
-                        glowPx[idx] = Color.argb((a * e * 0.85f).toInt(), 0, 229, 255)
-                    } else if (dBg > 0.17f && nearInternalEdge[idx]) {
-                        // Crisp thin contrasting symbol strokes (letters, waves, small icons)
-                        outPx[idx] = Color.argb((a * 0.92f).toInt(), 165, 244, 255)
-                        glowPx[idx] = Color.argb((a * 0.72f).toInt(), 0, 229, 255)
-                    } else if (isRim[idx]) {
-                        // Delicate holographic perimeter line in electric blue / cyan
-                        outPx[idx] = Color.argb((a * 0.78f).toInt(), 42, 185, 255)
-                        glowPx[idx] = Color.argb((a * 0.55f).toInt(), 57, 139, 255)
-                    } else {
-                        // Virtually transparent holographic glass whisper (NO 3D shading or solid plate!)
-                        val glassAlpha = if (dBg > 0.18f) (a * 0.18f).toInt() else (a * 0.08f).toInt()
-                        outPx[idx] = Color.argb(glassAlpha, 0, 175, 225)
-                    }
-                }
+                glowPx[idx] = Color.argb((outA * 0.85f).toInt().coerceIn(0, 255), 0, 229, 255)
             }
         }
 
+        // Discreet soft light halo radiating directly from the thin light strokes
         val glowBmp = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
         glowBmp.setPixels(glowPx, 0, drawSize, 0, 0, drawSize, drawSize)
         val glowAlpha = glowBmp.extractAlpha()
 
-        val blueDepthPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            color = Color.argb(95, 57, 139, 255)
-            maskFilter = BlurMaskFilter(6f, BlurMaskFilter.Blur.NORMAL)
+        val blueAuraPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(72, 57, 139, 255)
+            maskFilter = BlurMaskFilter(7.5f, BlurMaskFilter.Blur.NORMAL)
         }
-        canvas.drawBitmap(glowAlpha, null, destRect, blueDepthPaint)
+        canvas.drawBitmap(glowAlpha, null, destRect, blueAuraPaint)
 
-        val cyanGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            color = Color.argb(135, 0, 229, 255)
-            maskFilter = BlurMaskFilter(3.0f, BlurMaskFilter.Blur.NORMAL)
+        val cyanHaloPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(122, 0, 229, 255)
+            maskFilter = BlurMaskFilter(3.2f, BlurMaskFilter.Blur.NORMAL)
         }
-        canvas.drawBitmap(glowAlpha, null, destRect, cyanGlowPaint)
+        canvas.drawBitmap(glowAlpha, null, destRect, cyanHaloPaint)
 
         glowAlpha.recycle()
         glowBmp.recycle()
+
+        if (profile.warmWeight > 0f) {
+            val warmGlowBmp = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
+            warmGlowBmp.setPixels(warmGlowPx, 0, drawSize, 0, 0, drawSize, drawSize)
+            val warmGlowAlpha = warmGlowBmp.extractAlpha()
+            val warmHaloPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                color = Color.argb(105, 196, 122, 72)
+                maskFilter = BlurMaskFilter(4.0f, BlurMaskFilter.Blur.NORMAL)
+            }
+            canvas.drawBitmap(warmGlowAlpha, null, destRect, warmHaloPaint)
+            warmGlowAlpha.recycle()
+            warmGlowBmp.recycle()
+        }
 
         val holoBmp = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
         holoBmp.setPixels(outPx, 0, drawSize, 0, 0, drawSize, drawSize)
         canvas.drawBitmap(holoBmp, null, destRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
         holoBmp.recycle()
 
-        drawLunaOptionalWarmGlint(canvas, cx, cy, size, warmAccent)
+        drawLunaLightSparks(canvas, cx, cy, size, profile)
 
         if (!prepared.bitmap.isRecycled) {
             prepared.bitmap.recycle()
@@ -3600,25 +3621,46 @@ class IconPackManager(
         return BitmapDrawable(context.resources, out)
     }
 
-    private fun drawLunaOptionalWarmGlint(
+    private fun drawLunaLightSparks(
         canvas: Canvas,
         cx: Float,
         cy: Float,
         size: Int,
-        warmAccent: Boolean
+        profile: LunaLightProfile
     ) {
-        if (!warmAccent) return
-        val glintX = cx + size * 0.25f
-        val glintY = cy - size * 0.25f
-        val amberHalo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(155, 196, 122, 72)
-            maskFilter = BlurMaskFilter(4f, BlurMaskFilter.Blur.NORMAL)
+        if (profile.mode == LunaLightAccentMode.COOL_PURE) return
+
+        val rad = Math.toRadians(profile.angleDeg.toDouble())
+        val ux = cos(rad).toFloat()
+        val uy = sin(rad).toFloat()
+        val px = cx + ux * (size * 0.37f)
+        val py = cy + uy * (size * 0.37f)
+
+        val primaryColor = if (profile.mode == LunaLightAccentMode.COPPER_DETAIL) {
+            Color.parseColor("#C47A48")
+        } else {
+            Color.parseColor("#FFB45C")
         }
-        canvas.drawCircle(glintX, glintY, 4.2f, amberHalo)
-        val amberCore = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#FFB45C")
+
+        val softHalo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(115, Color.red(primaryColor), Color.green(primaryColor), Color.blue(primaryColor))
+            maskFilter = BlurMaskFilter(3.8f, BlurMaskFilter.Blur.NORMAL)
         }
-        canvas.drawCircle(glintX, glintY, 2.4f, amberCore)
+        canvas.drawCircle(px, py, 3.6f, softHalo)
+
+        val coreSpark = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = primaryColor
+        }
+        canvas.drawCircle(px, py, 1.75f, coreSpark)
+
+        if (profile.mode == LunaLightAccentMode.DUAL_MICRO_SPARK) {
+            val sx = cx - ux * (size * 0.36f)
+            val sy = cy - uy * (size * 0.36f)
+            val copperSpark = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.argb(215, 196, 122, 72)
+            }
+            canvas.drawCircle(sx, sy, 1.45f, copperSpark)
+        }
     }
 
     private fun drawLunaCuratedVectorSymbol(
@@ -3626,7 +3668,8 @@ class IconPackManager(
         pkg: String,
         cx: Float,
         cy: Float,
-        span: Float
+        span: Float,
+        profile: LunaLightProfile
     ): Boolean {
         val kind = when {
             pkg == "com.android.chrome" || pkg.contains(".chrome") -> "chrome"
@@ -3651,19 +3694,36 @@ class IconPackManager(
             pkg.contains("videoconverter") || pkg.contains("video.converter") -> "videoconverter"
             pkg.contains("documentsui") || pkg.contains("filemanager") ||
                 pkg.contains("myfiles") || pkg.contains("arquivos") -> "files"
+            pkg.contains("dialer") || pkg.contains("telecom") || pkg.contains("phone") -> "phone"
+            pkg.contains("messaging") || pkg.contains("mms") || pkg.contains("sms") -> "messages"
+            pkg.contains("camera") -> "camera"
+            pkg.contains("gallery") || pkg.contains("photos") -> "gallery"
+            pkg.contains("settings") -> "settings"
+            pkg.contains("clock") || pkg.contains("alarm") || pkg.contains("deskclock") -> "clock"
+            pkg.contains("calculator") -> "calculator"
+            pkg.contains("calendar") -> "calendar"
             else -> return false
         }
 
         val r = span * 0.5f
-        val strokeBase = (span * 0.044f).coerceIn(3.8f, 5.8f)
+        // Thin razor-sharp light filaments (no heavy thick borders)
+        val strokeBase = (span * 0.025f).coerceIn(2.6f, 3.8f)
 
-        val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val wideAuraPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = strokeBase * 1.9f
+            strokeWidth = strokeBase * 3.4f
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
-            color = Color.argb(120, 0, 229, 255)
-            maskFilter = BlurMaskFilter(5.2f, BlurMaskFilter.Blur.NORMAL)
+            color = Color.argb(60, 57, 139, 255)
+            maskFilter = BlurMaskFilter(8.2f, BlurMaskFilter.Blur.NORMAL)
+        }
+        val cyanHaloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = strokeBase * 2.0f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            color = Color.argb(122, 0, 229, 255)
+            maskFilter = BlurMaskFilter(4.0f, BlurMaskFilter.Blur.NORMAL)
         }
         val cyanPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
@@ -3674,44 +3734,90 @@ class IconPackManager(
         }
         val bluePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = strokeBase * 0.92f
+            strokeWidth = strokeBase * 0.94f
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
             color = Color.parseColor("#398BFF")
         }
         val brightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = strokeBase * 0.92f
+            strokeWidth = strokeBase * 0.96f
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
             color = Color.parseColor("#D9F7FF")
         }
+        val coreFilamentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = strokeBase * 0.42f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            color = Color.argb(185, 236, 253, 255)
+        }
 
-        fun drawHoloPath(path: Path, primary: Paint = cyanPaint) {
-            canvas.drawPath(path, glowPaint)
+        val warmLightColor = if (profile.mode == LunaLightAccentMode.COPPER_DETAIL) {
+            Color.parseColor("#C47A48")
+        } else {
+            Color.parseColor("#FFB45C")
+        }
+        val warmHaloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = strokeBase * 2.2f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            color = Color.argb(105, Color.red(warmLightColor), Color.green(warmLightColor), Color.blue(warmLightColor))
+            maskFilter = BlurMaskFilter(4.4f, BlurMaskFilter.Blur.NORMAL)
+        }
+        val warmStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = strokeBase * 0.92f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            color = warmLightColor
+        }
+
+        fun drawLightPath(path: Path, primary: Paint = cyanPaint, warmDetail: Boolean = false) {
+            if (warmDetail && profile.warmWeight > 0f) {
+                canvas.drawPath(path, warmHaloPaint)
+                canvas.drawPath(path, warmStrokePaint)
+                return
+            }
+            canvas.drawPath(path, wideAuraPaint)
+            canvas.drawPath(path, cyanHaloPaint)
             canvas.drawPath(path, primary)
+            canvas.drawPath(path, coreFilamentPaint)
+        }
+
+        fun drawLightPoint(px: Float, py: Float, radius: Float = strokeBase * 0.65f, warm: Boolean = true) {
+            val c = if (warm && profile.warmWeight > 0f) warmLightColor else Color.parseColor("#D9F7FF")
+            val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.argb(135, Color.red(c), Color.green(c), Color.blue(c))
+                maskFilter = BlurMaskFilter(4.2f, BlurMaskFilter.Blur.NORMAL)
+            }
+            canvas.drawCircle(px, py, radius * 2.2f, halo)
+            val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c }
+            canvas.drawCircle(px, py, radius, dot)
         }
 
         when (kind) {
             "chrome" -> {
-                val outer = Path().apply { addCircle(cx, cy, r * 0.92f, Path.Direction.CW) }
-                val innerR = r * 0.36f
+                val outer = Path().apply { addCircle(cx, cy, r * 0.88f, Path.Direction.CW) }
+                val innerR = r * 0.34f
                 val inner = Path().apply { addCircle(cx, cy, innerR, Path.Direction.CW) }
                 val spokes = Path().apply {
                     moveTo(cx, cy - innerR)
-                    lineTo(cx + r * 0.84f, cy - innerR)
+                    lineTo(cx + r * 0.80f, cy - innerR)
                     moveTo(cx - innerR * 0.86f, cy + innerR * 0.50f)
-                    lineTo(cx - r * 0.72f, cy - r * 0.42f)
+                    lineTo(cx - r * 0.69f, cy - r * 0.40f)
                     moveTo(cx + innerR * 0.86f, cy + innerR * 0.50f)
-                    lineTo(cx + r * 0.02f, cy + r * 0.91f)
+                    lineTo(cx + r * 0.02f, cy + r * 0.87f)
                 }
-                drawHoloPath(outer, cyanPaint)
-                drawHoloPath(spokes, bluePaint)
-                drawHoloPath(inner, brightPaint)
+                drawLightPath(outer, cyanPaint)
+                drawLightPath(spokes, bluePaint)
+                drawLightPath(inner, brightPaint)
             }
             "whatsapp" -> {
                 val bubble = Path().apply {
-                    val rr = r * 0.90f
+                    val rr = r * 0.86f
                     addArc(RectF(cx - rr, cy - rr, cx + rr, cy + rr), 146f, 304f)
                     lineTo(cx - rr * 0.94f, cy + rr * 0.94f)
                     close()
@@ -3726,302 +3832,444 @@ class IconPackManager(
                     lineTo(cx - r * 0.12f, cy - r * 0.24f)
                     close()
                 }
-                drawHoloPath(bubble, cyanPaint)
-                drawHoloPath(phone, brightPaint)
+                drawLightPath(bubble, cyanPaint)
+                drawLightPath(phone, brightPaint)
             }
             "youtube" -> {
                 val screen = Path().apply {
                     addRoundRect(
-                        RectF(cx - r * 0.94f, cy - r * 0.64f, cx + r * 0.94f, cy + r * 0.64f),
-                        r * 0.32f,
-                        r * 0.32f,
+                        RectF(cx - r * 0.90f, cy - r * 0.60f, cx + r * 0.90f, cy + r * 0.60f),
+                        r * 0.28f,
+                        r * 0.28f,
                         Path.Direction.CW
                     )
                 }
                 val play = Path().apply {
-                    moveTo(cx - r * 0.18f, cy - r * 0.28f)
+                    moveTo(cx - r * 0.18f, cy - r * 0.27f)
                     lineTo(cx + r * 0.34f, cy)
-                    lineTo(cx - r * 0.18f, cy + r * 0.28f)
+                    lineTo(cx - r * 0.18f, cy + r * 0.27f)
                     close()
                 }
-                drawHoloPath(screen, bluePaint)
-                drawHoloPath(play, brightPaint)
+                drawLightPath(screen, bluePaint)
+                drawLightPath(play, brightPaint)
             }
             "spotify" -> {
-                val ring = Path().apply { addCircle(cx, cy, r * 0.92f, Path.Direction.CW) }
+                val ring = Path().apply { addCircle(cx, cy, r * 0.88f, Path.Direction.CW) }
                 val w1 = Path().apply {
-                    moveTo(cx - r * 0.46f, cy - r * 0.22f)
-                    quadTo(cx + r * 0.02f, cy - r * 0.42f, cx + r * 0.50f, cy - r * 0.14f)
+                    moveTo(cx - r * 0.45f, cy - r * 0.22f)
+                    quadTo(cx + r * 0.02f, cy - r * 0.40f, cx + r * 0.48f, cy - r * 0.14f)
                 }
                 val w2 = Path().apply {
-                    moveTo(cx - r * 0.40f, cy + r * 0.05f)
-                    quadTo(cx + r * 0.02f, cy - r * 0.12f, cx + r * 0.42f, cy + r * 0.12f)
+                    moveTo(cx - r * 0.39f, cy + r * 0.05f)
+                    quadTo(cx + r * 0.02f, cy - r * 0.11f, cx + r * 0.41f, cy + r * 0.12f)
                 }
                 val w3 = Path().apply {
-                    moveTo(cx - r * 0.32f, cy + r * 0.32f)
-                    quadTo(cx + r * 0.02f, cy + r * 0.18f, cx + r * 0.34f, cy + r * 0.36f)
+                    moveTo(cx - r * 0.31f, cy + r * 0.31f)
+                    quadTo(cx + r * 0.02f, cy + r * 0.18f, cx + r * 0.33f, cy + r * 0.35f)
                 }
-                drawHoloPath(ring, cyanPaint)
-                drawHoloPath(w1, brightPaint)
-                drawHoloPath(w2, cyanPaint)
-                drawHoloPath(w3, bluePaint)
+                drawLightPath(ring, cyanPaint)
+                drawLightPath(w1, brightPaint)
+                drawLightPath(w2, cyanPaint)
+                drawLightPath(w3, bluePaint, warmDetail = profile.mode == LunaLightAccentMode.COPPER_DETAIL)
             }
             "instagram" -> {
                 val frame = Path().apply {
                     addRoundRect(
-                        RectF(cx - r * 0.86f, cy - r * 0.86f, cx + r * 0.86f, cy + r * 0.86f),
-                        r * 0.40f,
-                        r * 0.40f,
+                        RectF(cx - r * 0.82f, cy - r * 0.82f, cx + r * 0.82f, cy + r * 0.82f),
+                        r * 0.36f,
+                        r * 0.36f,
                         Path.Direction.CW
                     )
                 }
-                val lens = Path().apply { addCircle(cx, cy, r * 0.38f, Path.Direction.CW) }
-                val flash = Path().apply { addCircle(cx + r * 0.46f, cy - r * 0.46f, r * 0.07f, Path.Direction.CW) }
-                drawHoloPath(frame, cyanPaint)
-                drawHoloPath(lens, brightPaint)
-                drawHoloPath(flash, brightPaint)
+                val lens = Path().apply { addCircle(cx, cy, r * 0.36f, Path.Direction.CW) }
+                drawLightPath(frame, cyanPaint)
+                drawLightPath(lens, brightPaint)
+                drawLightPoint(cx + r * 0.45f, cy - r * 0.45f, strokeBase * 0.72f, warm = true)
             }
             "discord" -> {
                 val visor = Path().apply {
-                    moveTo(cx - r * 0.68f, cy - r * 0.48f)
-                    quadTo(cx, cy - r * 0.72f, cx + r * 0.68f, cy - r * 0.48f)
-                    quadTo(cx + r * 0.92f, cy + r * 0.06f, cx + r * 0.74f, cy + r * 0.56f)
-                    lineTo(cx + r * 0.34f, cy + r * 0.42f)
-                    quadTo(cx, cy + r * 0.54f, cx - r * 0.34f, cy + r * 0.42f)
-                    lineTo(cx - r * 0.74f, cy + r * 0.56f)
-                    quadTo(cx - r * 0.92f, cy + r * 0.06f, cx - r * 0.68f, cy - r * 0.48f)
+                    moveTo(cx - r * 0.66f, cy - r * 0.46f)
+                    quadTo(cx, cy - r * 0.70f, cx + r * 0.66f, cy - r * 0.46f)
+                    quadTo(cx + r * 0.88f, cy + r * 0.06f, cx + r * 0.72f, cy + r * 0.54f)
+                    lineTo(cx + r * 0.32f, cy + r * 0.40f)
+                    quadTo(cx, cy + r * 0.52f, cx - r * 0.32f, cy + r * 0.40f)
+                    lineTo(cx - r * 0.72f, cy + r * 0.54f)
+                    quadTo(cx - r * 0.88f, cy + r * 0.06f, cx - r * 0.66f, cy - r * 0.46f)
                     close()
                 }
                 val eyes = Path().apply {
-                    addCircle(cx - r * 0.30f, cy + r * 0.04f, r * 0.15f, Path.Direction.CW)
-                    addCircle(cx + r * 0.30f, cy + r * 0.04f, r * 0.15f, Path.Direction.CW)
+                    addCircle(cx - r * 0.29f, cy + r * 0.04f, r * 0.14f, Path.Direction.CW)
+                    addCircle(cx + r * 0.29f, cy + r * 0.04f, r * 0.14f, Path.Direction.CW)
                 }
-                drawHoloPath(visor, cyanPaint)
-                drawHoloPath(eyes, brightPaint)
+                drawLightPath(visor, cyanPaint)
+                drawLightPath(eyes, brightPaint)
             }
             "nubank" -> {
                 val nStroke = Path().apply {
-                    moveTo(cx - r * 0.66f, cy + r * 0.56f)
-                    lineTo(cx - r * 0.66f, cy - r * 0.44f)
-                    quadTo(cx - r * 0.66f, cy - r * 0.64f, cx - r * 0.46f, cy - r * 0.48f)
-                    lineTo(cx + r * 0.12f, cy + r * 0.22f)
-                    lineTo(cx + r * 0.12f, cy - r * 0.54f)
+                    moveTo(cx - r * 0.64f, cy + r * 0.54f)
+                    lineTo(cx - r * 0.64f, cy - r * 0.42f)
+                    quadTo(cx - r * 0.64f, cy - r * 0.62f, cx - r * 0.44f, cy - r * 0.46f)
+                    lineTo(cx + r * 0.12f, cy + r * 0.20f)
+                    lineTo(cx + r * 0.12f, cy - r * 0.52f)
                 }
                 val uStroke = Path().apply {
-                    moveTo(cx + r * 0.66f, cy - r * 0.54f)
-                    lineTo(cx + r * 0.66f, cy + r * 0.44f)
-                    quadTo(cx + r * 0.66f, cy + r * 0.64f, cx + r * 0.46f, cy + r * 0.48f)
-                    lineTo(cx - r * 0.12f, cy - r * 0.22f)
-                    lineTo(cx - r * 0.12f, cy + r * 0.54f)
+                    moveTo(cx + r * 0.64f, cy - r * 0.52f)
+                    lineTo(cx + r * 0.64f, cy + r * 0.42f)
+                    quadTo(cx + r * 0.64f, cy + r * 0.62f, cx + r * 0.44f, cy + r * 0.46f)
+                    lineTo(cx - r * 0.12f, cy - r * 0.20f)
+                    lineTo(cx - r * 0.12f, cy + r * 0.52f)
                 }
-                drawHoloPath(nStroke, cyanPaint)
-                drawHoloPath(uStroke, brightPaint)
+                drawLightPath(nStroke, cyanPaint)
+                drawLightPath(uStroke, brightPaint)
             }
             "gmail" -> {
                 val outer = Path().apply {
-                    moveTo(cx - r * 0.88f, cy + r * 0.56f)
-                    lineTo(cx - r * 0.88f, cy - r * 0.40f)
-                    quadTo(cx - r * 0.88f, cy - r * 0.62f, cx - r * 0.64f, cy - r * 0.48f)
+                    moveTo(cx - r * 0.84f, cy + r * 0.54f)
+                    lineTo(cx - r * 0.84f, cy - r * 0.38f)
+                    quadTo(cx - r * 0.84f, cy - r * 0.60f, cx - r * 0.62f, cy - r * 0.46f)
                     lineTo(cx, cy + r * 0.04f)
-                    lineTo(cx + r * 0.64f, cy - r * 0.48f)
-                    quadTo(cx + r * 0.88f, cy - r * 0.62f, cx + r * 0.88f, cy - r * 0.40f)
-                    lineTo(cx + r * 0.88f, cy + r * 0.56f)
+                    lineTo(cx + r * 0.62f, cy - r * 0.46f)
+                    quadTo(cx + r * 0.84f, cy - r * 0.60f, cx + r * 0.84f, cy - r * 0.38f)
+                    lineTo(cx + r * 0.84f, cy + r * 0.54f)
                 }
                 val base = Path().apply {
-                    moveTo(cx - r * 0.54f, cy - r * 0.06f)
-                    lineTo(cx - r * 0.54f, cy + r * 0.56f)
-                    moveTo(cx + r * 0.54f, cy - r * 0.06f)
-                    lineTo(cx + r * 0.54f, cy + r * 0.56f)
+                    moveTo(cx - r * 0.52f, cy - r * 0.06f)
+                    lineTo(cx - r * 0.52f, cy + r * 0.54f)
+                    moveTo(cx + r * 0.52f, cy - r * 0.06f)
+                    lineTo(cx + r * 0.52f, cy + r * 0.54f)
                 }
-                drawHoloPath(outer, cyanPaint)
-                drawHoloPath(base, brightPaint)
+                drawLightPath(outer, cyanPaint)
+                drawLightPath(base, brightPaint)
             }
             "google" -> {
                 val gArc = Path().apply {
-                    addArc(RectF(cx - r * 0.86f, cy - r * 0.86f, cx + r * 0.86f, cy + r * 0.86f), -40f, -275f)
+                    addArc(RectF(cx - r * 0.82f, cy - r * 0.82f, cx + r * 0.82f, cy + r * 0.82f), -40f, -275f)
                 }
                 val bar = Path().apply {
                     moveTo(cx + r * 0.04f, cy)
-                    lineTo(cx + r * 0.84f, cy)
-                    lineTo(cx + r * 0.84f, cy + r * 0.34f)
+                    lineTo(cx + r * 0.80f, cy)
+                    lineTo(cx + r * 0.80f, cy + r * 0.32f)
                 }
-                drawHoloPath(gArc, cyanPaint)
-                drawHoloPath(bar, brightPaint)
+                drawLightPath(gArc, cyanPaint)
+                drawLightPath(bar, brightPaint)
             }
             "playstore" -> {
                 val tri = Path().apply {
-                    moveTo(cx - r * 0.66f, cy - r * 0.84f)
-                    lineTo(cx + r * 0.84f, cy)
-                    lineTo(cx - r * 0.66f, cy + r * 0.84f)
+                    moveTo(cx - r * 0.64f, cy - r * 0.80f)
+                    lineTo(cx + r * 0.80f, cy)
+                    lineTo(cx - r * 0.64f, cy + r * 0.80f)
                     close()
                 }
                 val prism = Path().apply {
-                    moveTo(cx - r * 0.66f, cy - r * 0.84f)
-                    lineTo(cx + r * 0.36f, cy + r * 0.27f)
-                    moveTo(cx - r * 0.66f, cy + r * 0.84f)
-                    lineTo(cx + r * 0.36f, cy - r * 0.27f)
+                    moveTo(cx - r * 0.64f, cy - r * 0.80f)
+                    lineTo(cx + r * 0.34f, cy + r * 0.25f)
+                    moveTo(cx - r * 0.64f, cy + r * 0.80f)
+                    lineTo(cx + r * 0.34f, cy - r * 0.25f)
                 }
-                drawHoloPath(tri, cyanPaint)
-                drawHoloPath(prism, brightPaint)
+                drawLightPath(tri, cyanPaint)
+                drawLightPath(prism, brightPaint)
             }
             "maps" -> {
                 val pin = Path().apply {
-                    addArc(RectF(cx - r * 0.66f, cy - r * 0.90f, cx + r * 0.66f, cy + r * 0.42f), 155f, 230f)
-                    lineTo(cx, cy + r * 0.92f)
+                    addArc(RectF(cx - r * 0.62f, cy - r * 0.86f, cx + r * 0.62f, cy + r * 0.38f), 155f, 230f)
+                    lineTo(cx, cy + r * 0.88f)
                     close()
                 }
-                val hole = Path().apply { addCircle(cx, cy - r * 0.24f, r * 0.24f, Path.Direction.CW) }
-                drawHoloPath(pin, cyanPaint)
-                drawHoloPath(hole, brightPaint)
+                val hole = Path().apply { addCircle(cx, cy - r * 0.24f, r * 0.22f, Path.Direction.CW) }
+                drawLightPath(pin, cyanPaint)
+                drawLightPath(hole, brightPaint, warmDetail = profile.mode == LunaLightAccentMode.AMBER_SPARK)
             }
             "mercadopago", "mercadolivre" -> {
                 val oval = Path().apply {
-                    addOval(RectF(cx - r * 0.92f, cy - r * 0.62f, cx + r * 0.92f, cy + r * 0.62f), Path.Direction.CW)
+                    addOval(RectF(cx - r * 0.88f, cy - r * 0.58f, cx + r * 0.88f, cy + r * 0.58f), Path.Direction.CW)
                 }
                 val clasp = Path().apply {
-                    moveTo(cx - r * 0.62f, cy + r * 0.04f)
-                    quadTo(cx - r * 0.20f, cy - r * 0.30f, cx + r * 0.16f, cy + r * 0.02f)
-                    moveTo(cx + r * 0.62f, cy - r * 0.04f)
-                    quadTo(cx + r * 0.20f, cy + r * 0.30f, cx - r * 0.16f, cy - r * 0.02f)
+                    moveTo(cx - r * 0.58f, cy + r * 0.04f)
+                    quadTo(cx - r * 0.18f, cy - r * 0.28f, cx + r * 0.14f, cy + r * 0.02f)
+                    moveTo(cx + r * 0.58f, cy - r * 0.04f)
+                    quadTo(cx + r * 0.18f, cy + r * 0.28f, cx - r * 0.14f, cy - r * 0.02f)
+                }
+                val accentTick = Path().apply {
                     moveTo(cx - r * 0.18f, cy + r * 0.18f)
                     lineTo(cx + r * 0.18f, cy + r * 0.18f)
                 }
-                drawHoloPath(oval, if (kind == "mercadopago") bluePaint else cyanPaint)
-                drawHoloPath(clasp, brightPaint)
+                drawLightPath(oval, if (kind == "mercadopago") bluePaint else cyanPaint)
+                drawLightPath(clasp, brightPaint)
+                drawLightPath(accentTick, cyanPaint, warmDetail = true)
             }
             "inss" -> {
                 val shield = Path().apply {
                     addRoundRect(
-                        RectF(cx - r * 0.84f, cy - r * 0.66f, cx + r * 0.84f, cy + r * 0.66f),
-                        r * 0.24f,
-                        r * 0.24f,
+                        RectF(cx - r * 0.80f, cy - r * 0.62f, cx + r * 0.80f, cy + r * 0.62f),
+                        r * 0.22f,
+                        r * 0.22f,
                         Path.Direction.CW
                     )
                 }
                 val glyph = Path().apply {
-                    // Geometric INSS stylized pillars & arch
-                    moveTo(cx - r * 0.52f, cy + r * 0.28f)
-                    lineTo(cx - r * 0.52f, cy - r * 0.28f)
-                    moveTo(cx - r * 0.24f, cy + r * 0.28f)
-                    lineTo(cx - r * 0.24f, cy - r * 0.28f)
-                    lineTo(cx + r * 0.06f, cy + r * 0.28f)
-                    lineTo(cx + r * 0.06f, cy - r * 0.28f)
-                    moveTo(cx + r * 0.54f, cy - r * 0.28f)
-                    lineTo(cx + r * 0.28f, cy - r * 0.28f)
-                    lineTo(cx + r * 0.28f, cy)
-                    lineTo(cx + r * 0.54f, cy)
-                    lineTo(cx + r * 0.54f, cy + r * 0.28f)
-                    lineTo(cx + r * 0.28f, cy + r * 0.28f)
+                    moveTo(cx - r * 0.50f, cy + r * 0.26f)
+                    lineTo(cx - r * 0.50f, cy - r * 0.26f)
+                    moveTo(cx - r * 0.22f, cy + r * 0.26f)
+                    lineTo(cx - r * 0.22f, cy - r * 0.26f)
+                    lineTo(cx + r * 0.06f, cy + r * 0.26f)
+                    lineTo(cx + r * 0.06f, cy - r * 0.26f)
+                    moveTo(cx + r * 0.52f, cy - r * 0.26f)
+                    lineTo(cx + r * 0.26f, cy - r * 0.26f)
+                    lineTo(cx + r * 0.26f, cy)
+                    lineTo(cx + r * 0.52f, cy)
+                    lineTo(cx + r * 0.52f, cy + r * 0.26f)
+                    lineTo(cx + r * 0.26f, cy + r * 0.26f)
                 }
-                drawHoloPath(shield, bluePaint)
-                drawHoloPath(glyph, brightPaint)
+                drawLightPath(shield, bluePaint)
+                drawLightPath(glyph, brightPaint)
             }
             "kodi" -> {
                 val diamond = Path().apply {
-                    moveTo(cx, cy - r * 0.90f)
-                    lineTo(cx + r * 0.90f, cy)
-                    lineTo(cx, cy + r * 0.90f)
-                    lineTo(cx - r * 0.90f, cy)
+                    moveTo(cx, cy - r * 0.86f)
+                    lineTo(cx + r * 0.86f, cy)
+                    lineTo(cx, cy + r * 0.86f)
+                    lineTo(cx - r * 0.86f, cy)
                     close()
                 }
                 val facets = Path().apply {
-                    moveTo(cx - r * 0.44f, cy - r * 0.44f)
-                    lineTo(cx + r * 0.44f, cy + r * 0.44f)
-                    moveTo(cx - r * 0.44f, cy + r * 0.44f)
-                    lineTo(cx + r * 0.44f, cy - r * 0.44f)
-                    moveTo(cx - r * 0.08f, cy - r * 0.22f)
-                    lineTo(cx + r * 0.22f, cy)
-                    lineTo(cx - r * 0.08f, cy + r * 0.22f)
+                    moveTo(cx - r * 0.42f, cy - r * 0.42f)
+                    lineTo(cx + r * 0.42f, cy + r * 0.42f)
+                    moveTo(cx - r * 0.42f, cy + r * 0.42f)
+                    lineTo(cx + r * 0.42f, cy - r * 0.42f)
+                    moveTo(cx - r * 0.08f, cy - r * 0.20f)
+                    lineTo(cx + r * 0.20f, cy)
+                    lineTo(cx - r * 0.08f, cy + r * 0.20f)
                 }
-                drawHoloPath(diamond, cyanPaint)
-                drawHoloPath(facets, brightPaint)
+                drawLightPath(diamond, cyanPaint)
+                drawLightPath(facets, brightPaint)
             }
             "rar" -> {
                 val books = Path().apply {
-                    addRoundRect(RectF(cx - r * 0.80f, cy - r * 0.78f, cx + r * 0.80f, cy - r * 0.34f), r * 0.12f, r * 0.12f, Path.Direction.CW)
-                    addRoundRect(RectF(cx - r * 0.80f, cy - r * 0.22f, cx + r * 0.80f, cy + r * 0.22f), r * 0.12f, r * 0.12f, Path.Direction.CW)
-                    addRoundRect(RectF(cx - r * 0.80f, cy + r * 0.34f, cx + r * 0.80f, cy + r * 0.78f), r * 0.12f, r * 0.12f, Path.Direction.CW)
+                    addRoundRect(RectF(cx - r * 0.76f, cy - r * 0.74f, cx + r * 0.76f, cy - r * 0.32f), r * 0.10f, r * 0.10f, Path.Direction.CW)
+                    addRoundRect(RectF(cx - r * 0.76f, cy - r * 0.21f, cx + r * 0.76f, cy + r * 0.21f), r * 0.10f, r * 0.10f, Path.Direction.CW)
+                    addRoundRect(RectF(cx - r * 0.76f, cy + r * 0.32f, cx + r * 0.76f, cy + r * 0.74f), r * 0.10f, r * 0.10f, Path.Direction.CW)
                 }
                 val belt = Path().apply {
-                    addRect(RectF(cx - r * 0.18f, cy - r * 0.84f, cx + r * 0.18f, cy + r * 0.84f), Path.Direction.CW)
+                    addRect(RectF(cx - r * 0.16f, cy - r * 0.80f, cx + r * 0.16f, cy + r * 0.80f), Path.Direction.CW)
                 }
-                drawHoloPath(books, cyanPaint)
-                drawHoloPath(belt, brightPaint)
+                drawLightPath(books, cyanPaint)
+                drawLightPath(belt, brightPaint, warmDetail = profile.mode == LunaLightAccentMode.COPPER_DETAIL)
             }
             "snaptube" -> {
                 val ring = Path().apply {
-                    addArc(RectF(cx - r * 0.86f, cy - r * 0.86f, cx + r * 0.86f, cy + r * 0.86f), 25f, 310f)
+                    addArc(RectF(cx - r * 0.82f, cy - r * 0.82f, cx + r * 0.82f, cy + r * 0.82f), 25f, 310f)
                 }
                 val arrow = Path().apply {
-                    moveTo(cx, cy - r * 0.52f)
-                    lineTo(cx, cy + r * 0.44f)
-                    moveTo(cx - r * 0.38f, cy + r * 0.08f)
-                    lineTo(cx, cy + r * 0.48f)
-                    lineTo(cx + r * 0.38f, cy + r * 0.08f)
+                    moveTo(cx, cy - r * 0.50f)
+                    lineTo(cx, cy + r * 0.42f)
+                    moveTo(cx - r * 0.36f, cy + r * 0.08f)
+                    lineTo(cx, cy + r * 0.46f)
+                    lineTo(cx + r * 0.36f, cy + r * 0.08f)
                 }
-                drawHoloPath(ring, bluePaint)
-                drawHoloPath(arrow, brightPaint)
+                drawLightPath(ring, bluePaint)
+                drawLightPath(arrow, brightPaint)
             }
             "xplayer" -> {
                 val frame = Path().apply {
-                    addRoundRect(RectF(cx - r * 0.86f, cy - r * 0.72f, cx + r * 0.86f, cy + r * 0.72f), r * 0.24f, r * 0.24f, Path.Direction.CW)
+                    addRoundRect(RectF(cx - r * 0.82f, cy - r * 0.68f, cx + r * 0.82f, cy + r * 0.68f), r * 0.22f, r * 0.22f, Path.Direction.CW)
                 }
                 val xPlay = Path().apply {
-                    moveTo(cx - r * 0.38f, cy - r * 0.32f)
-                    lineTo(cx + r * 0.36f, cy + r * 0.32f)
-                    moveTo(cx + r * 0.36f, cy - r * 0.32f)
-                    lineTo(cx - r * 0.38f, cy + r * 0.32f)
+                    moveTo(cx - r * 0.36f, cy - r * 0.30f)
+                    lineTo(cx + r * 0.34f, cy + r * 0.30f)
+                    moveTo(cx + r * 0.34f, cy - r * 0.30f)
+                    lineTo(cx - r * 0.36f, cy + r * 0.30f)
                 }
-                drawHoloPath(frame, cyanPaint)
-                drawHoloPath(xPlay, brightPaint)
+                drawLightPath(frame, cyanPaint)
+                drawLightPath(xPlay, brightPaint)
             }
             "andftp" -> {
                 val globe = Path().apply {
-                    addCircle(cx - r * 0.18f, cy - r * 0.14f, r * 0.56f, Path.Direction.CW)
+                    addCircle(cx - r * 0.16f, cy - r * 0.12f, r * 0.52f, Path.Direction.CW)
                 }
                 val arrows = Path().apply {
-                    moveTo(cx - r * 0.20f, cy + r * 0.60f)
-                    lineTo(cx + r * 0.78f, cy + r * 0.60f)
-                    lineTo(cx + r * 0.54f, cy + r * 0.38f)
-                    moveTo(cx + r * 0.78f, cy + r * 0.22f)
-                    lineTo(cx - r * 0.04f, cy + r * 0.22f)
-                    lineTo(cx + r * 0.20f, cy)
+                    moveTo(cx - r * 0.18f, cy + r * 0.56f)
+                    lineTo(cx + r * 0.74f, cy + r * 0.56f)
+                    lineTo(cx + r * 0.52f, cy + r * 0.36f)
+                    moveTo(cx + r * 0.74f, cy + r * 0.20f)
+                    lineTo(cx - r * 0.04f, cy + r * 0.20f)
+                    lineTo(cx + r * 0.18f, cy)
                 }
-                drawHoloPath(globe, cyanPaint)
-                drawHoloPath(arrows, brightPaint)
+                drawLightPath(globe, cyanPaint)
+                drawLightPath(arrows, brightPaint)
             }
             "videoconverter" -> {
                 val loop = Path().apply {
-                    addArc(RectF(cx - r * 0.84f, cy - r * 0.84f, cx + r * 0.84f, cy + r * 0.84f), -20f, 155f)
-                    addArc(RectF(cx - r * 0.84f, cy - r * 0.84f, cx + r * 0.84f, cy + r * 0.84f), 160f, 155f)
+                    addArc(RectF(cx - r * 0.80f, cy - r * 0.80f, cx + r * 0.80f, cy + r * 0.80f), -20f, 155f)
+                    addArc(RectF(cx - r * 0.80f, cy - r * 0.80f, cx + r * 0.80f, cy + r * 0.80f), 160f, 155f)
                 }
                 val play = Path().apply {
-                    moveTo(cx - r * 0.22f, cy - r * 0.30f)
-                    lineTo(cx + r * 0.32f, cy)
-                    lineTo(cx - r * 0.22f, cy + r * 0.30f)
+                    moveTo(cx - r * 0.20f, cy - r * 0.28f)
+                    lineTo(cx + r * 0.30f, cy)
+                    lineTo(cx - r * 0.20f, cy + r * 0.28f)
                     close()
                 }
-                drawHoloPath(loop, cyanPaint)
-                drawHoloPath(play, brightPaint)
+                drawLightPath(loop, cyanPaint)
+                drawLightPath(play, brightPaint)
             }
             "files" -> {
                 val folder = Path().apply {
-                    moveTo(cx - r * 0.86f, cy - r * 0.54f)
-                    lineTo(cx - r * 0.20f, cy - r * 0.54f)
-                    lineTo(cx - r * 0.02f, cy - r * 0.32f)
-                    lineTo(cx + r * 0.86f, cy - r * 0.32f)
-                    lineTo(cx + r * 0.86f, cy + r * 0.64f)
-                    lineTo(cx - r * 0.86f, cy + r * 0.64f)
+                    moveTo(cx - r * 0.82f, cy - r * 0.52f)
+                    lineTo(cx - r * 0.18f, cy - r * 0.52f)
+                    lineTo(cx, cy - r * 0.30f)
+                    lineTo(cx + r * 0.82f, cy - r * 0.30f)
+                    lineTo(cx + r * 0.82f, cy + r * 0.60f)
+                    lineTo(cx - r * 0.82f, cy + r * 0.60f)
                     close()
                 }
                 val sheet = Path().apply {
-                    moveTo(cx - r * 0.48f, cy + r * 0.06f)
-                    lineTo(cx + r * 0.48f, cy + r * 0.06f)
-                    moveTo(cx - r * 0.48f, cy + r * 0.32f)
-                    lineTo(cx + r * 0.24f, cy + r * 0.32f)
+                    moveTo(cx - r * 0.44f, cy + r * 0.06f)
+                    lineTo(cx + r * 0.44f, cy + r * 0.06f)
+                    moveTo(cx - r * 0.44f, cy + r * 0.30f)
+                    lineTo(cx + r * 0.22f, cy + r * 0.30f)
                 }
-                drawHoloPath(folder, cyanPaint)
-                drawHoloPath(sheet, brightPaint)
+                drawLightPath(folder, cyanPaint)
+                drawLightPath(sheet, brightPaint, warmDetail = profile.mode == LunaLightAccentMode.COPPER_DETAIL)
+            }
+            "phone" -> {
+                val handset = Path().apply {
+                    moveTo(cx - r * 0.56f, cy - r * 0.58f)
+                    lineTo(cx - r * 0.26f, cy - r * 0.66f)
+                    lineTo(cx - r * 0.14f, cy - r * 0.30f)
+                    lineTo(cx - r * 0.30f, cy - r * 0.14f)
+                    quadTo(cx - r * 0.10f, cy + r * 0.16f, cx + r * 0.18f, cy + r * 0.30f)
+                    lineTo(cx + r * 0.34f, cy + r * 0.14f)
+                    lineTo(cx + r * 0.68f, cy + r * 0.28f)
+                    lineTo(cx + r * 0.60f, cy + r * 0.58f)
+                    quadTo(cx + r * 0.08f, cy + r * 0.72f, cx - r * 0.44f, cy + r * 0.20f)
+                    quadTo(cx - r * 0.72f, cy - r * 0.16f, cx - r * 0.56f, cy - r * 0.58f)
+                    close()
+                }
+                val wave = Path().apply {
+                    addArc(RectF(cx - r * 0.04f, cy - r * 0.66f, cx + r * 0.68f, cy + r * 0.06f), -85f, 80f)
+                }
+                drawLightPath(handset, cyanPaint)
+                drawLightPath(wave, brightPaint, warmDetail = true)
+            }
+            "messages" -> {
+                val bubble = Path().apply {
+                    moveTo(cx - r * 0.78f, cy - r * 0.58f)
+                    lineTo(cx + r * 0.78f, cy - r * 0.58f)
+                    lineTo(cx + r * 0.78f, cy + r * 0.34f)
+                    lineTo(cx - r * 0.26f, cy + r * 0.34f)
+                    lineTo(cx - r * 0.78f, cy + r * 0.70f)
+                    close()
+                }
+                val lines = Path().apply {
+                    moveTo(cx - r * 0.42f, cy - r * 0.22f)
+                    lineTo(cx + r * 0.42f, cy - r * 0.22f)
+                    moveTo(cx - r * 0.42f, cy + r * 0.02f)
+                    lineTo(cx + r * 0.20f, cy + r * 0.02f)
+                }
+                drawLightPath(bubble, cyanPaint)
+                drawLightPath(lines, brightPaint)
+            }
+            "camera" -> {
+                val body = Path().apply {
+                    moveTo(cx - r * 0.84f, cy - r * 0.40f)
+                    lineTo(cx - r * 0.38f, cy - r * 0.40f)
+                    lineTo(cx - r * 0.22f, cy - r * 0.62f)
+                    lineTo(cx + r * 0.22f, cy - r * 0.62f)
+                    lineTo(cx + r * 0.38f, cy - r * 0.40f)
+                    lineTo(cx + r * 0.84f, cy - r * 0.40f)
+                    lineTo(cx + r * 0.84f, cy + r * 0.60f)
+                    lineTo(cx - r * 0.84f, cy + r * 0.60f)
+                    close()
+                }
+                val aperture = Path().apply {
+                    addCircle(cx, cy + r * 0.10f, r * 0.30f, Path.Direction.CW)
+                }
+                drawLightPath(body, cyanPaint)
+                drawLightPath(aperture, brightPaint)
+                drawLightPoint(cx + r * 0.56f, cy - r * 0.16f, strokeBase * 0.72f, warm = true)
+            }
+            "gallery" -> {
+                val frame = Path().apply {
+                    addRoundRect(RectF(cx - r * 0.80f, cy - r * 0.66f, cx + r * 0.80f, cy + r * 0.66f), r * 0.18f, r * 0.18f, Path.Direction.CW)
+                }
+                val horizon = Path().apply {
+                    moveTo(cx - r * 0.62f, cy + r * 0.40f)
+                    lineTo(cx - r * 0.16f, cy - r * 0.04f)
+                    lineTo(cx + r * 0.16f, cy + r * 0.24f)
+                    lineTo(cx + r * 0.40f, cy + r * 0.02f)
+                    lineTo(cx + r * 0.66f, cy + r * 0.40f)
+                }
+                drawLightPath(frame, cyanPaint)
+                drawLightPath(horizon, brightPaint)
+                drawLightPoint(cx + r * 0.40f, cy - r * 0.32f, strokeBase * 0.75f, warm = true)
+            }
+            "settings" -> {
+                val teeth = Path().apply {
+                    for (i in 0 until 6) {
+                        val a0 = Math.toRadians((i * 60 - 16).toDouble())
+                        val a1 = Math.toRadians((i * 60 + 16).toDouble())
+                        val a2 = Math.toRadians((i * 60 + 26).toDouble())
+                        val a3 = Math.toRadians((i * 60 + 44).toDouble())
+                        val ro = r * 0.84f
+                        val ri = r * 0.62f
+                        val x0 = cx + (ro * cos(a0)).toFloat()
+                        val y0 = cy + (ro * sin(a0)).toFloat()
+                        if (i == 0) moveTo(x0, y0) else lineTo(x0, y0)
+                        lineTo(cx + (ro * cos(a1)).toFloat(), cy + (ro * sin(a1)).toFloat())
+                        lineTo(cx + (ri * cos(a2)).toFloat(), cy + (ri * sin(a2)).toFloat())
+                        lineTo(cx + (ri * cos(a3)).toFloat(), cy + (ri * sin(a3)).toFloat())
+                    }
+                    close()
+                }
+                val hub = Path().apply { addCircle(cx, cy, r * 0.28f, Path.Direction.CW) }
+                drawLightPath(teeth, cyanPaint)
+                drawLightPath(hub, brightPaint, warmDetail = profile.mode == LunaLightAccentMode.COPPER_DETAIL)
+            }
+            "clock" -> {
+                val dial = Path().apply { addCircle(cx, cy, r * 0.82f, Path.Direction.CW) }
+                val hands = Path().apply {
+                    moveTo(cx, cy - r * 0.48f)
+                    lineTo(cx, cy)
+                    lineTo(cx + r * 0.36f, cy + r * 0.20f)
+                }
+                drawLightPath(dial, cyanPaint)
+                drawLightPath(hands, brightPaint)
+                drawLightPoint(cx, cy, strokeBase * 0.72f, warm = true)
+            }
+            "calculator" -> {
+                val frame = Path().apply {
+                    addRoundRect(RectF(cx - r * 0.72f, cy - r * 0.82f, cx + r * 0.72f, cy + r * 0.82f), r * 0.18f, r * 0.18f, Path.Direction.CW)
+                }
+                val screenLine = Path().apply {
+                    moveTo(cx - r * 0.44f, cy - r * 0.42f)
+                    lineTo(cx + r * 0.44f, cy - r * 0.42f)
+                }
+                val ops = Path().apply {
+                    moveTo(cx - r * 0.40f, cy + r * 0.04f)
+                    lineTo(cx - r * 0.12f, cy + r * 0.04f)
+                    moveTo(cx - r * 0.26f, cy - r * 0.10f)
+                    lineTo(cx - r * 0.26f, cy + r * 0.18f)
+                    moveTo(cx + r * 0.12f, cy + r * 0.42f)
+                    lineTo(cx + r * 0.44f, cy + r * 0.42f)
+                }
+                drawLightPath(frame, bluePaint)
+                drawLightPath(screenLine, cyanPaint, warmDetail = true)
+                drawLightPath(ops, brightPaint)
+            }
+            "calendar" -> {
+                val box = Path().apply {
+                    addRoundRect(RectF(cx - r * 0.78f, cy - r * 0.62f, cx + r * 0.78f, cy + r * 0.76f), r * 0.18f, r * 0.18f, Path.Direction.CW)
+                }
+                val header = Path().apply {
+                    moveTo(cx - r * 0.78f, cy - r * 0.22f)
+                    lineTo(cx + r * 0.78f, cy - r * 0.22f)
+                    moveTo(cx - r * 0.36f, cy - r * 0.80f)
+                    lineTo(cx - r * 0.36f, cy - r * 0.46f)
+                    moveTo(cx + r * 0.36f, cy - r * 0.80f)
+                    lineTo(cx + r * 0.36f, cy - r * 0.46f)
+                }
+                drawLightPath(box, cyanPaint)
+                drawLightPath(header, brightPaint)
+                drawLightPoint(cx + r * 0.26f, cy + r * 0.28f, strokeBase * 0.78f, warm = true)
             }
         }
         return true

@@ -163,7 +163,7 @@ export function AppDrawerModal({
                   transition={itemMotion.transition}
                   className={`group relative flex flex-col items-center p-2 rounded-xl transition-colors ${
                     isLunaTheme
-                      ? "bg-[#0A1424]/30 border border-[#00E5FF]/15 hover:border-[#00E5FF]/55"
+                      ? "bg-transparent border border-transparent hover:border-[#00E5FF]/35"
                       : "bg-[#0B121E]/70 border border-slate-800/70 hover:border-cyan-400/50"
                   }`}
                 >
