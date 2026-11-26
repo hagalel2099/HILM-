@@ -761,9 +761,11 @@ export function LauncherPhonePreview({
                   iconPack={effectiveIconPack}
                   customIconDataUrl={slot.customIconDataUrl}
                   sizeClass={
-                    usesExpandedGlyphScale(effectiveIconPack)
-                      ? "w-6 h-6 shrink-0"
-                      : "w-4 h-4 shrink-0"
+                    isMayaTheme
+                      ? "w-7 h-7 shrink-0"
+                      : usesExpandedGlyphScale(effectiveIconPack)
+                        ? "w-6 h-6 shrink-0"
+                        : "w-4 h-4 shrink-0"
                   }
                 />
               </motion.span>
