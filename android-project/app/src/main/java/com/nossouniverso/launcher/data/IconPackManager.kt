@@ -4318,7 +4318,7 @@ class IconPackManager(
                 }
                 draw3DShape(backTab, copperStructPaint)
                 val docCard = Path().apply {
-                    addRoundRect(RectF(cx - r * 0.68f, cy - r * 0.34f, cx + r * 0.70f, cy - r * 0.04f), 4f, 4f, goldBrightPaint)
+                    addRoundRect(RectF(cx - r * 0.68f, cy - r * 0.34f, cx + r * 0.70f, cy - r * 0.04f), 4f, 4f, Path.Direction.CW)
                 }
                 canvas.drawPath(docCard, goldBrightPaint)
 
