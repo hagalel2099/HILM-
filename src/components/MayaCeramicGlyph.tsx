@@ -223,10 +223,10 @@ export function MayaCeramicGlyph({
             />
             {/* Recessed dark graphite ceramic screen well */}
             <rect
-              x="9.5"
-              y="13.0"
-              width="21.0"
-              height="14.0"
+              x="9.4"
+              y="12.9"
+              width="21.2"
+              height="14.2"
               rx="3.7"
               fill={graphiteBody}
               stroke={copperStruct}
@@ -234,15 +234,15 @@ export function MayaCeramicGlyph({
             />
             {/* 3D elevated Play wedge (extruded copper base + bright gold-honey face) */}
             <polygon
-              transform="translate(0.75, 1.0)"
-              points="17.1,15.4 25.5,20.0 17.1,24.6"
+              transform="translate(0.85, 1.15)"
+              points="16.5,14.8 26.2,20.0 16.5,25.2"
               fill={copperDepth}
             />
             <polygon
-              points="17.1,15.4 25.5,20.0 17.1,24.6"
+              points="16.5,14.8 26.2,20.0 16.5,25.2"
               fill={goldBright}
               stroke="#FFF2C6"
-              strokeWidth="0.45"
+              strokeWidth="0.5"
               strokeLinejoin="round"
             />
             {/* Tiny electric-blue receiver LED */}
@@ -365,25 +365,25 @@ export function MayaCeramicGlyph({
             <path
               transform="translate(0.95, 1.35)"
               fill={copperDepth}
-              d="M9.6 13.6h4.1l1.8-2.9h9.0l1.8 2.9h4.1a2.4 2.4 0 0 1 2.4 2.4v11.6a2.4 2.4 0 0 1-2.4 2.4H9.6a2.4 2.4 0 0 1-2.4-2.4V16.0a2.4 2.4 0 0 1 2.4-2.4z"
+              d="M9.4 13.5h4.2l1.9-3.2h9.0l1.9 3.2h4.2a2.4 2.4 0 0 1 2.4 2.4v11.6a2.4 2.4 0 0 1-2.4 2.4H9.4a2.4 2.4 0 0 1-2.4-2.4V15.9a2.4 2.4 0 0 1 2.4-2.4z"
             />
             {/* Satin golden-honey ceramic body */}
             <path
               fill={goldSatin}
               stroke="#FFEBB3"
               strokeWidth="0.5"
-              d="M9.6 13.6h4.1l1.8-2.9h9.0l1.8 2.9h4.1a2.4 2.4 0 0 1 2.4 2.4v11.6a2.4 2.4 0 0 1-2.4 2.4H9.6a2.4 2.4 0 0 1-2.4-2.4V16.0a2.4 2.4 0 0 1 2.4-2.4z"
+              d="M9.4 13.5h4.2l1.9-3.2h9.0l1.9 3.2h4.2a2.4 2.4 0 0 1 2.4 2.4v11.6a2.4 2.4 0 0 1-2.4 2.4H9.4a2.4 2.4 0 0 1-2.4-2.4V15.9a2.4 2.4 0 0 1 2.4-2.4z"
             />
-            {/* Copper shutter button & top grip plate */}
-            <rect x="10.2" y="11.7" width="3.0" height="1.6" rx="0.6" fill={copperStruct} />
-            <rect x="9.4" y="16.2" width="21.2" height="11.6" rx="2.0" fill={graphiteBody} />
+            {/* Copper shutter button & recessed camera faceplate */}
+            <rect x="9.6" y="11.4" width="3.2" height="1.7" rx="0.7" fill={copperStruct} />
+            <rect x="9.2" y="15.8" width="21.6" height="12.0" rx="2.0" fill={graphiteBody} />
             {/* Protruding 3D metallic lens barrel */}
-            <circle cx="20.5" cy="22.3" r="5.6" fill={copperDepth} />
-            <circle cx="20" cy="21.7" r="5.5" fill={graphiteBody} stroke={goldBright} strokeWidth="1.6" />
-            <circle cx="20" cy="21.7" r="3.1" fill="#080B12" stroke={copperStruct} strokeWidth="0.8" />
-            <circle cx="18.8" cy="20.6" r="1.15" fill={blueNode} />
+            <circle cx="20.6" cy="22.1" r="5.9" fill={copperDepth} />
+            <circle cx="20" cy="21.4" r="5.8" fill={graphiteBody} stroke={goldBright} strokeWidth="1.75" />
+            <circle cx="20" cy="21.4" r="3.2" fill="#080B12" stroke={copperStruct} strokeWidth="0.85" />
+            <circle cx="18.7" cy="20.2" r="1.2" fill={blueNode} />
             {/* Tiny optical viewfinder / flash LED */}
-            <circle cx="27.8" cy="16.8" r="1.25" fill={blueNode} />
+            <circle cx="28.0" cy="17.2" r="1.25" fill={blueNode} />
           </g>
         );
 

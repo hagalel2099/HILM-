@@ -420,6 +420,7 @@ class IconPackManager(
         if (activeTheme == ShortcutStorage.THEME_MAYA) {
             return renderUnifiedMayaCeramicIcon(
                 cacheIdentity = "theme_maya:${packageName.lowercase()}/${activityName.lowercase()}",
+                packageName = packageName,
                 fallback = fallback
             )
         }
@@ -442,6 +443,7 @@ class IconPackManager(
             )
             packId == IconPackInfo.STYLE_MAYA_CERAMIC_GOLD -> renderUnifiedMayaCeramicIcon(
                 cacheIdentity = "${packageName.lowercase()}/${activityName.lowercase()}",
+                packageName = packageName,
                 fallback = fallback
             )
             packId == IconPackInfo.LEGACY_STYLE_HILM_ARTIFACTS -> resolveFromManagedPack(
@@ -3647,10 +3649,11 @@ class IconPackManager(
      */
     private fun renderUnifiedMayaCeramicIcon(
         cacheIdentity: String,
+        packageName: String,
         fallback: Drawable
     ): Drawable {
         val size = 192
-        val cacheKey = "maya_ceramic_v2:$cacheIdentity#$size"
+        val cacheKey = "maya_ceramic_v3:$cacheIdentity#$size"
         bitmapCache.get(cacheKey)?.let { cached ->
             return BitmapDrawable(context.resources, cached)
         }
@@ -3818,14 +3821,16 @@ class IconPackManager(
         }
 
         // 6. Sculpted 3D golden-honey & copper technological ceramic miniature foreground object
-        val prepared = prepareForegroundSymbol(fallback, 136)
-        if (prepared.isIsolatedSilhouette) {
-            drawSculptedMayaCeramicSymbol(canvas, prepared.bitmap, size)
-        } else {
-            drawMayaCeramicFramedArtwork(canvas, prepared.bitmap, size)
-        }
-        if (!prepared.bitmap.isRecycled) {
-            prepared.bitmap.recycle()
+        if (!drawMayaCuratedCeramicSymbol(canvas, packageName.lowercase(), size)) {
+            val prepared = prepareForegroundSymbol(fallback, 136)
+            if (prepared.isIsolatedSilhouette) {
+                drawSculptedMayaCeramicSymbol(canvas, prepared.bitmap, size)
+            } else {
+                drawMayaCeramicFramedArtwork(canvas, prepared.bitmap, size)
+            }
+            if (!prepared.bitmap.isRecycled) {
+                prepared.bitmap.recycle()
+            }
         }
 
         bitmapCache.put(cacheKey, out)
@@ -3838,6 +3843,825 @@ class IconPackManager(
             // Disk cache write is best-effort
         }
         return BitmapDrawable(context.resources, out)
+    }
+
+    /**
+     * Bespoke 3D technological ceramic + brushed gold/copper + graphite sculptures for the 20
+     * requested apps whose original adaptive/legacy layers lose identity under generic extraction.
+     * All other apps remain untouched via the existing universal 3D ceramic relief shader.
+     */
+    private fun drawMayaCuratedCeramicSymbol(
+        canvas: Canvas,
+        pkg: String,
+        size: Int
+    ): Boolean {
+        val kind = when {
+            pkg.contains("andftp") -> "andftp"
+            pkg.contains("calendar") -> "calendar"
+            pkg.contains("camera") && !pkg.contains("scanner") -> "camera"
+            pkg == "com.android.chrome" || pkg.contains(".chrome") -> "chrome"
+            pkg.contains("color.note") || pkg.contains("colornote") || pkg.contains("socialnmobile") -> "colornote"
+            pkg == "com.android.settings" || pkg.endsWith(".settings") || pkg.contains("android.settings") -> "settings"
+            pkg.contains("videoconverter") || pkg.contains("video.converter") || pkg.contains("video_converter") ||
+                pkg.contains("mp4converter") || pkg.contains("media.converter") -> "videoconverter"
+            pkg.contains("filemanager") || pkg.contains("file.manager") || pkg.contains("fileexplorer") ||
+                pkg.contains("file.explorer") || pkg.contains("estrongs") || pkg.contains("solidexplorer") ||
+                pkg.contains("fxfile") -> "filemanager"
+            pkg.contains("kodi") || pkg.contains("xbmc") -> "kodi"
+            pkg == "com.google.android.apps.maps" || pkg.contains("apps.maps") -> "maps"
+            pkg.contains("mercadolibre") || pkg.contains("mercadolivre") -> "mercadolivre"
+            pkg.contains("mercadopago") -> "mercadopago"
+            pkg.contains("messaging") || pkg == "com.android.mms" || pkg.endsWith(".mms") || pkg.contains(".sms") -> "messages"
+            pkg.contains("meuinss") || pkg.contains("inss") -> "inss"
+            pkg.contains("myfiles") || pkg.contains("documentsui") || pkg.contains("nbu.files") ||
+                pkg.contains("arquivos") -> "myfiles"
+            pkg.contains("rarlab") || pkg == "com.rarlab.rar" -> "rar"
+            pkg.contains("deskclock") || pkg.contains("clockpackage") || pkg.endsWith(".clock") ||
+                pkg.contains("android.clock") -> "clock"
+            pkg.contains("snaptube") -> "snaptube"
+            pkg.contains("youtube.producer") || pkg.contains("youtube.create") || pkg.contains("ytcreate") -> "ytcreate"
+            (pkg == "com.google.android.youtube" || pkg.contains("youtube")) &&
+                !pkg.contains("producer") && !pkg.contains("create") && !pkg.contains("music") -> "youtube"
+            else -> return false
+        }
+
+        val cx = size / 2f
+        val cy = size / 2f
+        val r = size * 0.295f
+
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(232, 1, 2, 5)
+            maskFilter = BlurMaskFilter(5.0f, BlurMaskFilter.Blur.NORMAL)
+        }
+        val depthDeepPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#3B1E0E")
+        }
+        val depthMidPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#6E3A1C")
+        }
+        val goldSatinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                cx - r, cy - r, cx + r, cy + r,
+                intArrayOf(
+                    Color.parseColor("#FFE8A6"),
+                    Color.parseColor("#F5B942"),
+                    Color.parseColor("#CF8A3B"),
+                    Color.parseColor("#9A5B2C")
+                ),
+                floatArrayOf(0f, 0.34f, 0.72f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        val goldBrightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                cx - r, cy - r, cx + r, cy + r,
+                intArrayOf(
+                    Color.parseColor("#FFF5CC"),
+                    Color.parseColor("#F8C65B"),
+                    Color.parseColor("#C87E43")
+                ),
+                floatArrayOf(0f, 0.48f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        val copperStructPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                cx - r, cy - r, cx + r, cy + r,
+                intArrayOf(
+                    Color.parseColor("#DFA06E"),
+                    Color.parseColor("#C47A48"),
+                    Color.parseColor("#854925")
+                ),
+                floatArrayOf(0f, 0.52f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        val graphiteBodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                cx - r, cy - r, cx + r, cy + r,
+                intArrayOf(
+                    Color.parseColor("#232A3A"),
+                    Color.parseColor("#121620"),
+                    Color.parseColor("#080A0F")
+                ),
+                floatArrayOf(0f, 0.55f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        val rimGoldStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.0f
+            color = Color.parseColor("#FFEBB3")
+        }
+        val rimCopperStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.6f
+            color = Color.parseColor("#C47A48")
+        }
+        val seamDarkStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 3.2f
+            color = Color.parseColor("#080B10")
+        }
+
+        fun draw3DShape(path: Path, fillPaint: Paint, strokePaint: Paint? = rimGoldStroke) {
+            canvas.save()
+            canvas.translate(3.0f, 4.4f)
+            canvas.drawPath(path, shadowPaint)
+            canvas.restore()
+
+            canvas.save()
+            canvas.translate(2.4f, 3.4f)
+            canvas.drawPath(path, depthDeepPaint)
+            canvas.restore()
+
+            canvas.save()
+            canvas.translate(1.2f, 1.7f)
+            canvas.drawPath(path, depthMidPaint)
+            canvas.restore()
+
+            canvas.drawPath(path, fillPaint)
+            if (strokePaint != null) {
+                canvas.drawPath(path, strokePaint)
+            }
+        }
+
+        fun drawBlueNode(px: Float, py: Float, radius: Float = 4.6f) {
+            val aura = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = RadialGradient(
+                    px, py, radius * 2.4f,
+                    intArrayOf(
+                        Color.argb(235, 56, 189, 248),
+                        Color.argb(125, 37, 99, 235),
+                        Color.TRANSPARENT
+                    ),
+                    floatArrayOf(0f, 0.52f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            canvas.drawCircle(px, py, radius * 2.4f, aura)
+            val core = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#E0F7FF")
+            }
+            canvas.drawCircle(px, py, radius * 0.72f, core)
+        }
+
+        when (kind) {
+            "chrome" -> {
+                val outerR = r * 0.96f
+                val innerR = r * 0.43f
+                val backing = Path().apply { addCircle(cx, cy, outerR, Path.Direction.CW) }
+                draw3DShape(backing, graphiteBodyPaint, null)
+
+                val tanX = sqrt(outerR * outerR - innerR * innerR)
+                val blade = Path().apply {
+                    val startX = cx - innerR * 0.866f
+                    val startY = cy + innerR * 0.5f
+                    val p1x = cx + (-tanX * 0.5f - (-innerR) * (-0.866f))
+                    val p1y = cy + (tanX * (-0.866f) + (-innerR) * (-0.5f))
+                    moveTo(startX, startY)
+                    lineTo(p1x, p1y)
+                    val a1 = Math.toDegrees(atan2((p1y - cy).toDouble(), (p1x - cx).toDouble())).toFloat()
+                    val a2 = Math.toDegrees(atan2((-innerR).toDouble(), tanX.toDouble())).toFloat()
+                    var sweep = a2 - a1
+                    if (sweep <= 0f) sweep += 360f
+                    arcTo(RectF(cx - outerR, cy - outerR, cx + outerR, cy + outerR), a1, sweep, false)
+                    lineTo(cx, cy - innerR)
+                    arcTo(RectF(cx - innerR, cy - innerR, cx + innerR, cy + innerR), -90f, -120f, false)
+                    close()
+                }
+
+                val bladePaints = arrayOf(goldBrightPaint, copperStructPaint, goldSatinPaint)
+                for (i in 0 until 3) {
+                    canvas.save()
+                    canvas.rotate(i * 120f, cx, cy)
+                    canvas.drawPath(blade, bladePaints[i])
+                    canvas.drawPath(blade, seamDarkStroke)
+                    canvas.restore()
+                }
+
+                val collar = Path().apply { addCircle(cx, cy, innerR, Path.Direction.CW) }
+                canvas.drawPath(collar, graphiteBodyPaint)
+                canvas.drawCircle(cx, cy, innerR, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 3.8f
+                    shader = goldBrightPaint.shader
+                })
+                canvas.drawCircle(cx, cy, innerR * 0.62f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.parseColor("#1D4ED8")
+                })
+                drawBlueNode(cx - 2f, cy - 2f, 5.2f)
+            }
+
+            "youtube" -> {
+                val frame = Path().apply {
+                    addRoundRect(
+                        RectF(cx - r * 1.02f, cy - r * 0.72f, cx + r * 1.02f, cy + r * 0.72f),
+                        r * 0.30f, r * 0.30f, Path.Direction.CW
+                    )
+                }
+                draw3DShape(frame, goldSatinPaint)
+                val screenRect = RectF(cx - r * 0.85f, cy - r * 0.54f, cx + r * 0.85f, cy + r * 0.54f)
+                val screen = Path().apply {
+                    addRoundRect(screenRect, r * 0.21f, r * 0.21f, Path.Direction.CW)
+                }
+                canvas.drawPath(screen, graphiteBodyPaint)
+                canvas.drawPath(screen, rimCopperStroke)
+
+                val play = Path().apply {
+                    moveTo(cx - r * 0.24f, cy - r * 0.34f)
+                    lineTo(cx + r * 0.42f, cy)
+                    lineTo(cx - r * 0.24f, cy + r * 0.34f)
+                    close()
+                }
+                draw3DShape(play, goldBrightPaint)
+                drawBlueNode(cx + r * 0.68f, cy + r * 0.58f, 3.4f)
+            }
+
+            "ytcreate" -> {
+                // Overlapping layered hexagonal studio badge distinctive to YouTube Create
+                val backHex = Path().apply {
+                    for (i in 0 until 6) {
+                        val ang = Math.toRadians((i * 60 - 90).toDouble())
+                        val hx = cx + r * 0.94f * cos(ang).toFloat()
+                        val hy = cy + r * 0.94f * sin(ang).toFloat()
+                        if (i == 0) moveTo(hx, hy) else lineTo(hx, hy)
+                    }
+                    close()
+                }
+                draw3DShape(backHex, copperStructPaint)
+
+                val frontHex = Path().apply {
+                    for (i in 0 until 6) {
+                        val ang = Math.toRadians((i * 60 - 75).toDouble())
+                        val hx = cx + r * 0.76f * cos(ang).toFloat()
+                        val hy = cy + r * 0.76f * sin(ang).toFloat()
+                        if (i == 0) moveTo(hx, hy) else lineTo(hx, hy)
+                    }
+                    close()
+                }
+                draw3DShape(frontHex, goldSatinPaint)
+
+                val coreHex = Path().apply {
+                    for (i in 0 until 6) {
+                        val ang = Math.toRadians((i * 60 - 75).toDouble())
+                        val hx = cx + r * 0.56f * cos(ang).toFloat()
+                        val hy = cy + r * 0.56f * sin(ang).toFloat()
+                        if (i == 0) moveTo(hx, hy) else lineTo(hx, hy)
+                    }
+                    close()
+                }
+                canvas.drawPath(coreHex, graphiteBodyPaint)
+
+                val play = Path().apply {
+                    moveTo(cx - r * 0.16f, cy - r * 0.27f)
+                    lineTo(cx + r * 0.32f, cy)
+                    lineTo(cx - r * 0.16f, cy + r * 0.27f)
+                    close()
+                }
+                draw3DShape(play, goldBrightPaint)
+                drawBlueNode(cx + r * 0.58f, cy - r * 0.54f, 3.8f)
+            }
+
+            "maps" -> {
+                val pad = Path().apply {
+                    addOval(RectF(cx - r * 0.76f, cy + r * 0.56f, cx + r * 0.76f, cy + r * 0.94f), Path.Direction.CW)
+                }
+                canvas.drawPath(pad, graphiteBodyPaint)
+                canvas.drawPath(pad, rimCopperStroke)
+
+                val pin = Path().apply {
+                    val pr = r * 0.64f
+                    val pcy = cy - r * 0.18f
+                    addArc(RectF(cx - pr, pcy - pr, cx + pr, pcy + pr), 148f, 244f)
+                    lineTo(cx, cy + r * 0.78f)
+                    close()
+                }
+                draw3DShape(pin, goldSatinPaint)
+                canvas.drawCircle(cx, cy - r * 0.18f, r * 0.32f, graphiteBodyPaint)
+                canvas.drawCircle(cx, cy - r * 0.18f, r * 0.32f, rimCopperStroke)
+                drawBlueNode(cx, cy - r * 0.18f, 5.6f)
+            }
+
+            "camera" -> {
+                val body = Path().apply {
+                    moveTo(cx - r * 0.88f, cy - r * 0.38f)
+                    lineTo(cx - r * 0.42f, cy - r * 0.38f)
+                    lineTo(cx - r * 0.24f, cy - r * 0.68f)
+                    lineTo(cx + r * 0.24f, cy - r * 0.68f)
+                    lineTo(cx + r * 0.42f, cy - r * 0.38f)
+                    lineTo(cx + r * 0.88f, cy - r * 0.38f)
+                    lineTo(cx + r * 0.88f, cy + r * 0.68f)
+                    lineTo(cx - r * 0.88f, cy + r * 0.68f)
+                    close()
+                }
+                draw3DShape(body, goldSatinPaint)
+                val faceplate = Path().apply {
+                    addRoundRect(
+                        RectF(cx - r * 0.74f, cy - r * 0.22f, cx + r * 0.74f, cy + r * 0.54f),
+                        r * 0.14f, r * 0.14f, Path.Direction.CW
+                    )
+                }
+                canvas.drawPath(faceplate, graphiteBodyPaint)
+
+                val lensBarrel = Path().apply { addCircle(cx, cy + r * 0.16f, r * 0.42f, Path.Direction.CW) }
+                draw3DShape(lensBarrel, graphiteBodyPaint, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 4.5f
+                    shader = goldBrightPaint.shader
+                })
+                canvas.drawCircle(cx, cy + r * 0.16f, r * 0.22f, rimCopperStroke)
+                drawBlueNode(cx - r * 0.08f, cy + r * 0.08f, 3.8f)
+                drawBlueNode(cx + r * 0.60f, cy - r * 0.10f, 3.4f)
+            }
+
+            "calendar" -> {
+                val body = Path().apply {
+                    addRoundRect(
+                        RectF(cx - r * 0.88f, cy - r * 0.66f, cx + r * 0.88f, cy + r * 0.84f),
+                        r * 0.22f, r * 0.22f, Path.Direction.CW
+                    )
+                }
+                draw3DShape(body, goldSatinPaint)
+                val header = Path().apply {
+                    addRoundRect(
+                        RectF(cx - r * 0.86f, cy - r * 0.64f, cx + r * 0.86f, cy - r * 0.24f),
+                        r * 0.18f, r * 0.18f, Path.Direction.CW
+                    )
+                }
+                canvas.drawPath(header, copperStructPaint)
+
+                val page = Path().apply {
+                    addRoundRect(
+                        RectF(cx - r * 0.72f, cy - r * 0.18f, cx + r * 0.72f, cy + r * 0.68f),
+                        r * 0.12f, r * 0.12f, Path.Direction.CW
+                    )
+                }
+                canvas.drawPath(page, graphiteBodyPaint)
+
+                // Top cylindrical metallic binder rings
+                val ringL = Path().apply { addRoundRect(RectF(cx - r * 0.46f, cy - r * 0.88f, cx - r * 0.26f, cy - r * 0.48f), 4f, 4f, Path.Direction.CW) }
+                val ringR = Path().apply { addRoundRect(RectF(cx + r * 0.26f, cy - r * 0.88f, cx + r * 0.46f, cy - r * 0.48f), 4f, 4f, Path.Direction.CW) }
+                draw3DShape(ringL, goldBrightPaint)
+                draw3DShape(ringR, goldBrightPaint)
+
+                val cols = floatArrayOf(-0.46f, 0f, 0.46f)
+                val rows = floatArrayOf(0.06f, 0.44f)
+                for ((ri, ryCell) in rows.withIndex()) {
+                    for ((ci, cxCell) in cols.withIndex()) {
+                        val tileRect = RectF(
+                            cx + r * (cxCell - 0.15f),
+                            cy + r * (ryCell - 0.12f),
+                            cx + r * (cxCell + 0.15f),
+                            cy + r * (ryCell + 0.12f)
+                        )
+                        if (ri == 1 && ci == 1) {
+                            canvas.drawRoundRect(tileRect, 4f, 4f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                                color = Color.parseColor("#2563EB")
+                            })
+                            drawBlueNode(tileRect.centerX(), tileRect.centerY(), 3.2f)
+                        } else {
+                            canvas.drawRoundRect(tileRect, 4f, 4f, if ((ri + ci) % 2 == 0) goldBrightPaint else copperStructPaint)
+                        }
+                    }
+                }
+            }
+
+            "settings" -> {
+                val gear = Path()
+                for (i in 0 until 8) {
+                    val a0 = Math.toRadians((i * 45 - 12).toDouble())
+                    val a1 = Math.toRadians((i * 45 + 12).toDouble())
+                    val a2 = Math.toRadians((i * 45 + 21).toDouble())
+                    val a3 = Math.toRadians((i * 45 + 24).toDouble())
+                    val ro = r * 0.94f
+                    val ri = r * 0.69f
+                    val x0 = cx + ro * cos(a0).toFloat()
+                    val y0 = cy + ro * sin(a0).toFloat()
+                    if (i == 0) gear.moveTo(x0, y0) else gear.lineTo(x0, y0)
+                    gear.lineTo(cx + ro * cos(a1).toFloat(), cy + ro * sin(a1).toFloat())
+                    gear.lineTo(cx + ri * cos(a2).toFloat(), cy + ri * sin(a2).toFloat())
+                    gear.lineTo(cx + ri * cos(a3).toFloat(), cy + ri * sin(a3).toFloat())
+                }
+                gear.close()
+                draw3DShape(gear, goldSatinPaint)
+                canvas.drawCircle(cx, cy, r * 0.46f, graphiteBodyPaint)
+                canvas.drawCircle(cx, cy, r * 0.46f, rimCopperStroke)
+                canvas.drawCircle(cx, cy, r * 0.24f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 3.2f
+                    shader = goldBrightPaint.shader
+                })
+                drawBlueNode(cx, cy, 4.4f)
+            }
+
+            "messages" -> {
+                val bubble = Path().apply {
+                    moveTo(cx - r * 0.84f, cy - r * 0.68f)
+                    lineTo(cx + r * 0.84f, cy - r * 0.68f)
+                    quadTo(cx + r * 0.96f, cy - r * 0.68f, cx + r * 0.96f, cy - r * 0.56f)
+                    lineTo(cx + r * 0.96f, cy + r * 0.38f)
+                    quadTo(cx + r * 0.96f, cy + r * 0.50f, cx + r * 0.84f, cy + r * 0.50f)
+                    lineTo(cx - r * 0.24f, cy + r * 0.50f)
+                    lineTo(cx - r * 0.82f, cy + r * 0.88f)
+                    lineTo(cx - r * 0.82f, cy + r * 0.50f)
+                    quadTo(cx - r * 0.96f, cy + r * 0.50f, cx - r * 0.96f, cy + r * 0.38f)
+                    lineTo(cx - r * 0.96f, cy - r * 0.56f)
+                    quadTo(cx - r * 0.96f, cy - r * 0.68f, cx - r * 0.84f, cy - r * 0.68f)
+                    close()
+                }
+                draw3DShape(bubble, goldSatinPaint)
+                val inner = Path().apply {
+                    addRoundRect(RectF(cx - r * 0.74f, cy - r * 0.46f, cx + r * 0.74f, cy + r * 0.30f), 8f, 8f, Path.Direction.CW)
+                }
+                canvas.drawPath(inner, graphiteBodyPaint)
+                canvas.drawRoundRect(RectF(cx - r * 0.52f, cy - r * 0.24f, cx + r * 0.52f, cy - r * 0.08f), 4f, 4f, goldBrightPaint)
+                canvas.drawRoundRect(RectF(cx - r * 0.52f, cy + r * 0.02f, cx + r * 0.22f, cy + r * 0.18f), 4f, 4f, copperStructPaint)
+                drawBlueNode(cx + r * 0.44f, cy + r * 0.10f, 3.6f)
+            }
+
+            "myfiles" -> {
+                val backTab = Path().apply {
+                    moveTo(cx - r * 0.90f, cy - r * 0.66f)
+                    lineTo(cx - r * 0.22f, cy - r * 0.66f)
+                    lineTo(cx, cy - r * 0.40f)
+                    lineTo(cx + r * 0.90f, cy - r * 0.40f)
+                    lineTo(cx + r * 0.90f, cy + r * 0.68f)
+                    lineTo(cx - r * 0.90f, cy + r * 0.68f)
+                    close()
+                }
+                draw3DShape(backTab, copperStructPaint)
+                canvas.drawRoundRect(
+                    RectF(cx - r * 0.74f, cy - r * 0.32f, cx + r * 0.74f, cy - r * 0.06f),
+                    4f, 4f, graphiteBodyPaint
+                )
+                val flap = Path().apply {
+                    addRoundRect(
+                        RectF(cx - r * 0.94f, cy - r * 0.16f, cx + r * 0.94f, cy + r * 0.72f),
+                        r * 0.20f, r * 0.20f, Path.Direction.CW
+                    )
+                }
+                draw3DShape(flap, goldSatinPaint)
+                canvas.drawRoundRect(RectF(cx - r * 0.42f, cy + r * 0.20f, cx + r * 0.42f, cy + r * 0.36f), 5f, 5f, graphiteBodyPaint)
+                drawBlueNode(cx + r * 0.68f, cy + r * 0.06f, 3.6f)
+            }
+
+            "filemanager" -> {
+                val backTab = Path().apply {
+                    moveTo(cx - r * 0.92f, cy - r * 0.66f)
+                    lineTo(cx - r * 0.24f, cy - r * 0.66f)
+                    lineTo(cx - r * 0.02f, cy - r * 0.40f)
+                    lineTo(cx + r * 0.88f, cy - r * 0.40f)
+                    lineTo(cx + r * 0.88f, cy + r * 0.68f)
+                    lineTo(cx - r * 0.92f, cy + r * 0.68f)
+                    close()
+                }
+                draw3DShape(backTab, copperStructPaint)
+                val docCard = Path().apply {
+                    addRoundRect(RectF(cx - r * 0.68f, cy - r * 0.34f, cx + r * 0.70f, cy - r * 0.04f), 4f, 4f, goldBrightPaint)
+                }
+                canvas.drawPath(docCard, goldBrightPaint)
+
+                val flap = Path().apply {
+                    addRoundRect(
+                        RectF(cx - r * 0.94f, cy - r * 0.16f, cx + r * 0.94f, cy + r * 0.72f),
+                        r * 0.20f, r * 0.20f, Path.Direction.CW
+                    )
+                }
+                draw3DShape(flap, goldSatinPaint)
+                // Recessed architectural drawer lens badge to differentiate File Manager
+                val lens = Path().apply { addCircle(cx + r * 0.32f, cy + r * 0.28f, r * 0.28f, Path.Direction.CW) }
+                canvas.drawPath(lens, graphiteBodyPaint)
+                canvas.drawPath(lens, rimGoldStroke)
+                canvas.drawLine(
+                    cx + r * 0.52f, cy + r * 0.48f, cx + r * 0.72f, cy + r * 0.68f,
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        style = Paint.Style.STROKE
+                        strokeWidth = 5.0f
+                        strokeCap = Paint.Cap.ROUND
+                        color = Color.parseColor("#121620")
+                    }
+                )
+                drawBlueNode(cx + r * 0.32f, cy + r * 0.28f, 3.6f)
+            }
+
+            "colornote" -> {
+                val note = Path().apply {
+                    moveTo(cx - r * 0.84f, cy - r * 0.84f)
+                    lineTo(cx + r * 0.84f, cy - r * 0.84f)
+                    lineTo(cx + r * 0.84f, cy + r * 0.40f)
+                    lineTo(cx + r * 0.40f, cy + r * 0.84f)
+                    lineTo(cx - r * 0.84f, cy + r * 0.84f)
+                    close()
+                }
+                draw3DShape(note, goldSatinPaint)
+                // Top copper sticky binder band
+                canvas.drawRect(cx - r * 0.82f, cy - r * 0.82f, cx + r * 0.82f, cy - r * 0.44f, copperStructPaint)
+                // Recessed dark graphite ruled note lines
+                canvas.drawRoundRect(RectF(cx - r * 0.56f, cy - r * 0.22f, cx + r * 0.56f, cy - r * 0.06f), 3f, 3f, graphiteBodyPaint)
+                canvas.drawRoundRect(RectF(cx - r * 0.56f, cy + r * 0.08f, cx + r * 0.56f, cy + r * 0.24f), 3f, 3f, graphiteBodyPaint)
+                canvas.drawRoundRect(RectF(cx - r * 0.56f, cy + r * 0.38f, cx + r * 0.16f, cy + r * 0.54f), 3f, 3f, graphiteBodyPaint)
+                // Dog-ear curled bottom-right corner
+                val curl = Path().apply {
+                    moveTo(cx + r * 0.40f, cy + r * 0.84f)
+                    lineTo(cx + r * 0.40f, cy + r * 0.40f)
+                    lineTo(cx + r * 0.84f, cy + r * 0.40f)
+                    close()
+                }
+                canvas.drawPath(curl, copperStructPaint)
+                canvas.drawPath(curl, rimGoldStroke)
+                drawBlueNode(cx, cy - r * 0.63f, 3.6f)
+            }
+
+            "rar" -> {
+                // Iconic 3 stacked compressed books + vertical center buckle strap
+                val b1 = Path().apply { addRoundRect(RectF(cx - r * 0.84f, cy - r * 0.78f, cx + r * 0.84f, cy - r * 0.32f), 8f, 8f, Path.Direction.CW) }
+                val b2 = Path().apply { addRoundRect(RectF(cx - r * 0.84f, cy - r * 0.23f, cx + r * 0.84f, cy + r * 0.23f), 8f, 8f, Path.Direction.CW) }
+                val b3 = Path().apply { addRoundRect(RectF(cx - r * 0.84f, cy + r * 0.32f, cx + r * 0.84f, cy + r * 0.78f), 8f, 8f, Path.Direction.CW) }
+                draw3DShape(b1, goldBrightPaint)
+                draw3DShape(b2, graphiteBodyPaint, rimCopperStroke)
+                draw3DShape(b3, copperStructPaint)
+
+                val strap = Path().apply {
+                    addRoundRect(RectF(cx - r * 0.24f, cy - r * 0.86f, cx + r * 0.24f, cy + r * 0.86f), 5f, 5f, Path.Direction.CW)
+                }
+                draw3DShape(strap, goldSatinPaint)
+                canvas.drawRoundRect(RectF(cx - r * 0.16f, cy - r * 0.16f, cx + r * 0.16f, cy + r * 0.16f), 4f, 4f, graphiteBodyPaint)
+                drawBlueNode(cx, cy, 3.6f)
+            }
+
+            "kodi" -> {
+                // Iconic 45-degree Kodi diamond split into 4 geometric ceramic facets
+                val backDiamond = Path().apply {
+                    moveTo(cx, cy - r * 0.96f)
+                    lineTo(cx + r * 0.96f, cy)
+                    lineTo(cx, cy + r * 0.96f)
+                    lineTo(cx - r * 0.96f, cy)
+                    close()
+                }
+                draw3DShape(backDiamond, graphiteBodyPaint, rimGoldStroke)
+
+                val gap = r * 0.08f
+                val leftFacet = Path().apply {
+                    moveTo(cx - r * 0.88f, cy)
+                    lineTo(cx - gap, cy - r * 0.42f)
+                    lineTo(cx - gap, cy + r * 0.42f)
+                    close()
+                }
+                val topFacet = Path().apply {
+                    moveTo(cx, cy - r * 0.88f)
+                    lineTo(cx + r * 0.42f, cy - gap)
+                    lineTo(cx - r * 0.42f, cy - gap)
+                    close()
+                }
+                val rightFacet = Path().apply {
+                    moveTo(cx + r * 0.88f, cy)
+                    lineTo(cx + gap, cy - r * 0.42f)
+                    lineTo(cx + gap, cy + r * 0.42f)
+                    close()
+                }
+                val botFacet = Path().apply {
+                    moveTo(cx, cy + r * 0.88f)
+                    lineTo(cx + r * 0.42f, cy + gap)
+                    lineTo(cx - r * 0.42f, cy + gap)
+                    close()
+                }
+                canvas.drawPath(leftFacet, goldBrightPaint)
+                canvas.drawPath(topFacet, copperStructPaint)
+                canvas.drawPath(rightFacet, goldSatinPaint)
+                canvas.drawPath(botFacet, copperStructPaint)
+                drawBlueNode(cx, cy, 4.4f)
+            }
+
+            "mercadolivre", "mercadopago" -> {
+                val isPago = kind == "mercadopago"
+                val oval = Path().apply {
+                    addOval(RectF(cx - r * 0.98f, cy - r * 0.66f, cx + r * 0.98f, cy + r * 0.66f), Path.Direction.CW)
+                }
+                draw3DShape(oval, if (isPago) graphiteBodyPaint else goldSatinPaint, if (isPago) Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 4.2f
+                    color = Color.parseColor("#38BDF8")
+                } else rimGoldStroke)
+
+                val innerOval = Path().apply {
+                    addOval(RectF(cx - r * 0.80f, cy - r * 0.48f, cx + r * 0.80f, cy + r * 0.48f), Path.Direction.CW)
+                }
+                canvas.drawPath(innerOval, graphiteBodyPaint)
+                canvas.drawPath(innerOval, if (isPago) rimGoldStroke else rimCopperStroke)
+
+                // Stylized interlocking handshake in high-relief metallic gold & copper
+                val leftArm = Path().apply {
+                    moveTo(cx - r * 0.70f, cy - r * 0.06f)
+                    lineTo(cx - r * 0.24f, cy - r * 0.26f)
+                    lineTo(cx + r * 0.14f, cy + r * 0.04f)
+                    lineTo(cx - r * 0.10f, cy + r * 0.26f)
+                    lineTo(cx - r * 0.64f, cy + r * 0.14f)
+                    close()
+                }
+                val rightArm = Path().apply {
+                    moveTo(cx + r * 0.70f, cy - r * 0.06f)
+                    lineTo(cx + r * 0.24f, cy - r * 0.26f)
+                    lineTo(cx - r * 0.14f, cy + r * 0.04f)
+                    lineTo(cx + r * 0.10f, cy + r * 0.26f)
+                    lineTo(cx + r * 0.64f, cy + r * 0.14f)
+                    close()
+                }
+                draw3DShape(leftArm, copperStructPaint)
+                draw3DShape(rightArm, goldBrightPaint)
+                drawBlueNode(cx, cy + r * 0.04f, if (isPago) 4.4f else 3.0f)
+            }
+
+            "inss" -> {
+                // Rounded rectangular tech plaque spelling crisp geometric "INSS"
+                val plaque = Path().apply {
+                    addRoundRect(RectF(cx - r * 0.96f, cy - r * 0.66f, cx + r * 0.96f, cy + r * 0.66f), r * 0.24f, r * 0.24f, Path.Direction.CW)
+                }
+                draw3DShape(plaque, graphiteBodyPaint, rimGoldStroke)
+                // Top gov/tech blue bar
+                canvas.drawRoundRect(RectF(cx - r * 0.78f, cy - r * 0.50f, cx + r * 0.78f, cy - r * 0.36f), 4f, 4f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.parseColor("#2563EB")
+                })
+
+                val strokeW = r * 0.14f
+                val letterDepth = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = strokeW
+                    strokeCap = Paint.Cap.ROUND
+                    strokeJoin = Paint.Join.ROUND
+                    color = Color.parseColor("#6E3A1C")
+                }
+                val letterGold = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = strokeW
+                    strokeCap = Paint.Cap.ROUND
+                    strokeJoin = Paint.Join.ROUND
+                    shader = goldBrightPaint.shader
+                }
+                val yTop = cy - r * 0.18f
+                val yMid = cy + r * 0.10f
+                val yBot = cy + r * 0.38f
+                val letters = Path().apply {
+                    // I
+                    moveTo(cx - r * 0.66f, yTop); lineTo(cx - r * 0.66f, yBot)
+                    // N
+                    moveTo(cx - r * 0.42f, yBot); lineTo(cx - r * 0.42f, yTop)
+                    lineTo(cx - r * 0.14f, yBot); lineTo(cx - r * 0.14f, yTop)
+                    // S 1
+                    moveTo(cx + r * 0.28f, yTop); lineTo(cx + r * 0.04f, yTop)
+                    lineTo(cx + r * 0.04f, yMid); lineTo(cx + r * 0.28f, yMid)
+                    lineTo(cx + r * 0.28f, yBot); lineTo(cx + r * 0.04f, yBot)
+                    // S 2
+                    moveTo(cx + r * 0.72f, yTop); lineTo(cx + r * 0.48f, yTop)
+                    lineTo(cx + r * 0.48f, yMid); lineTo(cx + r * 0.72f, yMid)
+                    lineTo(cx + r * 0.72f, yBot); lineTo(cx + r * 0.48f, yBot)
+                }
+                canvas.save()
+                canvas.translate(1.5f, 2.2f)
+                canvas.drawPath(letters, letterDepth)
+                canvas.restore()
+                canvas.drawPath(letters, letterGold)
+                drawBlueNode(cx - r * 0.66f, cy - r * 0.43f, 3.2f)
+            }
+
+            "clock" -> {
+                val dialOuter = Path().apply { addCircle(cx, cy, r * 0.94f, Path.Direction.CW) }
+                draw3DShape(dialOuter, goldSatinPaint)
+                canvas.drawCircle(cx, cy, r * 0.74f, graphiteBodyPaint)
+                canvas.drawCircle(cx, cy, r * 0.74f, rimCopperStroke)
+
+                val tickPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 3.2f
+                    strokeCap = Paint.Cap.ROUND
+                    color = Color.parseColor("#C47A48")
+                }
+                canvas.drawLine(cx, cy - r * 0.66f, cx, cy - r * 0.50f, tickPaint)
+                canvas.drawLine(cx, cy + r * 0.50f, cx, cy + r * 0.66f, tickPaint)
+                canvas.drawLine(cx - r * 0.66f, cy, cx - r * 0.50f, cy, tickPaint)
+                canvas.drawLine(cx + r * 0.50f, cy, cx + r * 0.66f, cy, tickPaint)
+
+                val hands = Path().apply {
+                    moveTo(cx, cy - r * 0.48f)
+                    lineTo(cx, cy)
+                    lineTo(cx + r * 0.36f, cy + r * 0.22f)
+                }
+                val handPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 5.4f
+                    strokeCap = Paint.Cap.ROUND
+                    strokeJoin = Paint.Join.ROUND
+                    shader = goldBrightPaint.shader
+                }
+                canvas.drawPath(hands, handPaint)
+                drawBlueNode(cx, cy, 4.4f)
+            }
+
+            "snaptube" -> {
+                val ring = Path().apply { addCircle(cx, cy, r * 0.92f, Path.Direction.CW) }
+                draw3DShape(ring, goldSatinPaint)
+                canvas.drawCircle(cx, cy, r * 0.72f, graphiteBodyPaint)
+
+                // Bold Snaptube download arrow with triangular play-arrow head + cradle tray
+                val arrow = Path().apply {
+                    moveTo(cx - r * 0.16f, cy - r * 0.52f)
+                    lineTo(cx + r * 0.16f, cy - r * 0.52f)
+                    lineTo(cx + r * 0.16f, cy + r * 0.04f)
+                    lineTo(cx + r * 0.44f, cy + r * 0.04f)
+                    lineTo(cx, cy + r * 0.46f)
+                    lineTo(cx - r * 0.44f, cy + r * 0.04f)
+                    lineTo(cx - r * 0.16f, cy + r * 0.04f)
+                    close()
+                }
+                draw3DShape(arrow, goldBrightPaint)
+                canvas.drawRoundRect(
+                    RectF(cx - r * 0.42f, cy + r * 0.52f, cx + r * 0.42f, cy + r * 0.64f),
+                    4f, 4f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#38BDF8") }
+                )
+                drawBlueNode(cx, cy + r * 0.58f, 3.2f)
+            }
+
+            "andftp" -> {
+                // Sculpted ceramic server/globe orb + dual bidirectional FTP transfer arrows
+                val globe = Path().apply { addCircle(cx - r * 0.12f, cy - r * 0.10f, r * 0.66f, Path.Direction.CW) }
+                draw3DShape(globe, graphiteBodyPaint, rimGoldStroke)
+                canvas.drawOval(RectF(cx - r * 0.42f, cy - r * 0.74f, cx + r * 0.18f, cy + r * 0.54f), rimCopperStroke)
+                canvas.drawLine(cx - r * 0.76f, cy - r * 0.10f, cx + r * 0.52f, cy - r * 0.10f, rimCopperStroke)
+
+                val arrowRight = Path().apply {
+                    moveTo(cx - r * 0.24f, cy + r * 0.22f)
+                    lineTo(cx + r * 0.44f, cy + r * 0.22f)
+                    lineTo(cx + r * 0.44f, cy + r * 0.06f)
+                    lineTo(cx + r * 0.86f, cy + r * 0.34f)
+                    lineTo(cx + r * 0.44f, cy + r * 0.62f)
+                    lineTo(cx + r * 0.44f, cy + r * 0.46f)
+                    lineTo(cx - r * 0.24f, cy + r * 0.46f)
+                    close()
+                }
+                draw3DShape(arrowRight, goldBrightPaint)
+
+                val arrowLeft = Path().apply {
+                    moveTo(cx + r * 0.82f, cy - r * 0.46f)
+                    lineTo(cx + r * 0.26f, cy - r * 0.46f)
+                    lineTo(cx + r * 0.26f, cy - r * 0.62f)
+                    lineTo(cx - r * 0.14f, cy - r * 0.34f)
+                    lineTo(cx + r * 0.26f, cy - r * 0.06f)
+                    lineTo(cx + r * 0.26f, cy - r * 0.22f)
+                    lineTo(cx + r * 0.82f, cy - r * 0.22f)
+                    close()
+                }
+                draw3DShape(arrowLeft, copperStructPaint)
+                drawBlueNode(cx - r * 0.12f, cy - r * 0.10f, 3.8f)
+            }
+
+            "videoconverter" -> {
+                // Dual curved conversion cycle arrows enclosing a sculptural 3D Play wedge
+                val outerDisc = Path().apply { addCircle(cx, cy, r * 0.88f, Path.Direction.CW) }
+                draw3DShape(outerDisc, graphiteBodyPaint, null)
+
+                val arcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 8.5f
+                    strokeCap = Paint.Cap.ROUND
+                    shader = goldSatinPaint.shader
+                }
+                val arcCopperPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 8.5f
+                    strokeCap = Paint.Cap.ROUND
+                    shader = copperStructPaint.shader
+                }
+                val arcRect = RectF(cx - r * 0.78f, cy - r * 0.78f, cx + r * 0.78f, cy + r * 0.78f)
+                canvas.drawArc(arcRect, -30f, 134f, false, arcPaint)
+                canvas.drawArc(arcRect, 150f, 134f, false, arcCopperPaint)
+
+                // Triangular conversion arrowheads at the ends of each arc
+                val headBot = Path().apply {
+                    moveTo(cx - r * 0.34f, cy + r * 0.74f)
+                    lineTo(cx - r * 0.04f, cy + r * 0.62f)
+                    lineTo(cx - r * 0.16f, cy + r * 0.92f)
+                    close()
+                }
+                val headTop = Path().apply {
+                    moveTo(cx + r * 0.34f, cy - r * 0.74f)
+                    lineTo(cx + r * 0.04f, cy - r * 0.62f)
+                    lineTo(cx + r * 0.16f, cy - r * 0.92f)
+                    close()
+                }
+                canvas.drawPath(headBot, goldBrightPaint)
+                canvas.drawPath(headTop, copperStructPaint)
+
+                val play = Path().apply {
+                    moveTo(cx - r * 0.22f, cy - r * 0.34f)
+                    lineTo(cx + r * 0.38f, cy)
+                    lineTo(cx - r * 0.22f, cy + r * 0.34f)
+                    close()
+                }
+                draw3DShape(play, goldBrightPaint)
+                drawBlueNode(cx + r * 0.54f, cy - r * 0.56f, 3.8f)
+            }
+        }
+        return true
     }
 
     private fun drawSculptedMayaCeramicSymbol(
