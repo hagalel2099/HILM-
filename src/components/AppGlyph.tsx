@@ -86,6 +86,7 @@ export function AppGlyph({
   const rawId = useId();
   const safeId = rawId.replace(/[^a-zA-Z0-9_-]/g, "");
   const goldGradId = `hilm-gold-${safeId}`;
+  const lunaGradId = `hilm-luna-${safeId}`;
   if (customIconDataUrl) {
     return (
       <img
@@ -154,7 +155,7 @@ export function AppGlyph({
   })();
 
   const lunaDropShadowClass =
-    "relative z-10 w-[82%] h-[82%] drop-shadow-[0_0_5px_rgba(0,229,255,0.92)] drop-shadow-[0_0_12px_rgba(57,139,255,0.48)]";
+    "relative z-10 w-[86%] h-[86%] drop-shadow-[0_0_4px_rgba(0,229,255,0.88)] drop-shadow-[0_0_10px_rgba(57,139,255,0.45)]";
 
   const props = {
     className: isLunaHolo
@@ -186,250 +187,313 @@ export function AppGlyph({
   };
 
   const renderLunaProjectionGlyph = () => {
-    const svgBaseProps = {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      className: lunaDropShadowClass,
-      strokeLinecap: "round" as const,
-      strokeLinejoin: "round" as const,
-      "aria-hidden": true as const,
+    const strokeGrad = `url(#${lunaGradId}-stroke)`;
+    const warmGrad = `url(#${lunaGradId}-warm)`;
+    const wispCoolGrad = `url(#${lunaGradId}-wisp-cool)`;
+    const wispWarmGrad = `url(#${lunaGradId}-wisp-warm)`;
+    const wispTilt = lunaProfile ? (lunaProfile.angleDeg > 0 ? -24 : 22) : -24;
+
+    const renderLunaSymbolPaths = () => {
+      switch (app.iconKey) {
+        case "phone":
+          return (
+            <>
+              <path
+                d="M6.4 4.2h2.5c.45 0 .82.31.93.75l.65 2.6c.09.38-.04.78-.34 1.03l-1.32 1.1a10.4 10.4 0 0 0 4.86 4.86l1.1-1.32c.25-.3.65-.43 1.03-.34l2.6.65c.44.11.75.48.75.93v2.5a1.38 1.38 0 0 1-1.5 1.36C10.22 17.85 5.55 13.18 5.1 5.66A1.38 1.38 0 0 1 6.4 4.2z"
+                stroke={strokeGrad}
+                strokeWidth={1.32}
+              />
+              <path d="M14 5.4a4.2 4.2 0 0 1 4.2 4.2" stroke={strokeGrad} strokeWidth={1.12} />
+              <path d="M14 8a1.7 1.7 0 0 1 1.6 1.6" stroke={warmGrad} strokeWidth={1.18} />
+            </>
+          );
+        case "message":
+          return (
+            <>
+              <path
+                d="M5.4 5.2h13.2a2.1 2.1 0 0 1 2.1 2.1v7.6a2.1 2.1 0 0 1-2.1 2.1H9.5L5.2 20v-3H5.4a2.1 2.1 0 0 1-2.1-2.1V7.3a2.1 2.1 0 0 1 2.1-2.1z"
+                stroke={strokeGrad}
+                strokeWidth={1.3}
+              />
+              <path d="M7.8 9.8h8.4" stroke="#E4FAFF" strokeWidth={1.15} />
+              <path d="M7.8 12.8h5.2" stroke={warmGrad} strokeWidth={1.15} />
+            </>
+          );
+        case "chat":
+          return (
+            <>
+              <path
+                d="M12 4.1a7.9 7.9 0 0 0-6.85 11.88L4.1 19.9l4.04-1.06A7.9 7.9 0 1 0 12 4.1z"
+                stroke={strokeGrad}
+                strokeWidth={1.32}
+              />
+              <path
+                d="M9.6 9.1c-.18-.35-.35-.35-.53-.35h-.36c-.18 0-.36.09-.53.27-.18.25-.62.71-.62 1.62s.71 1.96.88 2.14c.11.18 1.42 2.23 3.57 3.04 1.69.62 2.13.53 2.58.44.44-.09 1.15-.46 1.33-.89.18-.44.18-.8.09-.89-.09-.09-.2-.16-.44-.27l-1.15-.53c-.18-.09-.35-.09-.53.09l-.44.53c-.18.18-.27.18-.53.09-.27-.09-.98-.36-1.78-1.07-.62-.53-1.07-1.24-1.16-1.51-.09-.25 0-.35.09-.44l.35-.35c.09-.18.18-.27.18-.36.09-.09 0-.25 0-.35l-.53-1.24z"
+                stroke="#E4FAFF"
+                strokeWidth={1.1}
+              />
+            </>
+          );
+        case "instagram":
+          return (
+            <>
+              <rect x="4.3" y="4.3" width="15.4" height="15.4" rx="4.4" stroke={strokeGrad} strokeWidth={1.32} />
+              <circle cx="12" cy="12" r="3.6" stroke={strokeGrad} strokeWidth={1.28} />
+              <circle cx="16.4" cy="7.6" r="0.88" fill="#FFE2A8" stroke="#FFB45C" strokeWidth={0.45} />
+            </>
+          );
+        case "youtube":
+          return (
+            <>
+              <rect x="3.5" y="6.2" width="17" height="11.6" rx="3.8" stroke={strokeGrad} strokeWidth={1.32} />
+              <polygon points="10.4,9.4 15.5,12 10.4,14.6" stroke="#E4FAFF" strokeWidth={1.25} />
+            </>
+          );
+        case "music":
+          if (app.packageName === "com.spotify.music") {
+            return (
+              <>
+                <circle cx="12" cy="12" r="8.2" stroke={strokeGrad} strokeWidth={1.28} />
+                <path d="M7.9 9.8c2.7-.8 5.9-.6 8.4.7" stroke="#E4FAFF" strokeWidth={1.22} />
+                <path d="M8.6 12.5c2.2-.6 4.9-.4 7 .6" stroke={strokeGrad} strokeWidth={1.18} />
+                <path d="M9.4 15c1.7-.4 3.7-.2 5.2.5" stroke={warmGrad} strokeWidth={1.15} />
+              </>
+            );
+          }
+          return (
+            <>
+              <path d="M9.6 16V6.2l8.2-1.4v9.6" stroke={strokeGrad} strokeWidth={1.28} />
+              <circle cx="7.6" cy="16.6" r="2.1" stroke="#E4FAFF" strokeWidth={1.22} />
+              <circle cx="15.7" cy="15" r="2.1" stroke={warmGrad} strokeWidth={1.22} />
+              <path d="M9.6 9.3l8.2-1.4" stroke={strokeGrad} strokeWidth={1.1} />
+            </>
+          );
+        case "globe":
+          if (app.packageName === "com.android.chrome") {
+            return (
+              <>
+                <circle cx="12" cy="12" r="8.2" stroke={strokeGrad} strokeWidth={1.3} />
+                <circle cx="12" cy="12" r="3.2" stroke="#E4FAFF" strokeWidth={1.25} />
+                <path d="M12 8.8h7.5" stroke={strokeGrad} strokeWidth={1.18} />
+                <path d="M9.2 13.6L5.5 7.2" stroke="#00E5FF" strokeWidth={1.18} />
+                <path d="M14.8 13.6l-3.7 6.4" stroke={warmGrad} strokeWidth={1.18} />
+              </>
+            );
+          }
+          return (
+            <>
+              <circle cx="12" cy="12" r="8.2" stroke={strokeGrad} strokeWidth={1.28} />
+              <ellipse cx="12" cy="12" rx="3.6" ry="8.2" stroke={strokeGrad} strokeWidth={1.12} />
+              <path d="M4 12h16" stroke="#E4FAFF" strokeWidth={1.12} />
+              <path d="M5.6 8.2h12.8" stroke={strokeGrad} strokeWidth={0.95} />
+              <path d="M5.6 15.8h12.8" stroke={warmGrad} strokeWidth={0.95} />
+            </>
+          );
+        case "camera":
+          return (
+            <>
+              <path
+                d="M4.8 8.6h2.6l1.2-1.9h6.8l1.2 1.9h2.6a1.6 1.6 0 0 1 1.6 1.6v7.2a1.6 1.6 0 0 1-1.6 1.6H4.8a1.6 1.6 0 0 1-1.6-1.6v-7.2a1.6 1.6 0 0 1 1.6-1.6z"
+                stroke={strokeGrad}
+                strokeWidth={1.3}
+              />
+              <circle cx="12" cy="13.6" r="3.2" stroke="#E4FAFF" strokeWidth={1.25} />
+              <circle cx="17.5" cy="10.8" r="0.72" fill="#FFE2A8" stroke="#FFB45C" strokeWidth={0.4} />
+            </>
+          );
+        case "image":
+          return (
+            <>
+              <rect x="4" y="5" width="16" height="14" rx="2.6" stroke={strokeGrad} strokeWidth={1.3} />
+              <path d="M4.8 16.2l4.2-4.3 3 3 2.5-2.3 4.5 3.8" stroke="#E4FAFF" strokeWidth={1.2} />
+              <circle cx="15.2" cy="8.8" r="1.35" stroke="#FFB45C" strokeWidth={1.25} />
+            </>
+          );
+        case "map":
+          return (
+            <>
+              <path
+                d="M12 19.6s5.6-4.9 5.6-9.4a5.6 5.6 0 1 0-11.2 0c0 4.5 5.6 9.4 5.6 9.4z"
+                stroke={strokeGrad}
+                strokeWidth={1.3}
+              />
+              <circle cx="12" cy="10.2" r="2.1" stroke="#E4FAFF" strokeWidth={1.22} />
+            </>
+          );
+        case "calendar":
+          return (
+            <>
+              <rect x="4.2" y="5.6" width="15.6" height="13.8" rx="2.4" stroke={strokeGrad} strokeWidth={1.3} />
+              <path d="M4.2 9.6h15.6" stroke="#E4FAFF" strokeWidth={1.15} />
+              <path d="M8.5 4v2.8M15.5 4v2.8" stroke="#E4FAFF" strokeWidth={1.25} />
+              <rect x="7.4" y="12" width="1.6" height="1.4" rx="0.3" stroke="#00E5FF" strokeWidth={0.95} />
+              <rect x="11.2" y="12" width="1.6" height="1.4" rx="0.3" stroke="#E4FAFF" strokeWidth={0.95} />
+              <rect x="15" y="12" width="1.6" height="1.4" rx="0.3" stroke="#FFB45C" strokeWidth={0.95} />
+              <rect x="7.4" y="15.3" width="1.6" height="1.4" rx="0.3" stroke="#398BFF" strokeWidth={0.95} />
+              <rect x="11.2" y="15.3" width="1.6" height="1.4" rx="0.3" stroke="#FFB45C" strokeWidth={0.95} />
+              <rect x="15" y="15.3" width="1.6" height="1.4" rx="0.3" stroke="#C47A48" strokeWidth={0.95} />
+            </>
+          );
+        case "notes":
+          return (
+            <>
+              <path
+                d="M14.2 4.8H6.8a2 2 0 0 0-2 2v10.4a2 2 0 0 0 2 2h9.2a2 2 0 0 0 2-2V12.8"
+                stroke={strokeGrad}
+                strokeWidth={1.28}
+              />
+              <path d="M7.6 9.5h5.2M7.6 12.6h4.2M7.6 15.6h3" stroke="#E4FAFF" strokeWidth={1.12} />
+              <path d="M13.5 13.8l5.6-5.6a1.1 1.1 0 0 1 1.6 1.6l-5.6 5.6-2.2.6.6-2.2z" stroke={warmGrad} strokeWidth={1.22} />
+            </>
+          );
+        case "folder":
+          return (
+            <>
+              <path
+                d="M4 7.4a1.8 1.8 0 0 1 1.8-1.8h3.8l1.8 2h6.8a1.8 1.8 0 0 1 1.8 1.8v7.2a1.8 1.8 0 0 1-1.8 1.8H5.8A1.8 1.8 0 0 1 4 16.6V7.4z"
+                stroke={strokeGrad}
+                strokeWidth={1.3}
+              />
+              <path d="M4.2 10.4h15.6" stroke="#E4FAFF" strokeWidth={1.08} />
+            </>
+          );
+        case "code":
+          return (
+            <>
+              <path d="M8.6 8.4L4.6 12l4 3.6" stroke="#00E5FF" strokeWidth={1.3} />
+              <path d="M15.4 8.4L19.4 12l-4 3.6" stroke={warmGrad} strokeWidth={1.3} />
+              <path d="M13.4 6.6L10.6 17.4" stroke="#E4FAFF" strokeWidth={1.22} />
+            </>
+          );
+        case "terminal":
+          return (
+            <>
+              <rect x="3.8" y="5.2" width="16.4" height="13.6" rx="2.4" stroke={strokeGrad} strokeWidth={1.28} />
+              <path d="M7.2 9.6l3 2.5-3 2.5" stroke="#E4FAFF" strokeWidth={1.28} />
+              <path d="M12.2 14.6h4.4" stroke="#FFB45C" strokeWidth={1.28} />
+            </>
+          );
+        case "discord":
+          return (
+            <>
+              <path
+                stroke={strokeGrad}
+                strokeWidth={1.3}
+                d="M18.6 6.8A12.8 12.8 0 0 0 15 5.7l-.45.9a11.8 11.8 0 0 0-5.1 0l-.45-.9a12.8 12.8 0 0 0-3.6 1.1C3.2 10.1 2.7 13.3 3 16.5a13.2 13.2 0 0 0 4 2l.8-1.4a8.4 8.4 0 0 1-1.4-.6l.35-.28a9.5 9.5 0 0 0 10.5 0l.35.28c-.45.26-.9.46-1.4.6l.8 1.4a13.2 13.2 0 0 0 4-2c.36-3.6-.64-6.8-2.4-9.7z"
+              />
+              <circle cx="9.4" cy="12.4" r="1.3" stroke="#E4FAFF" strokeWidth={1.2} />
+              <circle cx="14.6" cy="12.4" r="1.3" stroke="#E4FAFF" strokeWidth={1.2} />
+            </>
+          );
+        case "bank":
+          return (
+            <>
+              <path
+                stroke={strokeGrad}
+                strokeWidth={1.32}
+                d="M5.2 17.8V6.8c0-.85 1-1.3 1.55-.65l6 7.5V6.2"
+              />
+              <path
+                stroke={warmGrad}
+                strokeWidth={1.32}
+                d="M18.8 6.2v11c0 .85-1 1.3-1.55.65l-6-7.5v7.5"
+              />
+            </>
+          );
+        case "settings":
+        default:
+          return (
+            <>
+              <circle cx="12" cy="12" r="2.7" stroke="#E4FAFF" strokeWidth={1.25} />
+              <circle cx="12" cy="12" r="5.6" stroke={strokeGrad} strokeWidth={1.15} />
+              <path
+                stroke={strokeGrad}
+                strokeWidth={1.25}
+                d="M12 4.1v1.8M12 18.1v1.8M4.1 12h1.8M18.1 12h1.8M6.4 6.4l1.3 1.3M16.3 16.3l1.3 1.3M17.6 6.4l-1.3 1.3M7.7 16.3l-1.3 1.3"
+              />
+            </>
+          );
+      }
     };
 
-    switch (app.iconKey) {
-      case "phone":
-        return (
-          <svg {...svgBaseProps}>
-            <path
-              d="M6.4 3.6h2.7c.5 0 .9.34 1.02.82l.72 2.88c.1.42-.04.86-.37 1.14l-1.45 1.2a11.4 11.4 0 0 0 5.34 5.34l1.2-1.45c.28-.33.72-.47 1.14-.37l2.88.72c.48.12.82.52.82 1.02v2.7a1.5 1.5 0 0 1-1.64 1.5C10.56 18.62 5.38 13.44 4.9 5.24A1.5 1.5 0 0 1 6.4 3.6z"
-              stroke="#00E5FF"
-              strokeWidth={1.25}
-            />
-            <path d="M14.2 5.2a4.6 4.6 0 0 1 4.6 4.6" stroke="#398BFF" strokeWidth={1.15} />
-            <path d="M14.2 8.2a1.8 1.8 0 0 1 1.6 1.6" stroke="#FFB45C" strokeWidth={1.25} />
-          </svg>
-        );
-      case "message":
-        return (
-          <svg {...svgBaseProps}>
-            <path
-              d="M5.2 4.6h13.6a2.2 2.2 0 0 1 2.2 2.2v8.4a2.2 2.2 0 0 1-2.2 2.2H9.6L5 20.6v-3.2H5.2A2.2 2.2 0 0 1 3 15.2V6.8a2.2 2.2 0 0 1 2.2-2.2z"
-              stroke="#00E5FF"
-              strokeWidth={1.25}
-            />
-            <path d="M7.8 9.6h8.4" stroke="#D9F7FF" strokeWidth={1.2} />
-            <path d="M7.8 12.8h5.2" stroke="#398BFF" strokeWidth={1.18} />
-            <circle cx="15.8" cy="12.8" r="0.85" fill="#FFB45C" stroke="none" />
-          </svg>
-        );
-      case "chat":
-        return (
-          <svg {...svgBaseProps}>
-            <path
-              d="M12 3.2a8.8 8.8 0 0 0-7.6 13.25L3.2 20.8l4.5-1.18A8.8 8.8 0 1 0 12 3.2z"
-              stroke="#00E5FF"
-              strokeWidth={1.25}
-            />
-            <path
-              d="M9.4 8.9c-.2-.38-.38-.38-.58-.38h-.4c-.2 0-.4.1-.58.3-.2.28-.68.78-.68 1.78s.78 2.15.96 2.34c.12.2 1.56 2.45 3.92 3.34 1.86.68 2.34.58 2.84.48.48-.1 1.26-.5 1.46-.98.2-.48.2-.88.1-.98-.1-.1-.22-.18-.48-.3l-1.26-.58c-.2-.1-.38-.1-.58.1l-.48.58c-.2.2-.3.2-.58.1-.3-.1-1.08-.4-1.96-1.18-.68-.58-1.18-1.36-1.28-1.66-.1-.28 0-.38.1-.48l.38-.38c.1-.2.2-.3.2-.4.1-.1 0-.28 0-.38l-.58-1.36z"
-              stroke="#D9F7FF"
-              strokeWidth={1.15}
-            />
-            <path d="M18.6 6.2a8.9 8.9 0 0 1 2 4.1" stroke="#C47A48" strokeWidth={1.1} />
-          </svg>
-        );
-      case "instagram":
-        return (
-          <svg {...svgBaseProps}>
-            <rect x="3.5" y="3.5" width="17" height="17" rx="5" stroke="#00E5FF" strokeWidth={1.25} />
-            <circle cx="12" cy="12" r="3.9" stroke="#D9F7FF" strokeWidth={1.25} />
-            <circle cx="16.8" cy="7.2" r="0.95" fill="#FFB45C" stroke="none" />
-            <path d="M7.2 3.5h5.2" stroke="#398BFF" strokeWidth={1.15} />
-          </svg>
-        );
-      case "youtube":
-        return (
-          <svg {...svgBaseProps}>
-            <rect x="2.6" y="5.4" width="18.8" height="13.2" rx="4.2" stroke="#398BFF" strokeWidth={1.25} />
-            <path d="M7.2 5.4h9.6" stroke="#00E5FF" strokeWidth={1.2} />
-            <polygon points="10.2,9 15.8,12 10.2,15" stroke="#D9F7FF" strokeWidth={1.25} />
-            <circle cx="18.2" cy="8.2" r="0.75" fill="#C47A48" stroke="none" />
-          </svg>
-        );
-      case "music":
-        if (app.packageName === "com.spotify.music") {
-          return (
-            <svg {...svgBaseProps}>
-              <circle cx="12" cy="12" r="9.1" stroke="#00E5FF" strokeWidth={1.22} />
-              <path d="M7.4 9.6c3-.9 6.6-.7 9.4.8" stroke="#D9F7FF" strokeWidth={1.28} />
-              <path d="M8.2 12.6c2.5-.7 5.5-.5 7.8.7" stroke="#00E5FF" strokeWidth={1.22} />
-              <path d="M9.1 15.4c1.9-.5 4.2-.3 5.9.6" stroke="#398BFF" strokeWidth={1.18} />
-              <circle cx="17.8" cy="6.6" r="0.8" fill="#FFB45C" stroke="none" />
-            </svg>
-          );
-        }
-        return (
-          <svg {...svgBaseProps}>
-            <path d="M9.5 16.5V5.8l9-1.6v10.5" stroke="#00E5FF" strokeWidth={1.25} />
-            <circle cx="7.2" cy="17.2" r="2.3" stroke="#D9F7FF" strokeWidth={1.22} />
-            <circle cx="16.2" cy="15.4" r="2.3" stroke="#398BFF" strokeWidth={1.22} />
-            <path d="M9.5 9.2l9-1.6" stroke="#C47A48" strokeWidth={1.1} />
-          </svg>
-        );
-      case "globe":
-        if (app.packageName === "com.android.chrome") {
-          return (
-            <svg {...svgBaseProps}>
-              <circle cx="12" cy="12" r="9.1" stroke="#00E5FF" strokeWidth={1.22} />
-              <circle cx="12" cy="12" r="3.5" stroke="#D9F7FF" strokeWidth={1.25} />
-              <path d="M12 8.5h8.3" stroke="#00E5FF" strokeWidth={1.18} />
-              <path d="M8.9 13.7L4.8 6.7" stroke="#398BFF" strokeWidth={1.18} />
-              <path d="M15.1 13.7l-4.1 7.1" stroke="#C47A48" strokeWidth={1.15} />
-            </svg>
-          );
-        }
-        return (
-          <svg {...svgBaseProps}>
-            <circle cx="12" cy="12" r="9.1" stroke="#00E5FF" strokeWidth={1.22} />
-            <ellipse cx="12" cy="12" rx="3.9" ry="9.1" stroke="#398BFF" strokeWidth={1.15} />
-            <path d="M3.2 12h17.6" stroke="#D9F7FF" strokeWidth={1.15} />
-            <circle cx="17.4" cy="7.5" r="0.8" fill="#FFB45C" stroke="none" />
-          </svg>
-        );
-      case "camera":
-        return (
-          <svg {...svgBaseProps}>
-            <path
-              d="M4.2 8.2h2.9l1.4-2.1h7l1.4 2.1h2.9a1.8 1.8 0 0 1 1.8 1.8v8.1a1.8 1.8 0 0 1-1.8 1.8H4.2a1.8 1.8 0 0 1-1.8-1.8V10a1.8 1.8 0 0 1 1.8-1.8z"
-              stroke="#00E5FF"
-              strokeWidth={1.25}
-            />
-            <circle cx="12" cy="13.8" r="3.6" stroke="#D9F7FF" strokeWidth={1.25} />
-            <circle cx="12" cy="13.8" r="1.2" stroke="#398BFF" strokeWidth={1.1} />
-            <circle cx="18.1" cy="10.7" r="0.8" fill="#FFB45C" stroke="none" />
-          </svg>
-        );
-      case "image":
-        return (
-          <svg {...svgBaseProps}>
-            <rect x="3.4" y="4.4" width="17.2" height="15.2" rx="2.8" stroke="#00E5FF" strokeWidth={1.25} />
-            <path d="M4.2 16.5l4.6-4.7 3.4 3.4 2.7-2.6 4.7 4.2" stroke="#D9F7FF" strokeWidth={1.22} />
-            <circle cx="8.6" cy="9.1" r="1.45" stroke="#FFB45C" strokeWidth={1.2} />
-            <path d="M13.5 4.4h4.5" stroke="#398BFF" strokeWidth={1.15} />
-          </svg>
-        );
-      case "map":
-        return (
-          <svg {...svgBaseProps}>
-            <path
-              d="M12 20.5s6.2-5.4 6.2-10.4a6.2 6.2 0 1 0-12.4 0c0 5 6.2 10.4 6.2 10.4z"
-              stroke="#00E5FF"
-              strokeWidth={1.25}
-            />
-            <circle cx="12" cy="10.1" r="2.3" stroke="#D9F7FF" strokeWidth={1.22} />
-            <path d="M6.2 19.6c1.9.7 3.8 1 5.8 1s3.9-.3 5.8-1" stroke="#398BFF" strokeWidth={1.12} />
-            <circle cx="12" cy="10.1" r="0.65" fill="#FFB45C" stroke="none" />
-          </svg>
-        );
-      case "calendar":
-        return (
-          <svg {...svgBaseProps}>
-            <rect x="3.5" y="5" width="17" height="15.5" rx="2.6" stroke="#00E5FF" strokeWidth={1.25} />
-            <path d="M3.5 9.5h17" stroke="#398BFF" strokeWidth={1.18} />
-            <path d="M8.2 3.4v3.1M15.8 3.4v3.1" stroke="#D9F7FF" strokeWidth={1.25} />
-            <circle cx="8.5" cy="13.4" r="0.85" fill="#D9F7FF" stroke="none" />
-            <circle cx="12" cy="13.4" r="0.85" fill="#00E5FF" stroke="none" />
-            <circle cx="15.5" cy="13.4" r="0.85" fill="#FFB45C" stroke="none" />
-            <path d="M8.2 16.8h4.5" stroke="#C47A48" strokeWidth={1.15} />
-          </svg>
-        );
-      case "notes":
-        return (
-          <svg {...svgBaseProps}>
-            <path
-              d="M6.2 3.5h8.6l4.4 4.4v11.1a1.6 1.6 0 0 1-1.6 1.6H6.2a1.6 1.6 0 0 1-1.6-1.6V5.1a1.6 1.6 0 0 1 1.6-1.6z"
-              stroke="#00E5FF"
-              strokeWidth={1.25}
-            />
-            <path d="M14.8 3.5v4.4h4.4" stroke="#398BFF" strokeWidth={1.18} />
-            <path d="M8 11.4h8" stroke="#D9F7FF" strokeWidth={1.18} />
-            <path d="M8 14.6h6" stroke="#C47A48" strokeWidth={1.15} />
-            <path d="M8 17.4h3.5" stroke="#FFB45C" strokeWidth={1.15} />
-          </svg>
-        );
-      case "folder":
-        return (
-          <svg {...svgBaseProps}>
-            <path
-              d="M3.5 7a2 2 0 0 1 2-2h4.2l2 2.2h6.8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V7z"
-              stroke="#00E5FF"
-              strokeWidth={1.25}
-            />
-            <path d="M3.6 10.2h16.8" stroke="#398BFF" strokeWidth={1.15} />
-            <path d="M7.5 14.5h4.8" stroke="#FFB45C" strokeWidth={1.2} />
-          </svg>
-        );
-      case "code":
-        return (
-          <svg {...svgBaseProps}>
-            <path d="M8.5 8.2L4.2 12l4.3 3.8" stroke="#00E5FF" strokeWidth={1.28} />
-            <path d="M15.5 8.2L19.8 12l-4.3 3.8" stroke="#398BFF" strokeWidth={1.28} />
-            <path d="M13.6 6.2L10.4 17.8" stroke="#D9F7FF" strokeWidth={1.22} />
-            <circle cx="12" cy="4.2" r="0.8" fill="#FFB45C" stroke="none" />
-          </svg>
-        );
-      case "terminal":
-        return (
-          <svg {...svgBaseProps}>
-            <rect x="3" y="4.6" width="18" height="14.8" rx="2.6" stroke="#398BFF" strokeWidth={1.22} />
-            <path d="M6.8 9.4l3.3 2.7-3.3 2.7" stroke="#D9F7FF" strokeWidth={1.28} />
-            <path d="M12.2 14.8h4.8" stroke="#FFB45C" strokeWidth={1.28} />
-            <path d="M6.5 4.6h6.5" stroke="#00E5FF" strokeWidth={1.22} />
-          </svg>
-        );
-      case "discord":
-        return (
-          <svg {...svgBaseProps}>
-            <path
-              stroke="#00E5FF"
-              strokeWidth={1.25}
-              d="M19.2 6.2A14 14 0 0 0 15.3 5l-.5 1a13 13 0 0 0-5.6 0l-.5-1A14 14 0 0 0 4.8 6.2C2.4 9.8 1.8 13.3 2.1 16.8a14.4 14.4 0 0 0 4.4 2.2l.9-1.5a9.3 9.3 0 0 1-1.5-.7l.4-.3a10.4 10.4 0 0 0 11.4 0l.4.3c-.5.3-1 .5-1.5.7l.9 1.5a14.4 14.4 0 0 0 4.4-2.2c.4-4-.7-7.5-2.7-10.6z"
-            />
-            <circle cx="9.2" cy="12.4" r="1.4" stroke="#D9F7FF" strokeWidth={1.2} />
-            <circle cx="14.8" cy="12.4" r="1.4" stroke="#D9F7FF" strokeWidth={1.2} />
-            <path d="M9.6 6.2h4.8" stroke="#C47A48" strokeWidth={1.1} />
-          </svg>
-        );
-      case "bank":
-        return (
-          <svg {...svgBaseProps}>
-            <path
-              stroke="#00E5FF"
-              strokeWidth={1.25}
-              d="M4.5 18.5V6.2c0-.9 1.1-1.4 1.7-.7l6.6 8.3V5.5"
-            />
-            <path
-              stroke="#D9F7FF"
-              strokeWidth={1.25}
-              d="M19.5 5.5v12.3c0 .9-1.1 1.4-1.7.7l-6.6-8.3v8.3"
-            />
-            <circle cx="19.2" cy="5.2" r="0.8" fill="#FFB45C" stroke="none" />
-          </svg>
-        );
-      case "settings":
-      default:
-        return (
-          <svg {...svgBaseProps}>
-            <circle cx="12" cy="12" r="2.9" stroke="#D9F7FF" strokeWidth={1.25} />
-            <path
-              stroke="#00E5FF"
-              strokeWidth={1.22}
-              d="M12 3.6v2.1M12 18.3v2.1M3.6 12h2.1M18.3 12h2.1M6.1 6.1l1.5 1.5M16.4 16.4l1.5 1.5M17.9 6.1l-1.5 1.5M7.6 16.4l-1.5 1.5"
-            />
-            <circle cx="12" cy="12" r="6.3" stroke="#398BFF" strokeWidth={1.15} strokeDasharray="4.2 2.4" />
-            <circle cx="12" cy="12" r="0.75" fill="#C47A48" stroke="none" />
-          </svg>
-        );
-    }
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className={lunaDropShadowClass}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id={`${lunaGradId}-stroke`} x1="12%" y1="10%" x2="88%" y2="90%">
+            <stop offset="0%" stopColor="#398BFF" />
+            <stop offset="42%" stopColor="#00E5FF" />
+            <stop offset="68%" stopColor="#E4FAFF" />
+            <stop offset="86%" stopColor="#FFB45C" />
+            <stop offset="100%" stopColor="#C47A48" />
+          </linearGradient>
+          <linearGradient id={`${lunaGradId}-warm`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FFB45C" />
+            <stop offset="100%" stopColor="#C47A48" />
+          </linearGradient>
+          <linearGradient id={`${lunaGradId}-wisp-cool`} x1="0%" y1="50%" x2="100%" y2="50%">
+            <stop offset="0%" stopColor="#398BFF" stopOpacity="0" />
+            <stop offset="28%" stopColor="#00E5FF" stopOpacity="0.95" />
+            <stop offset="56%" stopColor="#E4FAFF" stopOpacity="0.9" />
+            <stop offset="82%" stopColor="#FFB45C" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="#C47A48" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={`${lunaGradId}-wisp-warm`} x1="100%" y1="50%" x2="0%" y2="50%">
+            <stop offset="0%" stopColor="#C47A48" stopOpacity="0" />
+            <stop offset="32%" stopColor="#FFB45C" stopOpacity="0.85" />
+            <stop offset="68%" stopColor="#00E5FF" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#398BFF" stopOpacity="0" />
+          </linearGradient>
+          <filter id={`${lunaGradId}-halo`} x="-35%" y="-35%" width="170%" height="170%">
+            <feGaussianBlur stdDeviation="0.95" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Gossamer elliptical light trails orbiting the suspended symbol */}
+        <g transform={`rotate(${wispTilt} 12 12)`} opacity="0.88">
+          <ellipse
+            cx="12"
+            cy="12"
+            rx="10.4"
+            ry="4.2"
+            stroke={wispCoolGrad}
+            strokeWidth={0.55}
+            strokeDasharray="24 10"
+          />
+          <ellipse
+            cx="12"
+            cy="12"
+            rx="9.4"
+            ry="3.5"
+            stroke={wispWarmGrad}
+            strokeWidth={0.42}
+            strokeDasharray="16 14"
+            strokeDashoffset="6"
+          />
+        </g>
+
+        {/* Luminous thin-line symbol projection */}
+        <g filter={`url(#${lunaGradId}-halo)`}>{renderLunaSymbolPaths()}</g>
+
+        {/* Pinpoint starlight sparks along the orbital trail */}
+        <g transform={`rotate(${wispTilt} 12 12)`}>
+          <circle cx="21.4" cy="11.2" r="0.55" fill="#FFE6B8" />
+          <circle cx="2.7" cy="12.7" r="0.52" fill="#E4FAFF" />
+          <circle cx="17.8" cy="15.3" r="0.38" fill="#FFB45C" />
+          <circle cx="6.2" cy="8.7" r="0.38" fill="#00E5FF" />
+        </g>
+      </svg>
+    );
   };
 
   const glyphNode = (() => {
@@ -502,43 +566,12 @@ export function AppGlyph({
     }
   })();
 
-  if (isLunaHolo && lunaProfile) {
-    const showWarmLight = lunaProfile.mode !== "cool";
-    const isCopperLead = lunaProfile.mode === "copper-rim";
-    const isDual = lunaProfile.mode === "copper-amber";
-
+  if (isLunaHolo) {
     return (
       <span
         className={`${sizeClass} relative flex items-center justify-center shrink-0 select-none`}
       >
         {glyphNode}
-        {showWarmLight && (
-          <svg
-            viewBox="0 0 40 40"
-            className="pointer-events-none absolute inset-0 w-full h-full"
-            aria-hidden="true"
-          >
-            <g transform={`rotate(${lunaProfile.angleDeg} 20 20)`}>
-              <circle
-                cx="35.5"
-                cy="20"
-                r="1.15"
-                fill={isCopperLead ? "#C47A48" : "#FFB45C"}
-                fillOpacity="0.9"
-                className="drop-shadow-[0_0_4px_rgba(255,180,92,0.85)]"
-              />
-              {isDual && (
-                <circle
-                  cx="4.8"
-                  cy="20"
-                  r="0.9"
-                  fill="#C47A48"
-                  fillOpacity="0.8"
-                />
-              )}
-            </g>
-          </svg>
-        )}
       </span>
     );
   }
