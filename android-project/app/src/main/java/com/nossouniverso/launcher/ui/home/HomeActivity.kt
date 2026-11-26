@@ -1,5 +1,6 @@
 package com.nossouniverso.launcher.ui.home
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.BroadcastReceiver
@@ -14,12 +15,14 @@ import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.text.InputType
 import android.view.DragEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.view.animation.LinearInterpolator
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
@@ -59,7 +62,9 @@ import com.nossouniverso.launcher.updater.UpdateInstallReceiver
 import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
 
 class HomeActivity : AppCompatActivity() {
@@ -98,6 +103,8 @@ class HomeActivity : AppCompatActivity() {
     private var isEditMode = false
     private var isLeftDrawerOpen = false
     private var isRightDrawerOpen = false
+    private var hudButtonPulseAnimator: ValueAnimator? = null
+    private var lunaOrbitalDrawable: GradientDrawable? = null
     private var isPortalLaunching = false
     private var lastTransitionConfig: HilmTransitionConfig? = null
     private var pendingIconTransitionReplay = false
@@ -268,6 +275,8 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onStop() {
         isPortalLaunching = false
+        hudButtonPulseAnimator?.cancel()
+        hudButtonPulseAnimator = null
         if (::hilmPortalOverlay.isInitialized) {
             hilmPortalOverlay.cancelPortal()
         }
@@ -279,6 +288,8 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        hudButtonPulseAnimator?.cancel()
+        hudButtonPulseAnimator = null
         reloadSeq.incrementAndGet()
         bgExecutor.shutdownNow()
         updateManager.shutdown()
@@ -374,11 +385,13 @@ class HomeActivity : AppCompatActivity() {
             intArrayOf(Color.parseColor("#EB05070B"), Color.parseColor("#990A1424"), Color.TRANSPARENT)
         )
         val density = resources.displayMetrics.density
-        btnLunaOrbitalCore.background = GradientDrawable().apply {
+        val orbitalDrawable = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(Color.parseColor("#990A1424"))
             setStroke((1.2f * density).toInt().coerceAtLeast(1), Color.parseColor("#8800E5FF"))
         }
+        lunaOrbitalDrawable = orbitalDrawable
+        btnLunaOrbitalCore.background = orbitalDrawable
 
         hudFrameView = findViewById(R.id.hudFrameView)
         hilmCoreView = findViewById(R.id.hilmCoreView)
@@ -398,16 +411,34 @@ class HomeActivity : AppCompatActivity() {
         btnUpdateAction = findViewById(R.id.btnUpdateAction)
         hilmPortalOverlay = findViewById(R.id.hilmPortalOverlay)
 
-        plateViews[SlotPosition.PLATE_TOP_LEFT] = findViewById(R.id.plateTopLeft)
-        plateViews[SlotPosition.PLATE_TOP_RIGHT] = findViewById(R.id.plateTopRight)
-        plateViews[SlotPosition.PLATE_BOTTOM_LEFT] = findViewById(R.id.plateBottomLeft)
-        plateViews[SlotPosition.PLATE_BOTTOM_RIGHT] = findViewById(R.id.plateBottomRight)
+        plateViews[SlotPosition.PLATE_TOP_LEFT] = findViewById<HudPlateButton>(R.id.plateTopLeft).apply {
+            pulsePhaseOffsetFraction = 0f
+        }
+        plateViews[SlotPosition.PLATE_TOP_RIGHT] = findViewById<HudPlateButton>(R.id.plateTopRight).apply {
+            pulsePhaseOffsetFraction = 0.14f
+        }
+        plateViews[SlotPosition.PLATE_BOTTOM_LEFT] = findViewById<HudPlateButton>(R.id.plateBottomLeft).apply {
+            pulsePhaseOffsetFraction = 0.28f
+        }
+        plateViews[SlotPosition.PLATE_BOTTOM_RIGHT] = findViewById<HudPlateButton>(R.id.plateBottomRight).apply {
+            pulsePhaseOffsetFraction = 0.42f
+        }
 
-        dockViews[SlotPosition.DOCK_1] = findViewById(R.id.dock1)
-        dockViews[SlotPosition.DOCK_2] = findViewById(R.id.dock2)
-        dockCenterDrawer = findViewById(R.id.dockCenterDrawer)
-        dockViews[SlotPosition.DOCK_4] = findViewById(R.id.dock4)
-        dockViews[SlotPosition.DOCK_5] = findViewById(R.id.dock5)
+        dockViews[SlotPosition.DOCK_1] = findViewById<HudDockSlotView>(R.id.dock1).apply {
+            pulsePhaseOffsetFraction = 0.20f
+        }
+        dockViews[SlotPosition.DOCK_2] = findViewById<HudDockSlotView>(R.id.dock2).apply {
+            pulsePhaseOffsetFraction = 0.10f
+        }
+        dockCenterDrawer = findViewById<HudDockSlotView>(R.id.dockCenterDrawer).apply {
+            pulsePhaseOffsetFraction = 0f
+        }
+        dockViews[SlotPosition.DOCK_4] = findViewById<HudDockSlotView>(R.id.dock4).apply {
+            pulsePhaseOffsetFraction = 0.10f
+        }
+        dockViews[SlotPosition.DOCK_5] = findViewById<HudDockSlotView>(R.id.dock5).apply {
+            pulsePhaseOffsetFraction = 0.20f
+        }
 
         val leftWingSlots = listOf(
             SlotPosition.LEFT_1 to R.id.leftSlot1,
@@ -419,6 +450,7 @@ class HomeActivity : AppCompatActivity() {
         leftWingSlots.forEach { (pos, viewId) ->
             val slotView = findViewById<HudDockSlotView>(viewId)
             slotView.transparentHudMode = true
+            slotView.pulsePhaseOffsetFraction = 0.16f
             dockViews[pos] = slotView
         }
 
@@ -432,6 +464,7 @@ class HomeActivity : AppCompatActivity() {
         rightWingSlots.forEach { (pos, viewId) ->
             val slotView = findViewById<HudDockSlotView>(viewId)
             slotView.transparentHudMode = true
+            slotView.pulsePhaseOffsetFraction = 0.16f
             dockViews[pos] = slotView
         }
 
@@ -586,6 +619,7 @@ class HomeActivity : AppCompatActivity() {
                 btnHubControl.clearColorFilter()
             }
         }
+        updateThemeButtonPulse(isLuna = isLuna, isMaya = isMaya)
 
         val rootLayout = homeRoot as? ConstraintLayout ?: return
         val marginPx = (if (isLuna) 14f else 4f) * resources.displayMetrics.density
@@ -611,6 +645,76 @@ class HomeActivity : AppCompatActivity() {
             )
         }
         constraints.applyTo(rootLayout)
+    }
+
+    private fun updateThemeButtonPulse(isLuna: Boolean, isMaya: Boolean) {
+        val animScale = try {
+            Settings.Global.getFloat(
+                contentResolver,
+                Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f
+            )
+        } catch (_: Exception) {
+            1f
+        }
+        val sysAnimatorsEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ValueAnimator.areAnimatorsEnabled()
+        } else {
+            true
+        }
+        val reducedMotion = animScale <= 0f || !sysAnimatorsEnabled
+
+        hudButtonPulseAnimator?.cancel()
+        hudButtonPulseAnimator = null
+
+        btnHubControl.scaleX = 1f
+        btnHubControl.scaleY = 1f
+        btnHubControl.alpha = 1f
+        btnLunaOrbitalCore.scaleX = 1f
+        btnLunaOrbitalCore.scaleY = 1f
+        btnLunaOrbitalCore.alpha = 1f
+
+        if ((!isLuna && !isMaya) || reducedMotion) {
+            return
+        }
+
+        val density = resources.displayMetrics.density
+        val strokePx = (1.2f * density).toInt().coerceAtLeast(1)
+        val periodMs = if (isLuna) 5400L else 4200L
+
+        hudButtonPulseAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = periodMs
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.RESTART
+            interpolator = LinearInterpolator()
+            addUpdateListener { anim ->
+                val phase = anim.animatedValue as Float
+                val wave = 0.5f - 0.5f * cos(phase * (2f * PI.toFloat()))
+                if (isLuna) {
+                    val orbScale = 0.985f + 0.039f * wave
+                    btnLunaOrbitalCore.scaleX = orbScale
+                    btnLunaOrbitalCore.scaleY = orbScale
+                    btnLunaOrbitalCore.alpha = 0.80f + 0.20f * wave
+
+                    val strokeAlpha = (110 + (95 * wave).toInt()).coerceIn(0, 255)
+                    val r = (0 + (139 * wave * 0.65f)).toInt()
+                    val g = (229 + ((92 - 229) * wave * 0.65f)).toInt()
+                    val b = (255 + ((246 - 255) * wave * 0.65f)).toInt()
+                    lunaOrbitalDrawable?.setStroke(strokePx, Color.argb(strokeAlpha, r, g, b))
+
+                    val hubScale = 0.99f + 0.025f * wave
+                    btnHubControl.scaleX = hubScale
+                    btnHubControl.scaleY = hubScale
+                    btnHubControl.alpha = 0.78f + 0.22f * wave
+                } else {
+                    val hubScale = 0.986f + 0.038f * wave
+                    btnHubControl.scaleX = hubScale
+                    btnHubControl.scaleY = hubScale
+                    btnHubControl.alpha = 0.84f + 0.16f * wave
+                }
+            }
+            start()
+        }
     }
 
     private fun openSettingsScreen() {

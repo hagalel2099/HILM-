@@ -1,5 +1,6 @@
 package com.nossouniverso.launcher.ui.views
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -8,12 +9,15 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
+import android.os.Build
+import android.provider.Settings
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
+import android.view.animation.LinearInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -21,6 +25,8 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.nossouniverso.launcher.R
 import com.nossouniverso.launcher.model.HilmTransitionConfig
+import kotlin.math.PI
+import kotlin.math.cos
 
 /**
  * Chamfered octagonal HUD shortcut plate matching the 4 lower plates in Reference 1.
@@ -58,6 +64,7 @@ class HudPlateButton @JvmOverloads constructor(
             if (field != value) {
                 field = value
                 updateLabelThemeStyle()
+                updatePulseAnimatorState()
                 invalidate()
             }
         }
@@ -67,9 +74,15 @@ class HudPlateButton @JvmOverloads constructor(
             if (field != value) {
                 field = value
                 updateLabelThemeStyle()
+                updatePulseAnimatorState()
                 invalidate()
             }
         }
+
+    var pulsePhaseOffsetFraction: Float = 0f
+
+    private var pulsePhase: Float = 0f
+    private var pulseAnimator: ValueAnimator? = null
 
     private fun updateLabelThemeStyle() {
         val textColorRes = when {
@@ -107,6 +120,100 @@ class HudPlateButton @JvmOverloads constructor(
         color = Color.parseColor("#F59E0B")
         style = Paint.Style.STROKE
         strokeWidth = 2f * density
+    }
+
+    private val haloStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
+
+    private fun isReducedMotionEnabled(): Boolean {
+        val animScale = try {
+            Settings.Global.getFloat(
+                context.contentResolver,
+                Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f
+            )
+        } catch (_: Exception) {
+            1f
+        }
+        val sysEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ValueAnimator.areAnimatorsEnabled()
+        } else {
+            true
+        }
+        return animScale <= 0f || !sysEnabled
+    }
+
+    private fun updatePulseAnimatorState() {
+        val shouldAnimate = (lunaThemeMode || mayaThemeMode) &&
+            isAttachedToWindow &&
+            windowVisibility == VISIBLE &&
+            visibility == VISIBLE &&
+            !isReducedMotionEnabled()
+
+        if (!shouldAnimate) {
+            pulseAnimator?.cancel()
+            pulseAnimator = null
+            pulsePhase = 0f
+            return
+        }
+
+        val targetDuration = if (lunaThemeMode) 5400L else 4200L
+        val existing = pulseAnimator
+        if (existing != null && existing.duration == targetDuration) {
+            if (!existing.isStarted) existing.start()
+            return
+        }
+
+        existing?.cancel()
+        pulseAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = targetDuration
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.RESTART
+            interpolator = LinearInterpolator()
+            addUpdateListener { anim ->
+                pulsePhase = anim.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        updatePulseAnimatorState()
+    }
+
+    override fun onDetachedFromWindow() {
+        pulseAnimator?.cancel()
+        pulseAnimator = null
+        super.onDetachedFromWindow()
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        updatePulseAnimatorState()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        updatePulseAnimatorState()
+    }
+
+    private fun currentPulseWave(): Float {
+        if (!lunaThemeMode && !mayaThemeMode) return 0f
+        if (isReducedMotionEnabled()) return 0.5f
+        val angle = ((pulsePhase + pulsePhaseOffsetFraction) % 1f) * (2f * PI.toFloat())
+        return 0.5f - 0.5f * cos(angle)
+    }
+
+    private fun lerpColor(colorA: Int, colorB: Int, t: Float): Int {
+        val c = t.coerceIn(0f, 1f)
+        val a = (Color.alpha(colorA) + (Color.alpha(colorB) - Color.alpha(colorA)) * c).toInt()
+        val r = (Color.red(colorA) + (Color.red(colorB) - Color.red(colorA)) * c).toInt()
+        val g = (Color.green(colorA) + (Color.green(colorB) - Color.green(colorA)) * c).toInt()
+        val b = (Color.blue(colorA) + (Color.blue(colorB) - Color.blue(colorA)) * c).toInt()
+        return Color.argb(a, r, g, b)
     }
 
     init {
@@ -241,7 +348,9 @@ class HudPlateButton @JvmOverloads constructor(
     }
 
     private fun drawLunaHoloPlate(canvas: Canvas, w: Float, h: Float) {
+        val wave = currentPulseWave()
         val edge = 4f * density
+        val cornerR = 10f * density
         val maxAlpha = if (isSlotEmpty) 42 else ((panelOpacityPercent / 100f) * 115f).toInt().coerceIn(28, 120)
         fillPaint.shader = LinearGradient(
             0f,
@@ -252,27 +361,55 @@ class HudPlateButton @JvmOverloads constructor(
             Color.argb(maxAlpha, 10, 20, 36),
             Shader.TileMode.CLAMP
         )
-        canvas.drawRoundRect(edge, 2f * density, w - edge, h - 3f * density, 10f * density, 10f * density, fillPaint)
+        canvas.drawRoundRect(edge, 2f * density, w - edge, h - 3f * density, cornerR, cornerR, fillPaint)
         fillPaint.shader = null
+
+        val lunaCyan = Color.parseColor("#00E5FF")
+        val lunaViolet = Color.parseColor("#8B5CF6")
+        val borderGlowColor = lerpColor(lunaCyan, lunaViolet, wave * 0.65f)
+
+        if (!isEditModeActive) {
+            haloStrokePaint.color = borderGlowColor
+            haloStrokePaint.strokeWidth = 2.6f * density
+            haloStrokePaint.alpha = if (isSlotEmpty) {
+                (14 + (24 * wave).toInt()).coerceIn(0, 255)
+            } else {
+                (22 + (40 * wave).toInt()).coerceIn(0, 255)
+            }
+            canvas.drawRoundRect(edge, 2f * density, w - edge, h - 3f * density, cornerR, cornerR, haloStrokePaint)
+
+            haloStrokePaint.strokeWidth = 1.0f * density
+            haloStrokePaint.alpha = if (isSlotEmpty) {
+                (38 + (38 * wave).toInt()).coerceIn(0, 255)
+            } else {
+                (64 + (62 * wave).toInt()).coerceIn(0, 255)
+            }
+            canvas.drawRoundRect(edge, 2f * density, w - edge, h - 3f * density, cornerR, cornerR, haloStrokePaint)
+        }
 
         val lineY = h - 3f * density
         cyanStrokePaint.strokeWidth = (if (isEditModeActive) 1.7f else 1.25f) * density
         cyanStrokePaint.color = if (isEditModeActive) {
             Color.parseColor("#FFB45C")
         } else if (isSlotEmpty) {
-            Color.argb(95, 0, 229, 255)
+            lerpColor(Color.argb(82, 0, 229, 255), Color.argb(128, 139, 92, 246), wave)
         } else {
-            Color.argb(185, 0, 229, 255)
+            lerpColor(Color.argb(165, 0, 229, 255), Color.argb(235, 167, 139, 250), wave)
         }
         canvas.drawLine(edge + 6f * density, lineY, w - edge - 6f * density, lineY, cyanStrokePaint)
 
-        // Delicate top-left blue accent tick (no solid card box)
-        silverStrokePaint.color = if (isSlotEmpty) Color.argb(65, 57, 139, 255) else Color.argb(150, 57, 139, 255)
+        // Delicate top-left blue-violet accent tick (no solid card box)
+        silverStrokePaint.color = if (isSlotEmpty) {
+            Color.argb((58 + (42 * wave).toInt()).coerceIn(0, 255), 57, 139, 255)
+        } else {
+            Color.argb((125 + (75 * wave).toInt()).coerceIn(0, 255), 139, 92, 246)
+        }
         silverStrokePaint.strokeWidth = 1.0f * density
         canvas.drawLine(edge, 5f * density, edge + 10f * density, 5f * density, silverStrokePaint)
     }
 
     private fun drawMayaCeramicPlate(canvas: Canvas, w: Float, h: Float) {
+        val wave = currentPulseWave()
         val inset = 3f * density
         val chamfer = 11f * density
         val path = Path().apply {
@@ -305,24 +442,38 @@ class HudPlateButton @JvmOverloads constructor(
         canvas.drawPath(path, fillPaint)
         fillPaint.shader = null
 
+        if (!isEditModeActive) {
+            haloStrokePaint.color = Color.parseColor("#F5B942")
+            haloStrokePaint.strokeWidth = 3.2f * density
+            haloStrokePaint.alpha = if (isSlotEmpty) {
+                (14 + (28 * wave).toInt()).coerceIn(0, 255)
+            } else {
+                (22 + (46 * wave).toInt()).coerceIn(0, 255)
+            }
+            canvas.drawPath(path, haloStrokePaint)
+        }
+
         cyanStrokePaint.strokeWidth = (if (isEditModeActive) 1.8f else 1.45f) * density
         cyanStrokePaint.color = when {
             isEditModeActive -> Color.parseColor("#C47A48")
-            isSlotEmpty -> Color.argb(135, 245, 185, 66)
-            else -> Color.argb(215, 245, 185, 66)
+            isSlotEmpty -> Color.argb((118 + (65 * wave).toInt()).coerceIn(0, 255), 245, 185, 66)
+            else -> Color.argb((178 + (74 * wave).toInt()).coerceIn(0, 255), 245, 185, 66)
         }
         canvas.drawPath(path, cyanStrokePaint)
 
         // Copper side chamfer brackets
         silverStrokePaint.color = Color.parseColor("#C47A48")
         silverStrokePaint.strokeWidth = 1.3f * density
+        silverStrokePaint.alpha = (165 + (75 * wave).toInt()).coerceIn(0, 255)
         val innerOffset = 1f * density
         canvas.drawLine(innerOffset, h * 0.30f, innerOffset, h * 0.70f, silverStrokePaint)
         canvas.drawLine(w - innerOffset, h * 0.30f, w - innerOffset, h * 0.70f, silverStrokePaint)
 
-        // Electric blue micro-circuit accent along lower edge
-        amberAccentPaint.color = Color.parseColor("#38BDF8")
+        // Electric blue micro-circuit accent along lower edge (pulses softly in span + glow)
+        val trimHalfSpan = w * (0.22f + 0.06f * wave)
+        amberAccentPaint.color = lerpColor(Color.parseColor("#38BDF8"), Color.parseColor("#FFE49E"), wave * 0.35f)
         amberAccentPaint.strokeWidth = 1.6f * density
-        canvas.drawLine(w * 0.24f, h - inset - 1.2f * density, w * 0.76f, h - inset - 1.2f * density, amberAccentPaint)
+        amberAccentPaint.alpha = (145 + (100 * wave).toInt()).coerceIn(0, 255)
+        canvas.drawLine(w * 0.5f - trimHalfSpan, h - inset - 1.2f * density, w * 0.5f + trimHalfSpan, h - inset - 1.2f * density, amberAccentPaint)
     }
 }

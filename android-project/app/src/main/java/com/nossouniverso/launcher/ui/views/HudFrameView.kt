@@ -1,12 +1,18 @@
 package com.nossouniverso.launcher.ui.views
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.os.Build
+import android.provider.Settings
 import android.util.AttributeSet
 import android.view.View
+import android.view.animation.LinearInterpolator
+import kotlin.math.PI
+import kotlin.math.cos
 
 /**
  * Draws the futuristic HUD structural frame from Reference 1:
@@ -31,6 +37,7 @@ class HudFrameView @JvmOverloads constructor(
         set(value) {
             if (field != value) {
                 field = value
+                updatePulseAnimatorState()
                 invalidate()
             }
         }
@@ -39,9 +46,13 @@ class HudFrameView @JvmOverloads constructor(
         set(value) {
             if (field != value) {
                 field = value
+                updatePulseAnimatorState()
                 invalidate()
             }
         }
+
+    private var pulsePhase: Float = 0f
+    private var pulseAnimator: ValueAnimator? = null
 
     private val density = resources.displayMetrics.density
 
@@ -85,8 +96,103 @@ class HudFrameView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
 
+    private val glowStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
     init {
         setBackgroundColor(Color.TRANSPARENT)
+    }
+
+    private fun isReducedMotionEnabled(): Boolean {
+        val animScale = try {
+            Settings.Global.getFloat(
+                context.contentResolver,
+                Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f
+            )
+        } catch (_: Exception) {
+            1f
+        }
+        val sysEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ValueAnimator.areAnimatorsEnabled()
+        } else {
+            true
+        }
+        return animScale <= 0f || !sysEnabled
+    }
+
+    private fun updatePulseAnimatorState() {
+        val shouldAnimate = (lunaThemeMode || mayaThemeMode) &&
+            isAttachedToWindow &&
+            windowVisibility == VISIBLE &&
+            visibility == VISIBLE &&
+            !isReducedMotionEnabled()
+
+        if (!shouldAnimate) {
+            pulseAnimator?.cancel()
+            pulseAnimator = null
+            pulsePhase = 0f
+            return
+        }
+
+        val targetDuration = if (lunaThemeMode) 5400L else 4200L
+        val existing = pulseAnimator
+        if (existing != null && existing.duration == targetDuration) {
+            if (!existing.isStarted) existing.start()
+            return
+        }
+
+        existing?.cancel()
+        pulseAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = targetDuration
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.RESTART
+            interpolator = LinearInterpolator()
+            addUpdateListener { anim ->
+                pulsePhase = anim.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        updatePulseAnimatorState()
+    }
+
+    override fun onDetachedFromWindow() {
+        pulseAnimator?.cancel()
+        pulseAnimator = null
+        super.onDetachedFromWindow()
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        updatePulseAnimatorState()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        updatePulseAnimatorState()
+    }
+
+    private fun wave(offsetFraction: Float = 0f): Float {
+        if (!lunaThemeMode && !mayaThemeMode) return 0f
+        if (isReducedMotionEnabled()) return 0.5f
+        val angle = ((pulsePhase + offsetFraction) % 1f) * (2f * PI.toFloat())
+        return 0.5f - 0.5f * cos(angle)
+    }
+
+    private fun lerpColor(colorA: Int, colorB: Int, t: Float): Int {
+        val c = t.coerceIn(0f, 1f)
+        val a = (Color.alpha(colorA) + (Color.alpha(colorB) - Color.alpha(colorA)) * c).toInt()
+        val r = (Color.red(colorA) + (Color.red(colorB) - Color.red(colorA)) * c).toInt()
+        val g = (Color.green(colorA) + (Color.green(colorB) - Color.green(colorA)) * c).toInt()
+        val b = (Color.blue(colorA) + (Color.blue(colorB) - Color.blue(colorA)) * c).toInt()
+        return Color.argb(a, r, g, b)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -114,38 +220,52 @@ class HudFrameView @JvmOverloads constructor(
         val margin = 16f * density
         val cx = w / 2f
 
-        // Sculpted golden-honey upper rail
-        amberPaint.color = Color.parseColor("#F5B942")
-        amberPaint.strokeWidth = 1.6f * density
-        amberPaint.alpha = 215
+        val topWave = wave(0f)
+        val sideWave = wave(0.18f)
+        val horizonWave = wave(0.32f)
+
+        // Sculpted golden-honey upper rail with soft ceramic-gold pulse aura
         val topPath = Path().apply {
             moveTo(margin, topY + 6f * density)
             lineTo(margin + 18f * density, topY)
             lineTo(w - margin - 18f * density, topY)
             lineTo(w - margin, topY + 6f * density)
         }
+        glowStrokePaint.color = Color.parseColor("#F5B942")
+        glowStrokePaint.strokeWidth = 4.4f * density
+        glowStrokePaint.alpha = (22 + (46 * topWave).toInt()).coerceIn(0, 255)
+        canvas.drawPath(topPath, glowStrokePaint)
+
+        amberPaint.color = Color.parseColor("#F5B942")
+        amberPaint.strokeWidth = 1.6f * density
+        amberPaint.alpha = (168 + (80 * topWave).toInt()).coerceIn(0, 255)
         canvas.drawPath(topPath, amberPaint)
 
         // Copper shoulder bevel ticks
         silverPaint.color = Color.parseColor("#C47A48")
         silverPaint.strokeWidth = 1.6f * density
-        silverPaint.alpha = 205
+        silverPaint.alpha = (158 + (78 * topWave).toInt()).coerceIn(0, 255)
         canvas.drawLine(margin + 28f * density, topY + 4.5f * density, margin + 52f * density, topY + 4.5f * density, silverPaint)
         canvas.drawLine(w - margin - 52f * density, topY + 4.5f * density, w - margin - 28f * density, topY + 4.5f * density, silverPaint)
 
-        // Electric blue center reticle chevron
-        electricBluePaint.color = Color.parseColor("#38BDF8")
-        electricBluePaint.strokeWidth = 1.5f * density
-        electricBluePaint.alpha = 215
+        // Electric blue center reticle chevron with subtle halo
         val chevron = Path().apply {
             moveTo(cx - 14f * density, topY + 7f * density)
             lineTo(cx, topY + 14f * density)
             lineTo(cx + 14f * density, topY + 7f * density)
         }
+        glowStrokePaint.color = Color.parseColor("#38BDF8")
+        glowStrokePaint.strokeWidth = 3.8f * density
+        glowStrokePaint.alpha = (24 + (48 * topWave).toInt()).coerceIn(0, 255)
+        canvas.drawPath(chevron, glowStrokePaint)
+
+        electricBluePaint.color = Color.parseColor("#38BDF8")
+        electricBluePaint.strokeWidth = 1.5f * density
+        electricBluePaint.alpha = (165 + (82 * topWave).toInt()).coerceIn(0, 255)
         canvas.drawPath(chevron, electricBluePaint)
 
         mayaSignaturePaint.textSize = 8.2f * density
-        mayaSignaturePaint.alpha = 190
+        mayaSignaturePaint.alpha = (160 + (75 * topWave).toInt()).coerceIn(0, 255)
         canvas.drawText("MAYA — HOLOGRAPHIC PRESENCE", cx, topY + 25f * density, mayaSignaturePaint)
 
         // Ceramic side drawer rails (graphite copper + golden-honey + electric blue core)
@@ -154,6 +274,10 @@ class HudFrameView @JvmOverloads constructor(
         val mid = (top + bottom) / 2f
         val edgeInset = 6f * density
         val step = 10f * density
+
+        silverPaint.alpha = (150 + (82 * sideWave).toInt()).coerceIn(0, 255)
+        amberPaint.alpha = (162 + (84 * sideWave).toInt()).coerceIn(0, 255)
+        electricBluePaint.alpha = (165 + (82 * sideWave).toInt()).coerceIn(0, 255)
 
         val leftPath = Path().apply {
             moveTo(edgeInset, top)
@@ -185,7 +309,7 @@ class HudFrameView @JvmOverloads constructor(
 
         // Subtle warm golden bottom horizon line
         val bottomY = h - paddingBottom - 8f * density
-        amberPaint.alpha = 110
+        amberPaint.alpha = (75 + (78 * horizonWave).toInt()).coerceIn(0, 255)
         amberPaint.strokeWidth = 1.1f * density
         canvas.drawLine(margin + 24f * density, bottomY, w - margin - 24f * density, bottomY, amberPaint)
     }
@@ -196,31 +320,57 @@ class HudFrameView @JvmOverloads constructor(
         val bottomY = h - paddingBottom - 8f * density
         val cornerLen = 22f * density
 
-        // Subtle holographic cyan upper corner ticks leaving center halo completely unobstructed
-        cyanPaint.color = Color.parseColor("#00E5FF")
+        val cornerWave = wave(0f)
+        val railWave = wave(0.24f)
+        val horizonWave = wave(0.45f)
+
+        val lunaCyan = Color.parseColor("#00E5FF")
+        val lunaViolet = Color.parseColor("#8B5CF6")
+        val lunaBlue = Color.parseColor("#398BFF")
+
+        // Subtle holographic cyan-to-violet upper corner ticks leaving center halo completely unobstructed
+        val cornerColor = lerpColor(lunaCyan, lunaViolet, cornerWave * 0.45f)
+        glowStrokePaint.color = cornerColor
+        glowStrokePaint.strokeWidth = 3.2f * density
+        glowStrokePaint.alpha = (18 + (34 * cornerWave).toInt()).coerceIn(0, 255)
+        canvas.drawLine(margin, topY + cornerLen * 0.45f, margin, topY, glowStrokePaint)
+        canvas.drawLine(margin, topY, margin + cornerLen, topY, glowStrokePaint)
+        canvas.drawLine(w - margin - cornerLen, topY, w - margin, topY, glowStrokePaint)
+        canvas.drawLine(w - margin, topY, w - margin, topY + cornerLen * 0.45f, glowStrokePaint)
+
+        cyanPaint.color = cornerColor
         cyanPaint.strokeWidth = 1.2f * density
-        cyanPaint.alpha = 135
+        cyanPaint.alpha = (118 + (82 * cornerWave).toInt()).coerceIn(0, 255)
         canvas.drawLine(margin, topY + cornerLen * 0.45f, margin, topY, cyanPaint)
         canvas.drawLine(margin, topY, margin + cornerLen, topY, cyanPaint)
         canvas.drawLine(w - margin - cornerLen, topY, w - margin, topY, cyanPaint)
         canvas.drawLine(w - margin, topY, w - margin, topY + cornerLen * 0.45f, cyanPaint)
 
-        // Slim side-drawer handle indicators (subtle electric blue & restrained copper glint)
+        // Slim side-drawer handle indicators (subtle electric blue-violet & restrained copper glint)
         val midY = h * 0.40f
         val railSpan = 36f * density
+        val railColor = lerpColor(lunaBlue, lunaViolet, railWave * 0.52f)
+        glowStrokePaint.color = railColor
+        glowStrokePaint.strokeWidth = 3.6f * density
+        glowStrokePaint.alpha = (20 + (36 * railWave).toInt()).coerceIn(0, 255)
+        canvas.drawLine(5f * density, midY - railSpan, 5f * density, midY + railSpan, glowStrokePaint)
+        canvas.drawLine(w - 5f * density, midY - railSpan, w - 5f * density, midY + railSpan, glowStrokePaint)
+
+        electricBluePaint.color = railColor
         electricBluePaint.strokeWidth = 1.5f * density
-        electricBluePaint.alpha = 155
+        electricBluePaint.alpha = (128 + (86 * railWave).toInt()).coerceIn(0, 255)
         canvas.drawLine(5f * density, midY - railSpan, 5f * density, midY + railSpan, electricBluePaint)
         canvas.drawLine(w - 5f * density, midY - railSpan, w - 5f * density, midY + railSpan, electricBluePaint)
 
         amberPaint.color = Color.parseColor("#C47A48")
         amberPaint.strokeWidth = 1.6f * density
-        amberPaint.alpha = 185
+        amberPaint.alpha = (145 + (68 * railWave).toInt()).coerceIn(0, 255)
         canvas.drawLine(8.5f * density, midY - 12f * density, 8.5f * density, midY - 2f * density, amberPaint)
         canvas.drawLine(w - 8.5f * density, midY + 2f * density, w - 8.5f * density, midY + 12f * density, amberPaint)
 
         // Discreet bottom horizon hairline
-        cyanPaint.alpha = 72
+        cyanPaint.color = lerpColor(lunaCyan, lunaViolet, horizonWave * 0.4f)
+        cyanPaint.alpha = (54 + (62 * horizonWave).toInt()).coerceIn(0, 255)
         cyanPaint.strokeWidth = 1.0f * density
         canvas.drawLine(margin + 18f * density, bottomY, w - margin - 18f * density, bottomY, cyanPaint)
     }
