@@ -35,6 +35,14 @@ class HudFrameView @JvmOverloads constructor(
             }
         }
 
+    var mayaThemeMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                invalidate()
+            }
+        }
+
     private val density = resources.displayMetrics.density
 
     private val cyanPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -66,6 +74,12 @@ class HudFrameView @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
     }
 
+    private val mayaSignaturePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFE49E")
+        textAlign = Paint.Align.CENTER
+        letterSpacing = 0.24f
+    }
+
     private val dotMatrixPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#4D64748B")
         style = Paint.Style.FILL
@@ -85,10 +99,95 @@ class HudFrameView @JvmOverloads constructor(
             drawLunaHoloFrame(canvas, w, h)
             return
         }
+        if (mayaThemeMode) {
+            drawMayaCeramicFrame(canvas, w, h)
+            return
+        }
 
         drawTopOrnamentalHeader(canvas, w)
         drawSideRails(canvas, w, h)
         drawBottomSpectrumMatrix(canvas, w, h)
+    }
+
+    private fun drawMayaCeramicFrame(canvas: Canvas, w: Float, h: Float) {
+        val topY = paddingTop + 14f * density
+        val margin = 16f * density
+        val cx = w / 2f
+
+        // Sculpted golden-honey upper rail
+        amberPaint.color = Color.parseColor("#F5B942")
+        amberPaint.strokeWidth = 1.6f * density
+        amberPaint.alpha = 215
+        val topPath = Path().apply {
+            moveTo(margin, topY + 6f * density)
+            lineTo(margin + 18f * density, topY)
+            lineTo(w - margin - 18f * density, topY)
+            lineTo(w - margin, topY + 6f * density)
+        }
+        canvas.drawPath(topPath, amberPaint)
+
+        // Copper shoulder bevel ticks
+        silverPaint.color = Color.parseColor("#C47A48")
+        silverPaint.strokeWidth = 1.6f * density
+        silverPaint.alpha = 205
+        canvas.drawLine(margin + 28f * density, topY + 4.5f * density, margin + 52f * density, topY + 4.5f * density, silverPaint)
+        canvas.drawLine(w - margin - 52f * density, topY + 4.5f * density, w - margin - 28f * density, topY + 4.5f * density, silverPaint)
+
+        // Electric blue center reticle chevron
+        electricBluePaint.color = Color.parseColor("#38BDF8")
+        electricBluePaint.strokeWidth = 1.5f * density
+        electricBluePaint.alpha = 215
+        val chevron = Path().apply {
+            moveTo(cx - 14f * density, topY + 7f * density)
+            lineTo(cx, topY + 14f * density)
+            lineTo(cx + 14f * density, topY + 7f * density)
+        }
+        canvas.drawPath(chevron, electricBluePaint)
+
+        mayaSignaturePaint.textSize = 8.2f * density
+        mayaSignaturePaint.alpha = 190
+        canvas.drawText("MAYA — HOLOGRAPHIC PRESENCE", cx, topY + 25f * density, mayaSignaturePaint)
+
+        // Ceramic side drawer rails (graphite copper + golden-honey + electric blue core)
+        val top = h * 0.24f
+        val bottom = h * 0.72f
+        val mid = (top + bottom) / 2f
+        val edgeInset = 6f * density
+        val step = 10f * density
+
+        val leftPath = Path().apply {
+            moveTo(edgeInset, top)
+            lineTo(edgeInset + step, top + step)
+            lineTo(edgeInset + step, mid - 28f * density)
+            lineTo(edgeInset + 3f * density, mid - 20f * density)
+            lineTo(edgeInset + 3f * density, mid + 20f * density)
+            lineTo(edgeInset + step, mid + 28f * density)
+            lineTo(edgeInset + step, bottom - step)
+            lineTo(edgeInset, bottom)
+        }
+        canvas.drawPath(leftPath, silverPaint)
+        canvas.drawLine(edgeInset + 6f * density, mid - 34f * density, edgeInset + 6f * density, mid - 12f * density, amberPaint)
+        canvas.drawLine(edgeInset + 6f * density, mid + 12f * density, edgeInset + 6f * density, mid + 34f * density, electricBluePaint)
+
+        val rightPath = Path().apply {
+            moveTo(w - edgeInset, top)
+            lineTo(w - edgeInset - step, top + step)
+            lineTo(w - edgeInset - step, mid - 28f * density)
+            lineTo(w - edgeInset - 3f * density, mid - 20f * density)
+            lineTo(w - edgeInset - 3f * density, mid + 20f * density)
+            lineTo(w - edgeInset - step, mid + 28f * density)
+            lineTo(w - edgeInset - step, bottom - step)
+            lineTo(w - edgeInset, bottom)
+        }
+        canvas.drawPath(rightPath, silverPaint)
+        canvas.drawLine(w - edgeInset - 6f * density, mid - 34f * density, w - edgeInset - 6f * density, mid - 12f * density, amberPaint)
+        canvas.drawLine(w - edgeInset - 6f * density, mid + 12f * density, w - edgeInset - 6f * density, mid + 34f * density, electricBluePaint)
+
+        // Subtle warm golden bottom horizon line
+        val bottomY = h - paddingBottom - 8f * density
+        amberPaint.alpha = 110
+        amberPaint.strokeWidth = 1.1f * density
+        canvas.drawLine(margin + 24f * density, bottomY, w - margin - 24f * density, bottomY, amberPaint)
     }
 
     private fun drawLunaHoloFrame(canvas: Canvas, w: Float, h: Float) {

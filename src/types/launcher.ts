@@ -21,6 +21,7 @@ export type SlotId =
 export type BuiltInIconPackId =
   | "hilm-artifacts"
   | "luna-holographic"
+  | "maya-ceramic-gold"
   | "obsidian-core"
   | "cyberpunk-holo"
   | "tron-neon"
@@ -54,11 +55,15 @@ export interface IconPackDescriptor {
   icons?: IconPackIconEntry[];
 }
 
-export type LauncherThemeId = "default" | "luna-entre-luz-e-sombra";
+export type LauncherThemeId =
+  | "default"
+  | "luna-entre-luz-e-sombra"
+  | "maya-holographic-presence";
 
 export type WallpaperId =
   | "ref-horizon"
   | "luna-shadow-light"
+  | "maya-holographic-presence"
   | "hilm-void"
   | "obsidian-grid"
   | "solar-nebula"

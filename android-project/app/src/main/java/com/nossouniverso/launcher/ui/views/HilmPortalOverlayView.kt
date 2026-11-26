@@ -65,15 +65,41 @@ class HilmPortalOverlayView @JvmOverloads constructor(
             }
         }
 
+    var mayaThemeMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                wellShader = null
+                wellShaderRadius = -1f
+                applyThemePaletteToPaints()
+            }
+        }
+
     private var onLaunchTrigger: (() -> Unit)? = null
     private var onFinishedCallback: (() -> Unit)? = null
     private var hiddenOriginRef: WeakReference<View>? = null
 
     private fun applyThemePaletteToPaints() {
-        cyanRingPaint.color = Color.parseColor(if (lunaThemeMode) "#00E5FF" else "#22D3EE")
-        cyanFinePaint.color = Color.parseColor(if (lunaThemeMode) "#D9F7FF" else "#A5F3FC")
-        orangeRingPaint.color = Color.parseColor(if (lunaThemeMode) "#398BFF" else "#FB923C")
-        amberTickPaint.color = Color.parseColor(if (lunaThemeMode) "#FFB45C" else "#F59E0B")
+        when {
+            lunaThemeMode -> {
+                cyanRingPaint.color = Color.parseColor("#00E5FF")
+                cyanFinePaint.color = Color.parseColor("#D9F7FF")
+                orangeRingPaint.color = Color.parseColor("#398BFF")
+                amberTickPaint.color = Color.parseColor("#FFB45C")
+            }
+            mayaThemeMode -> {
+                cyanRingPaint.color = Color.parseColor("#F5B942")
+                cyanFinePaint.color = Color.parseColor("#FFE49E")
+                orangeRingPaint.color = Color.parseColor("#C47A48")
+                amberTickPaint.color = Color.parseColor("#38BDF8")
+            }
+            else -> {
+                cyanRingPaint.color = Color.parseColor("#22D3EE")
+                cyanFinePaint.color = Color.parseColor("#A5F3FC")
+                orangeRingPaint.color = Color.parseColor("#FB923C")
+                amberTickPaint.color = Color.parseColor("#F59E0B")
+            }
+        }
     }
 
     private var originX: Float = 0f
@@ -327,7 +353,11 @@ class HilmPortalOverlayView @JvmOverloads constructor(
 
         val rimRadius = baseRadius * 0.78f + maxExpandRadius * 0.78f * eased
         glowRimPaint.strokeWidth = (2.4f - 1.2f * eased) * density
-        glowRimPaint.color = Color.argb((125 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238)
+        glowRimPaint.color = if (mayaThemeMode) {
+            Color.argb((135 * fadeOut).toInt().coerceIn(0, 255), 245, 185, 66)
+        } else {
+            Color.argb((125 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238)
+        }
         canvas.drawCircle(originX, originY, rimRadius, glowRimPaint)
 
         val cyanR = baseRadius * 0.88f + maxExpandRadius * 0.86f * eased
@@ -361,13 +391,37 @@ class HilmPortalOverlayView @JvmOverloads constructor(
         canvas.drawArc(arcRect, ccwAngle + 108f, 30f, false, amberTickPaint)
         canvas.drawArc(arcRect, ccwAngle + 288f, 30f, false, amberTickPaint)
 
+        if (mayaThemeMode) {
+            val moteSpread = baseRadius * 0.75f + maxExpandRadius * 0.76f * eased
+            digitalMotes.take(12).forEachIndexed { idx, mote ->
+                val mr = moteSpread * (0.45f + mote.distanceFactor * 0.55f)
+                val mx = originX + cos(mote.angleRad + eased * 0.8f) * mr
+                val my = originY + sin(mote.angleRad + eased * 0.8f) * mr
+                motePaint.color = when (idx % 3) {
+                    0 -> Color.parseColor("#F5B942")
+                    1 -> Color.parseColor("#00E5FF")
+                    else -> Color.parseColor("#FFE49E")
+                }
+                motePaint.alpha = (210 * fadeOut).toInt().coerceIn(0, 255)
+                canvas.drawCircle(mx, my, (1.4f + (idx % 2) * 0.65f) * density * (1f - 0.35f * eased), motePaint)
+            }
+        }
+
         if (progress < 0.72f) {
             val flareFade = (1f - progress / 0.72f).coerceIn(0f, 1f)
             val span = baseRadius * (1.25f + 2.45f * eased)
             flarePaint.strokeWidth = 1.6f * density
-            flarePaint.color = Color.argb((115 * flareFade).toInt().coerceIn(0, 255), 34, 211, 238)
+            flarePaint.color = if (mayaThemeMode) {
+                Color.argb((125 * flareFade).toInt().coerceIn(0, 255), 245, 185, 66)
+            } else {
+                Color.argb((115 * flareFade).toInt().coerceIn(0, 255), 34, 211, 238)
+            }
             canvas.drawLine(originX - span, originY, originX, originY, flarePaint)
-            flarePaint.color = Color.argb((115 * flareFade).toInt().coerceIn(0, 255), 251, 146, 60)
+            flarePaint.color = if (mayaThemeMode) {
+                Color.argb((125 * flareFade).toInt().coerceIn(0, 255), 56, 189, 248)
+            } else {
+                Color.argb((115 * flareFade).toInt().coerceIn(0, 255), 251, 146, 60)
+            }
             canvas.drawLine(originX, originY, originX + span, originY, flarePaint)
         }
 
@@ -383,15 +437,20 @@ class HilmPortalOverlayView @JvmOverloads constructor(
             val r = spread * mote.distanceFactor
             val mx = originX + cos(mote.angleRad) * r
             val my = originY + sin(mote.angleRad) * r
-            motePaint.color = if (lunaThemeMode) {
-                when (idx % 4) {
+            motePaint.color = when {
+                lunaThemeMode -> when (idx % 4) {
                     0 -> Color.parseColor("#00E5FF")
                     1 -> Color.parseColor("#398BFF")
                     2 -> Color.parseColor("#D9F7FF")
                     else -> Color.parseColor("#FFB45C")
                 }
-            } else {
-                mote.color
+                mayaThemeMode -> when (idx % 4) {
+                    0 -> Color.parseColor("#F5B942")
+                    1 -> Color.parseColor("#00E5FF")
+                    2 -> Color.parseColor("#C47A48")
+                    else -> Color.parseColor("#FFE49E")
+                }
+                else -> mote.color
             }
             motePaint.alpha = (230 * fadeOut).toInt().coerceIn(0, 255)
             val dotR = mote.radiusDp * density * (1f - 0.35f * eased)
@@ -412,12 +471,21 @@ class HilmPortalOverlayView @JvmOverloads constructor(
             0f,
             beamX + beamW,
             0f,
-            intArrayOf(
-                Color.TRANSPARENT,
-                Color.argb((165 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238),
-                Color.argb((130 * fadeOut).toInt().coerceIn(0, 255), 251, 146, 60),
-                Color.TRANSPARENT
-            ),
+            if (mayaThemeMode) {
+                intArrayOf(
+                    Color.TRANSPARENT,
+                    Color.argb((165 * fadeOut).toInt().coerceIn(0, 255), 245, 185, 66),
+                    Color.argb((135 * fadeOut).toInt().coerceIn(0, 255), 56, 189, 248),
+                    Color.TRANSPARENT
+                )
+            } else {
+                intArrayOf(
+                    Color.TRANSPARENT,
+                    Color.argb((165 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238),
+                    Color.argb((130 * fadeOut).toInt().coerceIn(0, 255), 251, 146, 60),
+                    Color.TRANSPARENT
+                )
+            },
             null,
             Shader.TileMode.CLAMP
         )
@@ -425,7 +493,11 @@ class HilmPortalOverlayView @JvmOverloads constructor(
 
         val span = baseRadius * (1.4f + 3.2f * eased)
         flarePaint.strokeWidth = 2.0f * density
-        flarePaint.color = Color.argb((145 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238)
+        flarePaint.color = if (mayaThemeMode) {
+            Color.argb((145 * fadeOut).toInt().coerceIn(0, 255), 245, 185, 66)
+        } else {
+            Color.argb((145 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238)
+        }
         canvas.drawLine(originX - span, originY, originX + span, originY, flarePaint)
 
         drawSourceIcon(canvas, scaleBoost = 0.24f)
@@ -443,12 +515,20 @@ class HilmPortalOverlayView @JvmOverloads constructor(
             originY + halfH - tiltShift * 0.45f
         )
         framePaint.strokeWidth = 2.1f * density
-        framePaint.color = Color.argb((190 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238)
+        framePaint.color = if (mayaThemeMode) {
+            Color.argb((195 * fadeOut).toInt().coerceIn(0, 255), 245, 185, 66)
+        } else {
+            Color.argb((190 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238)
+        }
         canvas.drawRoundRect(frameRect, 18f * density, 18f * density, framePaint)
 
         frameRect.inset(8f * density, 8f * density)
         framePaint.strokeWidth = 1.4f * density
-        framePaint.color = Color.argb((150 * fadeOut).toInt().coerceIn(0, 255), 251, 146, 60)
+        framePaint.color = if (mayaThemeMode) {
+            Color.argb((160 * fadeOut).toInt().coerceIn(0, 255), 56, 189, 248)
+        } else {
+            Color.argb((150 * fadeOut).toInt().coerceIn(0, 255), 251, 146, 60)
+        }
         canvas.drawRoundRect(frameRect, 14f * density, 14f * density, framePaint)
 
         drawSourceIcon(canvas, scaleBoost = 0.44f)
@@ -460,11 +540,19 @@ class HilmPortalOverlayView @JvmOverloads constructor(
 
         val waveR = baseRadius * 0.85f + maxExpandRadius * 0.82f * eased
         glowRimPaint.strokeWidth = 2.6f * density
-        glowRimPaint.color = Color.argb((155 * fadeOut).toInt().coerceIn(0, 255), 139, 92, 246)
+        glowRimPaint.color = if (mayaThemeMode) {
+            Color.argb((165 * fadeOut).toInt().coerceIn(0, 255), 245, 185, 66)
+        } else {
+            Color.argb((155 * fadeOut).toInt().coerceIn(0, 255), 139, 92, 246)
+        }
         canvas.drawCircle(originX, originY, waveR, glowRimPaint)
 
         glowRimPaint.strokeWidth = 1.6f * density
-        glowRimPaint.color = Color.argb((150 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238)
+        glowRimPaint.color = if (mayaThemeMode) {
+            Color.argb((155 * fadeOut).toInt().coerceIn(0, 255), 56, 189, 248)
+        } else {
+            Color.argb((150 * fadeOut).toInt().coerceIn(0, 255), 34, 211, 238)
+        }
         canvas.drawCircle(originX, originY, waveR * 0.74f, glowRimPaint)
 
         drawSourceIcon(canvas, scaleBoost = 0.34f)
@@ -472,7 +560,11 @@ class HilmPortalOverlayView @JvmOverloads constructor(
 
     private fun drawClassicIconEffect(canvas: Canvas, eased: Float) {
         glowRimPaint.strokeWidth = 1.4f * density
-        glowRimPaint.color = Color.argb(((1f - eased) * 110f).toInt().coerceIn(0, 255), 34, 211, 238)
+        glowRimPaint.color = if (mayaThemeMode) {
+            Color.argb(((1f - eased) * 120f).toInt().coerceIn(0, 255), 245, 185, 66)
+        } else {
+            Color.argb(((1f - eased) * 110f).toInt().coerceIn(0, 255), 34, 211, 238)
+        }
         canvas.drawCircle(originX, originY, baseRadius * (1.0f + 0.55f * eased), glowRimPaint)
         drawSourceIcon(canvas, scaleBoost = 0.28f)
     }
@@ -586,10 +678,18 @@ class HilmPortalOverlayView @JvmOverloads constructor(
             }
             HilmTransitionEffect.ENERGY_DISSOLVE -> {
                 glowRimPaint.strokeWidth = 3.4f * density
-                glowRimPaint.color = Color.argb((220 * (1f - iconT * 0.65f)).toInt().coerceIn(0, 255), 34, 211, 238)
+                glowRimPaint.color = if (mayaThemeMode) {
+                    Color.argb((220 * (1f - iconT * 0.65f)).toInt().coerceIn(0, 255), 245, 185, 66)
+                } else {
+                    Color.argb((220 * (1f - iconT * 0.65f)).toInt().coerceIn(0, 255), 34, 211, 238)
+                }
                 canvas.drawCircle(originX, originY, half * 1.14f, glowRimPaint)
                 glowRimPaint.strokeWidth = 2.2f * density
-                glowRimPaint.color = Color.argb((195 * (1f - iconT * 0.65f)).toInt().coerceIn(0, 255), 168, 85, 247)
+                glowRimPaint.color = if (mayaThemeMode) {
+                    Color.argb((195 * (1f - iconT * 0.65f)).toInt().coerceIn(0, 255), 56, 189, 248)
+                } else {
+                    Color.argb((195 * (1f - iconT * 0.65f)).toInt().coerceIn(0, 255), 168, 85, 247)
+                }
                 canvas.drawCircle(originX, originY, half * 1.38f, glowRimPaint)
                 iconDestRect.set(originX - half, originY - half, originX + half, originY + half)
                 iconPaint.alpha = alphaInt
@@ -607,8 +707,8 @@ class HilmPortalOverlayView @JvmOverloads constructor(
         if (wellShader != null && wellShaderRadius > 0f) return
         val unitR = max(radius, 80f * density)
         wellShaderRadius = unitR
-        wellShader = if (lunaThemeMode) {
-            RadialGradient(
+        wellShader = when {
+            lunaThemeMode -> RadialGradient(
                 0f,
                 0f,
                 unitR,
@@ -622,8 +722,21 @@ class HilmPortalOverlayView @JvmOverloads constructor(
                 floatArrayOf(0f, 0.42f, 0.68f, 0.84f, 1f),
                 Shader.TileMode.CLAMP
             )
-        } else {
-            RadialGradient(
+            mayaThemeMode -> RadialGradient(
+                0f,
+                0f,
+                unitR,
+                intArrayOf(
+                    Color.argb(230, 11, 14, 20),
+                    Color.argb(185, 20, 25, 35),
+                    Color.argb(88, 245, 185, 66),
+                    Color.argb(56, 56, 189, 248),
+                    Color.TRANSPARENT
+                ),
+                floatArrayOf(0f, 0.42f, 0.68f, 0.84f, 1f),
+                Shader.TileMode.CLAMP
+            )
+            else -> RadialGradient(
                 0f,
                 0f,
                 unitR,

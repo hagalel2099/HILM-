@@ -26,22 +26,109 @@ export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgF
   }, []);
 
   const isLunaTheme = themeId === "luna-entre-luz-e-sombra";
+  const isMayaTheme = themeId === "maya-holographic-presence";
 
-  const primaryStroke = isLunaTheme
+  const primaryStroke = isMayaTheme
     ? status === "alert"
-      ? "#FFB45C"
-      : status === "resolved"
-        ? "#D9F7FF"
-        : status === "syncing"
-          ? "#398BFF"
-          : "#00E5FF"
-    : status === "alert"
       ? "#F59E0B"
       : status === "resolved"
-        ? "#34D399"
+        ? "#FFE49E"
         : status === "syncing"
           ? "#38BDF8"
-          : "#22D3EE";
+          : "#F5B942"
+    : isLunaTheme
+      ? status === "alert"
+        ? "#FFB45C"
+        : status === "resolved"
+          ? "#D9F7FF"
+          : status === "syncing"
+            ? "#398BFF"
+            : "#00E5FF"
+      : status === "alert"
+        ? "#F59E0B"
+        : status === "resolved"
+          ? "#34D399"
+          : status === "syncing"
+            ? "#38BDF8"
+            : "#22D3EE";
+
+  if (isMayaTheme) {
+    return (
+      <svg
+        viewBox="0 0 360 760"
+        preserveAspectRatio="xMidYMid slice"
+        data-hilm-status={status}
+        className="absolute inset-0 w-full h-full pointer-events-none select-none z-10"
+        aria-hidden="true"
+      >
+        <defs>
+          <filter id="mayaHoloGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="1.6" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <linearGradient id="mayaRailGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.18" />
+            <stop offset="48%" stopColor="#F5B942" stopOpacity="0.72" />
+            <stop offset="100%" stopColor="#C47A48" stopOpacity="0.22" />
+          </linearGradient>
+        </defs>
+
+        {/* Top Ceramic-Gold Chamfered Horizon Rail & Signature */}
+        <g opacity="0.86" filter="url(#mayaHoloGlow)">
+          <path d="M 16 44 L 30 37 L 98 37" fill="none" stroke={primaryStroke} strokeWidth="1.25" />
+          <path d="M 262 37 L 330 37 L 344 44" fill="none" stroke={primaryStroke} strokeWidth="1.25" />
+          <line x1="36" y1="41" x2="62" y2="41" stroke="#38BDF8" strokeWidth="1.15" opacity="0.88" />
+          <line x1="298" y1="41" x2="324" y2="41" stroke="#C47A48" strokeWidth="1.15" opacity="0.88" />
+          <text
+            x="180"
+            y="40.5"
+            textAnchor="middle"
+            fill="#FFE49E"
+            fontSize="6.7"
+            fontWeight="600"
+            letterSpacing="2.1"
+            opacity="0.92"
+          >
+            MAYA — HOLOGRAPHIC PRESENCE
+          </text>
+        </g>
+
+        {/* Sculpted Left & Right Side Drawer Ceramic Rails */}
+        <g opacity="0.78">
+          <path
+            d="M 5 162 L 12 172 L 12 256 L 6 264 L 6 298 L 12 306 L 12 378 L 5 388"
+            fill="none"
+            stroke="url(#mayaRailGrad)"
+            strokeWidth="1.4"
+          />
+          <line x1="8" y1="268" x2="8" y2="294" stroke="#38BDF8" strokeWidth="1.8" />
+          <line x1="8" y1="242" x2="8" y2="254" stroke="#C47A48" strokeWidth="1.6" />
+
+          <path
+            d="M 355 162 L 348 172 L 348 256 L 354 264 L 354 298 L 348 306 L 348 378 L 355 388"
+            fill="none"
+            stroke="url(#mayaRailGrad)"
+            strokeWidth="1.4"
+          />
+          <line x1="352" y1="268" x2="352" y2="294" stroke="#38BDF8" strokeWidth="1.8" />
+          <line x1="352" y1="242" x2="352" y2="254" stroke="#F5B942" strokeWidth="1.6" />
+        </g>
+
+        <line
+          x1="28"
+          y1="714"
+          x2="332"
+          y2="714"
+          stroke="#F5B942"
+          strokeWidth="0.8"
+          strokeOpacity="0.34"
+        />
+      </svg>
+    );
+  }
 
   if (isLunaTheme) {
     return (

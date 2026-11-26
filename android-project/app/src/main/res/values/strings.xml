@@ -46,5 +46,6 @@
     <string name="theme_section">Tema Exclusivo do Launcher</string>
     <string name="theme_default_title">Nosso Universo Padrão (HUD Clássico)</string>
     <string name="theme_luna_title">Tema Luna — Entre Luz e Sombra | HILM</string>
+    <string name="theme_maya_title">Tema Maya — Holographic Presence | HILM</string>
     <string name="luna_orbital_core_desc">Central HILM e configurações do Tema Luna</string>
 </resources>

@@ -24,6 +24,7 @@ import type {
   IconPackId,
   InstalledAppItem,
   LauncherPersistedState,
+  LauncherThemeId,
   LauncherUpdateCheckResponse,
   SlotId,
 } from "../types/launcher";
@@ -116,10 +117,20 @@ export function LauncherPhonePreview({
   const isLunaTheme =
     state.themeId === "luna-entre-luz-e-sombra" ||
     state.wallpaperId === "luna-shadow-light";
-  const activeThemeId = isLunaTheme ? "luna-entre-luz-e-sombra" : "default";
-  const effectiveIconPack: IconPackId = isLunaTheme
-    ? "luna-holographic"
-    : state.iconPack;
+  const isMayaTheme =
+    !isLunaTheme &&
+    (state.themeId === "maya-holographic-presence" ||
+      state.wallpaperId === "maya-holographic-presence");
+  const activeThemeId: LauncherThemeId = isMayaTheme
+    ? "maya-holographic-presence"
+    : isLunaTheme
+      ? "luna-entre-luz-e-sombra"
+      : "default";
+  const effectiveIconPack: IconPackId = isMayaTheme
+    ? "maya-ceramic-gold"
+    : isLunaTheme
+      ? "luna-holographic"
+      : state.iconPack;
 
   const coreStatus: HilmCoreStatus = useMemo(() => {
     if (
@@ -146,13 +157,21 @@ export function LauncherPhonePreview({
         : coreStatus === "syncing"
           ? "#398BFF"
           : "#00E5FF"
-    : coreStatus === "alert"
-      ? "#F59E0B"
-      : coreStatus === "resolved"
-        ? "#34D399"
-        : coreStatus === "syncing"
-          ? "#38BDF8"
-          : "#22D3EE";
+    : isMayaTheme
+      ? coreStatus === "alert"
+        ? "#C47A48"
+        : coreStatus === "resolved"
+          ? "#FFE49E"
+          : coreStatus === "syncing"
+            ? "#38BDF8"
+            : "#F5B942"
+      : coreStatus === "alert"
+        ? "#F59E0B"
+        : coreStatus === "resolved"
+          ? "#34D399"
+          : coreStatus === "syncing"
+            ? "#38BDF8"
+            : "#22D3EE";
 
   const hilmSpring = !effectiveTransitionsEnabled
     ? { duration: 0.01 }
@@ -215,6 +234,10 @@ export function LauncherPhonePreview({
       };
     }
     switch (state.wallpaperId) {
+      case "maya-holographic-presence":
+        return {
+          backgroundColor: "#0B0E14",
+        };
       case "luna-shadow-light":
         return {
           backgroundColor: "#05070B",
@@ -649,19 +672,32 @@ export function LauncherPhonePreview({
                     ? "0 6px 16px rgba(0, 229, 255, 0.28)"
                     : undefined,
                 }
-              : {
-                  backgroundColor: `rgba(8, 14, 24, ${Math.max(0.45, state.panelOpacity / 100)})`,
-                  clipPath:
-                    "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
-                  boxShadow: isBeingDragged
-                    ? "inset 0 0 0 1.8px rgba(34, 211, 238, 0.95), 0 0 16px rgba(34, 211, 238, 0.35)"
-                    : isEditMode
-                      ? "inset 0 0 0 1.5px rgba(245, 158, 11, 0.85)"
-                      : "inset 0 0 0 1.2px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.55)",
-                }
+              : isMayaTheme
+                ? {
+                    backgroundColor: `rgba(19, 23, 32, ${Math.max(0.68, state.panelOpacity / 100)})`,
+                    backgroundImage:
+                      "linear-gradient(145deg, rgba(35, 42, 58, 0.55) 0%, rgba(15, 19, 27, 0.92) 100%)",
+                    clipPath:
+                      "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
+                    boxShadow: isBeingDragged
+                      ? "inset 0 0 0 1.8px rgba(245, 185, 66, 0.95), 0 0 16px rgba(245, 185, 66, 0.35)"
+                      : isEditMode
+                        ? "inset 0 0 0 1.6px rgba(196, 122, 72, 0.95)"
+                        : "inset 0 0 0 1.3px rgba(245, 185, 66, 0.68), inset 0 -2px 0 rgba(56, 189, 248, 0.55)",
+                  }
+                : {
+                    backgroundColor: `rgba(8, 14, 24, ${Math.max(0.45, state.panelOpacity / 100)})`,
+                    clipPath:
+                      "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
+                    boxShadow: isBeingDragged
+                      ? "inset 0 0 0 1.8px rgba(34, 211, 238, 0.95), 0 0 16px rgba(34, 211, 238, 0.35)"
+                      : isEditMode
+                        ? "inset 0 0 0 1.5px rgba(245, 158, 11, 0.85)"
+                        : "inset 0 0 0 1.2px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.55)",
+                  }
           }
         >
-          {!isLunaTheme && (
+          {!isLunaTheme && !isMayaTheme && (
             <span
               aria-hidden="true"
               className="hud-breathe-plate pointer-events-none absolute inset-0"
@@ -671,6 +707,12 @@ export function LauncherPhonePreview({
                   "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
                 boxShadow: "inset 0 0 0 1.4px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.82)",
               }}
+            />
+          )}
+          {isMayaTheme && (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-3 bottom-0.5 h-[1.5px] bg-gradient-to-r from-[#C47A48] via-[#38BDF8] to-[#F5B942] opacity-80"
             />
           )}
           {isEditMode && <GripVertical className="w-3.5 h-3.5 text-amber-400 shrink-0 relative z-10" />}
@@ -729,7 +771,9 @@ export function LauncherPhonePreview({
                 className={`font-display text-[11px] font-semibold tracking-wider uppercase truncate ${
                   isLunaTheme
                     ? "text-[#D9F7FF] drop-shadow-[0_1px_4px_rgba(5,7,11,0.95)]"
-                    : "text-slate-100"
+                    : isMayaTheme
+                      ? "text-[#FFE49E] drop-shadow-[0_1px_4px_rgba(11,14,20,0.95)]"
+                      : "text-slate-100"
                 }`}
               >
                 {slot.customLabel || app.label}
@@ -938,10 +982,12 @@ export function LauncherPhonePreview({
                   ? "#F59E0B"
                   : isLunaTheme
                     ? "rgba(0, 229, 255, 0.34)"
-                    : "rgba(255, 255, 255, 0.28)"
+                    : isMayaTheme
+                      ? "rgba(245, 185, 66, 0.56)"
+                      : "rgba(255, 255, 255, 0.28)"
               }
               strokeWidth={isLunaTheme ? "0.95" : "1.2"}
-              strokeDasharray={isLunaTheme ? "12 10" : "18 6"}
+              strokeDasharray={isLunaTheme ? "12 10" : isMayaTheme ? "20 6" : "18 6"}
             />
           </svg>
           {app ? (
@@ -1088,10 +1134,17 @@ export function LauncherPhonePreview({
                   backgroundColor: "transparent",
                   boxShadow: isBeingDragged ? "0 0 18px rgba(0, 229, 255, 0.45)" : undefined,
                 }
-              : {
-                  backgroundColor: `rgba(8, 14, 23, ${Math.max(0.55, state.panelOpacity / 100)})`,
-                  boxShadow: isBeingDragged ? "0 0 18px rgba(34, 211, 238, 0.45)" : undefined,
-                }
+              : isMayaTheme
+                ? {
+                    backgroundColor: `rgba(19, 23, 32, ${Math.max(0.72, state.panelOpacity / 100)})`,
+                    boxShadow: isBeingDragged
+                      ? "0 0 18px rgba(245, 185, 66, 0.48)"
+                      : "inset 0 0 8px rgba(196, 122, 72, 0.2)",
+                  }
+                : {
+                    backgroundColor: `rgba(8, 14, 23, ${Math.max(0.55, state.panelOpacity / 100)})`,
+                    boxShadow: isBeingDragged ? "0 0 18px rgba(34, 211, 238, 0.45)" : undefined,
+                  }
           }
         >
           <svg
@@ -1120,6 +1173,28 @@ export function LauncherPhonePreview({
                   strokeOpacity="0.32"
                   strokeWidth="0.85"
                   strokeDasharray="8 16"
+                />
+              </>
+            ) : isMayaTheme ? (
+              <>
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="25"
+                  fill="none"
+                  stroke={statusPrimaryStroke}
+                  strokeWidth="1.7"
+                  strokeDasharray="24 6"
+                />
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="21"
+                  fill="none"
+                  stroke="#38BDF8"
+                  strokeWidth="1.15"
+                  strokeDasharray="10 16"
+                  opacity="0.78"
                 />
               </>
             ) : (
@@ -1278,7 +1353,7 @@ export function LauncherPhonePreview({
         className="relative w-full h-full rounded-[26px] overflow-hidden flex flex-col justify-between"
         style={wallpaperStyle}
       >
-        {/* Original Luna Portrait Wallpaper (never modified, cropped, or framed) */}
+        {/* Original Theme Portrait Wallpapers (never cropped inappropriately) */}
         {state.wallpaperId === "luna-shadow-light" && (
           <img
             src="/assets/themes/luna/wallpaper.png"
@@ -1286,8 +1361,15 @@ export function LauncherPhonePreview({
             className="pointer-events-none absolute inset-0 w-full h-full object-cover object-top select-none"
           />
         )}
+        {state.wallpaperId === "maya-holographic-presence" && (
+          <img
+            src="/assets/themes/maya/wallpaper.jpg"
+            alt="MAYA — Holographic Presence"
+            className="pointer-events-none absolute inset-0 w-full h-full object-cover object-top select-none"
+          />
+        )}
 
-        {/* Discreet Edge Gradient Scrims ONLY for legibility without covering Luna */}
+        {/* Discreet Edge Gradient Scrims ONLY for legibility without covering portrait */}
         {isLunaTheme && (
           <>
             <div
@@ -1300,21 +1382,41 @@ export function LauncherPhonePreview({
             />
           </>
         )}
+        {isMayaTheme && (
+          <>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-[12%] bg-gradient-to-b from-[#0B0E14]/68 via-[#0B0E14]/22 to-transparent"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-[36%] bg-gradient-to-t from-[#0B0E14]/90 via-[#0E131D]/52 to-transparent"
+            />
+          </>
+        )}
 
-        {/* Reference 1 Vector HUD Frame or Luna Delicate Holographic Frame */}
+        {/* Vector HUD Frame */}
         <HudSvgFrame status={coreStatus} themeId={activeThemeId} />
 
         {/* 1. Native Android Status Bar (Preserved!) */}
         <div
           className={`relative z-20 flex items-center justify-between px-4 pt-2 pb-1 text-[11px] font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)] ${
-            isLunaTheme ? "text-[#D9F7FF]" : "text-slate-100"
+            isLunaTheme
+              ? "text-[#D9F7FF]"
+              : isMayaTheme
+                ? "text-[#FFE49E]"
+                : "text-slate-100"
           }`}
         >
           <div className="flex items-center gap-1.5 font-mono-tabular">
             <span>{clockText}</span>
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                isLunaTheme ? "bg-[#00E5FF]" : "bg-cyan-400/90"
+                isLunaTheme
+                  ? "bg-[#00E5FF]"
+                  : isMayaTheme
+                    ? "bg-[#F5B942]"
+                    : "bg-cyan-400/90"
               }`}
               aria-hidden="true"
             />
@@ -1399,7 +1501,11 @@ export function LauncherPhonePreview({
           </div>
         ) : (
           <div className="relative z-10 flex-1 flex items-center justify-center pt-5">
-            <HilmCore status={coreStatus} onClick={handleToggleCoreUpdatePopover} />
+            <HilmCore
+              status={coreStatus}
+              themeId={activeThemeId}
+              onClick={handleToggleCoreUpdatePopover}
+            />
           </div>
         )}
 
@@ -1480,22 +1586,34 @@ export function LauncherPhonePreview({
                 <svg viewBox="0 0 44 44" className="hud-breathe-ring w-full h-full">
                   <polygon
                     points="22,3 37,12 37,32 22,41 7,32 7,12"
-                    fill={isLunaTheme ? "rgba(10, 20, 36, 0.36)" : "rgba(8, 14, 24, 0.9)"}
+                    fill={
+                      isLunaTheme
+                        ? "rgba(10, 20, 36, 0.36)"
+                        : isMayaTheme
+                          ? "rgba(19, 23, 32, 0.94)"
+                          : "rgba(8, 14, 24, 0.9)"
+                    }
                     stroke={statusPrimaryStroke}
                     strokeWidth={isLunaTheme ? "1.1" : "1.6"}
                   />
                   <polygon
                     points="22,9 32,15 32,29 22,35 12,29 12,15"
                     fill="none"
-                    stroke={isLunaTheme ? "#398BFF" : "#94A3B8"}
-                    strokeOpacity={isLunaTheme ? "0.7" : "1"}
+                    stroke={isLunaTheme ? "#398BFF" : isMayaTheme ? "#38BDF8" : "#94A3B8"}
+                    strokeOpacity={isLunaTheme ? "0.7" : isMayaTheme ? "0.8" : "1"}
                     strokeWidth="1"
                   />
                   <circle
                     cx="22"
                     cy="22"
                     r={isLunaTheme ? "3.2" : "4"}
-                    fill={isLunaTheme ? "#D9F7FF" : statusPrimaryStroke}
+                    fill={
+                      isLunaTheme
+                        ? "#D9F7FF"
+                        : isMayaTheme
+                          ? "#FFE49E"
+                          : statusPrimaryStroke
+                    }
                   />
                 </svg>
               </motion.button>
@@ -1517,7 +1635,11 @@ export function LauncherPhonePreview({
             whileTap={prefersReducedMotion ? undefined : { scale: 0.88 }}
             transition={hilmSpring}
             className={`relative w-[62px] h-[62px] rounded-full flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
-              isLunaTheme ? "bg-[#0A1424]/30 backdrop-blur-[2px]" : "bg-[#070D17]/90"
+              isLunaTheme
+                ? "bg-[#0A1424]/30 backdrop-blur-[2px]"
+                : isMayaTheme
+                  ? "bg-[#131720]/94"
+                  : "bg-[#070D17]/90"
             }`}
           >
             <svg viewBox="0 0 68 68" className="hud-breathe-ring w-full h-full">
@@ -1551,6 +1673,34 @@ export function LauncherPhonePreview({
                   />
                   <polygon points="34,27 39,36 29,36" fill={statusPrimaryStroke} />
                   <circle cx="52" cy="18" r="1.4" fill="#FFB45C" />
+                </>
+              ) : isMayaTheme ? (
+                <>
+                  <circle
+                    cx="34"
+                    cy="34"
+                    r="30"
+                    fill="none"
+                    stroke={statusPrimaryStroke}
+                    strokeWidth="2"
+                    strokeDasharray="28 8"
+                  />
+                  <circle
+                    cx="34"
+                    cy="34"
+                    r="24"
+                    fill="none"
+                    stroke="#C47A48"
+                    strokeWidth="1.5"
+                    strokeDasharray="12 18"
+                  />
+                  <polygon
+                    points="34,19 46,27 42,42 26,42 22,27"
+                    fill="rgba(245, 185, 66, 0.14)"
+                    stroke="#38BDF8"
+                    strokeWidth="1.3"
+                  />
+                  <polygon points="34,26 40,36 28,36" fill="#FFE49E" />
                 </>
               ) : (
                 <>
@@ -1763,11 +1913,17 @@ export function LauncherPhonePreview({
               className={`absolute inset-x-6 z-30 rounded-xl px-3.5 py-2.5 backdrop-blur-md shadow-2xl shadow-black/80 ${
                 isLunaTheme
                   ? "bottom-[170px] bg-[#05070B]/92 border border-[#00E5FF]/55"
-                  : "top-[382px] bg-[#070C15]/95 border border-cyan-400/50"
+                  : isMayaTheme
+                    ? "top-[382px] bg-[#10141E]/95 border border-[#F5B942]/65"
+                    : "top-[382px] bg-[#070C15]/95 border border-cyan-400/50"
               }`}
             >
             <div className="flex items-center justify-between gap-2">
-              <span className="font-display text-[11px] font-semibold tracking-wider text-cyan-300 uppercase">
+              <span
+                className={`font-display text-[11px] font-semibold tracking-wider uppercase ${
+                  isMayaTheme ? "text-[#FFE49E]" : "text-cyan-300"
+                }`}
+              >
                 Central Nosso Universo
               </span>
               <button

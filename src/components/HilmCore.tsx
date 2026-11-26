@@ -1,13 +1,16 @@
 import { useEffect, useRef } from "react";
+import type { LauncherThemeId } from "../types/launcher";
 
 export type HilmCoreStatus = "nominal" | "syncing" | "alert" | "resolved";
 
 interface HilmCoreProps {
   status?: HilmCoreStatus;
+  themeId?: LauncherThemeId;
   onClick?: () => void;
 }
 
 const HILM_CORE_IMAGE = "/assets/hilm_central_core.png";
+const MAYA_WALLPAPER_IMAGE = "/assets/themes/maya/wallpaper.jpg";
 
 interface IndependentOrbSpec {
   name: string;
@@ -27,14 +30,7 @@ interface IndependentOrbSpec {
   trailCoreRgb: string;
 }
 
-/**
- * Três presenças luminosas em órbitas elípticas compactas, inclinadas e independentes
- * ao redor do núcleo central HILM:
- * - Períodos, fases e planos 3D próprios e dessincronizados
- * - Cruzamentos ocasionais de trajetórias com separação 3D suave (sem colisões)
- * - Profundidade contínua por perspectiva, escala, luminosidade e oclusão pelo núcleo
- */
-const ORB_SPECS: IndependentOrbSpec[] = [
+const DEFAULT_ORB_SPECS: IndependentOrbSpec[] = [
   {
     name: "Íris",
     periodMs: 4900,
@@ -85,6 +81,60 @@ const ORB_SPECS: IndependentOrbSpec[] = [
     haloRgba: "rgba(245, 158, 11, 0.70)",
     trailRgb: "217, 119, 6",
     trailCoreRgb: "253, 224, 71",
+  },
+];
+
+const MAYA_ORB_SPECS: IndependentOrbSpec[] = [
+  {
+    name: "Maya Gold",
+    periodMs: 5200,
+    basePhase: 0.55,
+    semiMajor: 56.5,
+    eccentricity: 0.11,
+    argPeriapsisRad: 1.05,
+    inclinationDeg: 62.0,
+    yawDeg: 9.0,
+    rollDeg: -26.0,
+    coreColor: "#FFF8DC",
+    midColor: "#F5B942",
+    edgeColor: "#B46914",
+    haloRgba: "rgba(245, 185, 66, 0.74)",
+    trailRgb: "245, 185, 66",
+    trailCoreRgb: "255, 228, 158",
+  },
+  {
+    name: "Electric Cyan",
+    periodMs: 6500,
+    basePhase: 2.65,
+    semiMajor: 60.0,
+    eccentricity: 0.13,
+    argPeriapsisRad: 1.72,
+    inclinationDeg: -64.0,
+    yawDeg: 4.5,
+    rollDeg: 28.0,
+    coreColor: "#E6FAFF",
+    midColor: "#38BDF8",
+    edgeColor: "#1D4ED8",
+    haloRgba: "rgba(37, 99, 235, 0.72)",
+    trailRgb: "37, 99, 235",
+    trailCoreRgb: "125, 211, 252",
+  },
+  {
+    name: "Copper Ember",
+    periodMs: 7800,
+    basePhase: 4.7,
+    semiMajor: 63.0,
+    eccentricity: 0.12,
+    argPeriapsisRad: 2.25,
+    inclinationDeg: 68.0,
+    yawDeg: -3.0,
+    rollDeg: 70.0,
+    coreColor: "#FFEDD5",
+    midColor: "#C47A48",
+    edgeColor: "#7C3D18",
+    haloRgba: "rgba(196, 122, 72, 0.72)",
+    trailRgb: "196, 122, 72",
+    trailCoreRgb: "253, 186, 116",
   },
 ];
 
@@ -173,10 +223,14 @@ function computeBaseOrb3D(orb: IndependentOrbSpec, elapsedMs: number): Vec3 {
   };
 }
 
-function sampleAllOrbsAtTime(elapsedMs: number, cx: number, cy: number): ProjectedPoint[] {
-  const adj = ORB_SPECS.map((orb) => computeBaseOrb3D(orb, elapsedMs));
+function sampleAllOrbsAtTime(
+  orbSpecs: IndependentOrbSpec[],
+  elapsedMs: number,
+  cx: number,
+  cy: number
+): ProjectedPoint[] {
+  const adj = orbSpecs.map((orb) => computeBaseOrb3D(orb, elapsedMs));
 
-  // Suave separação 3D contínua quando duas presenças se aproximam em cruzamentos
   for (let i = 0; i < adj.length; i++) {
     for (let j = i + 1; j < adj.length; j++) {
       const dx = adj[j].x - adj[i].x;
@@ -209,29 +263,32 @@ function sampleAllOrbsAtTime(elapsedMs: number, cx: number, cy: number): Project
 }
 
 function sampleSingleOrbTrail(
+  orbSpecs: IndependentOrbSpec[],
   orbIndex: number,
   elapsedMs: number,
   cx: number,
   cy: number
 ): ProjectedPoint[] {
-  const orb = ORB_SPECS[orbIndex];
+  const orb = orbSpecs[orbIndex];
   const trailWindowMs = (TRAIL_ARC_RAD / (Math.PI * 2)) * orb.periodMs;
   const trail: ProjectedPoint[] = [];
   for (let i = 0; i <= TRAIL_SEGMENTS; i++) {
     const frac = i / TRAIL_SEGMENTS;
     const tSample = elapsedMs - frac * trailWindowMs;
-    trail.push(sampleAllOrbsAtTime(tSample, cx, cy)[orbIndex]);
+    trail.push(sampleAllOrbsAtTime(orbSpecs, tSample, cx, cy)[orbIndex]);
   }
   return trail;
 }
 
-/**
- * Núcleo HILM preservado integralmente sobre o papel de parede, com Íris, Luna e Maya
- * em órbitas elípticas compactas, inclinadas, independentes e com cruzamentos 3D suaves.
- */
-export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
+export function HilmCore({
+  status = "nominal",
+  themeId = "default",
+  onClick,
+}: HilmCoreProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const coreImgRef = useRef<HTMLImageElement | null>(null);
+  const mayaImgRef = useRef<HTMLImageElement | null>(null);
+  const isMayaTheme = themeId === "maya-holographic-presence";
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -243,7 +300,10 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
     canvas.width = VIEW_SIZE * dpr;
     canvas.height = VIEW_SIZE * dpr;
 
+    const orbSpecs = isMayaTheme ? MAYA_ORB_SPECS : DEFAULT_ORB_SPECS;
+
     let imgLoaded = false;
+    let mayaImgLoaded = false;
     let coreGlowCanvas: HTMLCanvasElement | null = null;
     let reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const img = new Image();
@@ -270,6 +330,18 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
       }
     };
 
+    const mayaImg = new Image();
+    if (isMayaTheme) {
+      mayaImg.src = MAYA_WALLPAPER_IMAGE;
+      mayaImg.onload = () => {
+        mayaImgLoaded = true;
+        mayaImgRef.current = mayaImg;
+        if (reduceMotion) {
+          rafId = window.requestAnimationFrame(renderFrame);
+        }
+      };
+    }
+
     let rafId = 0;
     let lastFrameTimestamp: number | null = null;
     let simulationTimeMs = 0;
@@ -284,7 +356,7 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
     };
     mediaQuery.addEventListener("change", handleMotionChange);
 
-    const puffSprites = ORB_SPECS.map((orb) => {
+    const puffSprites = orbSpecs.map((orb) => {
       const sprite = document.createElement("canvas");
       sprite.width = 64;
       sprite.height = 64;
@@ -301,7 +373,7 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
       return sprite;
     });
 
-    const precomputedTrailColors = ORB_SPECS.map((orb) => {
+    const precomputedTrailColors = orbSpecs.map((orb) => {
       const coreRgb = hexToRgbTuple(orb.coreColor);
       const midRgb = hexToRgbTuple(orb.midColor);
       const tailRgb = parseRgbString(orb.trailRgb);
@@ -339,7 +411,6 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
 
       ctx.save();
 
-      // Camada 1: Névoa luminosa contínua ao longo de toda a cauda elíptica
       for (let i = TRAIL_SEGMENTS; i >= 1; i--) {
         const p = points[i];
         const isFront = p.z >= 0;
@@ -368,7 +439,6 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
-      // Camada 2: Cauda principal contínua com dissipação progressiva ao longo do arco
       for (let i = TRAIL_SEGMENTS - 1; i >= 0; i--) {
         const p0 = points[i];
         const p1 = points[i + 1];
@@ -396,7 +466,6 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
         ctx.stroke();
       }
 
-      // Camada 3: Filamento luminoso interno próximo ao ponto (efeito núcleo de cometa)
       const filamentLimit = Math.floor(TRAIL_SEGMENTS * 0.68);
       for (let i = filamentLimit - 1; i >= 0; i--) {
         const p0 = points[i];
@@ -479,6 +548,119 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
       ctx.restore();
     };
 
+    const drawMayaNucleusCore = (cx: number, cy: number, pulse: number) => {
+      const outerR = CORE_DRAW_SIZE * 0.47;
+      const innerR = CORE_DRAW_SIZE * 0.36;
+
+      ctx.save();
+
+      // Subtle holographic backdrop seal for clear contrast without blocking wallpaper behind orbits
+      const backdrop = ctx.createRadialGradient(cx, cy, innerR * 0.2, cx, cy, outerR * 1.18);
+      backdrop.addColorStop(0, "rgba(13, 17, 24, 0.86)");
+      backdrop.addColorStop(0.72, "rgba(16, 22, 32, 0.72)");
+      backdrop.addColorStop(1, "rgba(13, 17, 24, 0)");
+      ctx.fillStyle = backdrop;
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerR * 1.18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outer technological ceramic graphite ring with golden-honey & copper chamfer bezel
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(19, 23, 32, 0.90)";
+      ctx.fill();
+
+      const goldRing = ctx.createLinearGradient(cx - outerR, cy - outerR, cx + outerR, cy + outerR);
+      goldRing.addColorStop(0, "#FFE49E");
+      goldRing.addColorStop(0.38, "#F5B942");
+      goldRing.addColorStop(0.72, "#C47A48");
+      goldRing.addColorStop(1, "#F5B942");
+      ctx.strokeStyle = goldRing;
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+
+      // Electric-blue holographic inner circuit ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerR + 3.5, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(56, 189, 248, ${(0.58 + 0.32 * pulse).toFixed(2)})`;
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([16, 7, 5, 7]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Circular holographic portrait integration of Maya inside the nucleus
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+      ctx.clip();
+
+      if (mayaImgLoaded && mayaImgRef.current) {
+        const srcImg = mayaImgRef.current;
+        const sx = srcImg.naturalWidth * 0.25;
+        const sy = srcImg.naturalHeight * 0.045;
+        const sw = srcImg.naturalWidth * 0.50;
+        const sh = sw;
+        ctx.globalAlpha = 0.92;
+        ctx.drawImage(
+          srcImg,
+          sx,
+          sy,
+          sw,
+          sh,
+          cx - innerR,
+          cy - innerR,
+          innerR * 2,
+          innerR * 2
+        );
+
+        // Subtle cyan/blue holographic projection tint & horizontal micro-scanlines
+        const holoOverlay = ctx.createRadialGradient(cx, cy - 6, 4, cx, cy, innerR);
+        holoOverlay.addColorStop(0, "rgba(0, 229, 255, 0.08)");
+        holoOverlay.addColorStop(0.78, "rgba(37, 99, 235, 0.24)");
+        holoOverlay.addColorStop(1, "rgba(13, 17, 24, 0.72)");
+        ctx.fillStyle = holoOverlay;
+        ctx.fillRect(cx - innerR, cy - innerR, innerR * 2, innerR * 2);
+
+        ctx.strokeStyle = "rgba(125, 211, 252, 0.16)";
+        ctx.lineWidth = 0.7;
+        for (let y = cy - innerR; y <= cy + innerR; y += 3.2) {
+          ctx.beginPath();
+          ctx.moveTo(cx - innerR, y);
+          ctx.lineTo(cx + innerR, y);
+          ctx.stroke();
+        }
+      } else {
+        const fallbackGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, innerR);
+        fallbackGrad.addColorStop(0, "rgba(56, 189, 248, 0.65)");
+        fallbackGrad.addColorStop(0.6, "rgba(196, 122, 72, 0.35)");
+        fallbackGrad.addColorStop(1, "#111622");
+        ctx.fillStyle = fallbackGrad;
+        ctx.fillRect(cx - innerR, cy - innerR, innerR * 2, innerR * 2);
+      }
+
+      // Warm golden-honey internal rim refraction
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerR - 0.8, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(245, 185, 66, ${(0.55 + 0.35 * pulse).toFixed(2)})`;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.restore();
+
+      // Subtle copper & golden-honey 4-point holographic reticle brackets on outer edge
+      const tickR1 = outerR + 1.5;
+      const tickR2 = outerR + 6.5;
+      ctx.strokeStyle = "#FFE49E";
+      ctx.lineWidth = 1.5;
+      [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5].forEach((angle) => {
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(angle) * tickR1, cy + Math.sin(angle) * tickR1);
+        ctx.lineTo(cx + Math.cos(angle) * tickR2, cy + Math.sin(angle) * tickR2);
+        ctx.stroke();
+      });
+
+      ctx.restore();
+    };
+
     const renderFrame = (now: number) => {
       if (!reduceMotion) {
         if (lastFrameTimestamp !== null) {
@@ -498,24 +680,30 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
       const cx = VIEW_SIZE / 2;
       const cy = VIEW_SIZE / 2;
 
-      const sortedByDepth = ORB_SPECS.map((orb, index) => {
-        const trail = sampleSingleOrbTrail(index, elapsed, cx, cy);
-        return {
-          orb,
-          index,
-          trail,
-          head: trail[0],
-        };
-      }).sort((a, b) => a.head.z - b.head.z);
+      const sortedByDepth = orbSpecs
+        .map((orb, index) => {
+          const trail = sampleSingleOrbTrail(orbSpecs, index, elapsed, cx, cy);
+          return {
+            orb,
+            index,
+            trail,
+            head: trail[0],
+          };
+        })
+        .sort((a, b) => a.head.z - b.head.z);
 
-      // Pass 1: Hemisfério posterior (z < 0) atrás do núcleo HILM
       for (const item of sortedByDepth) {
         drawCurvedTrailPass(item.orb, item.index, item.trail, false);
         drawOrbHeadPass(item.orb, item.head, false);
       }
 
-      // Pass 2: Núcleo central HILM com pulsação suave em intensidade luminosa
-      if (imgLoaded && coreImgRef.current) {
+      const pulseWave =
+        0.5 - 0.5 * Math.cos((elapsed / PULSE_PERIOD_MS) * Math.PI * 2);
+      const pulse = reduceMotion ? 0 : Math.pow(pulseWave, 1.15);
+
+      if (isMayaTheme) {
+        drawMayaNucleusCore(cx, cy, pulse);
+      } else if (imgLoaded && coreImgRef.current) {
         const coreX = cx - CORE_DRAW_SIZE / 2;
         const coreY = cy - CORE_DRAW_SIZE / 2;
         ctx.drawImage(
@@ -525,10 +713,6 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
           CORE_DRAW_SIZE,
           CORE_DRAW_SIZE
         );
-
-        const pulseWave =
-          0.5 - 0.5 * Math.cos((elapsed / PULSE_PERIOD_MS) * Math.PI * 2);
-        const pulse = reduceMotion ? 0 : Math.pow(pulseWave, 1.15);
 
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
@@ -558,7 +742,6 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
         ctx.fill();
       }
 
-      // Pass 3: Hemisfério frontal (z >= 0) em primeiro plano sobre o núcleo
       for (const item of sortedByDepth) {
         drawCurvedTrailPass(item.orb, item.index, item.trail, true);
         drawOrbHeadPass(item.orb, item.head, true);
@@ -575,24 +758,40 @@ export function HilmCore({ status = "nominal", onClick }: HilmCoreProps) {
       window.cancelAnimationFrame(rafId);
       mediaQuery.removeEventListener("change", handleMotionChange);
     };
-  }, []);
+  }, [isMayaTheme]);
 
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Núcleo HILM — Íris, Luna e Maya em órbitas 3D independentes"
+      aria-label={
+        isMayaTheme
+          ? "Núcleo HILM — Maya Holographic Presence"
+          : "Núcleo HILM — Íris, Luna e Maya em órbitas 3D independentes"
+      }
       data-hilm-status={status}
-      className="relative flex items-center justify-center w-[214px] h-[214px] bg-transparent border-0 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 rounded-full cursor-pointer transition-transform duration-150 active:scale-[0.98]"
+      className={`relative flex items-center justify-center w-[214px] h-[214px] bg-transparent border-0 outline-none rounded-full cursor-pointer transition-transform duration-150 active:scale-[0.98] ${
+        isMayaTheme
+          ? "focus-visible:ring-2 focus-visible:ring-[#F5B942]/80"
+          : "focus-visible:ring-2 focus-visible:ring-cyan-400/70"
+      }`}
     >
       <span
         aria-hidden="true"
         className="hud-breathe-core pointer-events-none absolute w-[132px] h-[132px] rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.22) 0%, rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.06) 56%, transparent 74%)",
-          border: "1px solid rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.24)",
-        }}
+        style={
+          isMayaTheme
+            ? {
+                background:
+                  "radial-gradient(circle, rgba(245, 185, 66, 0.24) 0%, rgba(37, 99, 235, 0.14) 56%, transparent 76%)",
+                border: "1px solid rgba(245, 185, 66, 0.34)",
+              }
+            : {
+                background:
+                  "radial-gradient(circle, rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.22) 0%, rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.06) 56%, transparent 74%)",
+                border: "1px solid rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.24)",
+              }
+        }
       />
       <canvas
         ref={canvasRef}

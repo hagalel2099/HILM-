@@ -7,11 +7,14 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RadialGradient
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.SweepGradient
 import android.os.Build
 import android.provider.Settings
 import android.util.AttributeSet
@@ -143,11 +146,99 @@ class HilmCoreView @JvmOverloads constructor(
         )
     )
 
+    private val mayaOrbSpecs = listOf(
+        // Dourado-mel
+        IndependentOrbSpec(
+            periodMs = 5200f,
+            basePhase = 0.35f,
+            semiMajorRatio = 54.5f / 214f,
+            eccentricity = 0.12f,
+            argPeriapsisRad = 1.05f,
+            inclinationDeg = 60.0f,
+            yawDeg = 10.5f,
+            rollDeg = -26.0f,
+            coreColor = Color.parseColor("#FFFDF2"),
+            midColor = Color.parseColor("#F5B942"),
+            edgeColor = Color.parseColor("#B87614"),
+            haloColor = Color.argb(182, 245, 185, 66),
+            trailR = 217,
+            trailG = 148,
+            trailB = 26,
+            trailCoreR = 255,
+            trailCoreG = 228,
+            trailCoreB = 158
+        ),
+        // Azul elétrico / ciano holográfico
+        IndependentOrbSpec(
+            periodMs = 6500f,
+            basePhase = 2.45f,
+            semiMajorRatio = 58.5f / 214f,
+            eccentricity = 0.14f,
+            argPeriapsisRad = 1.62f,
+            inclinationDeg = -63.0f,
+            yawDeg = 4.2f,
+            rollDeg = 28.0f,
+            coreColor = Color.parseColor("#E4FAFF"),
+            midColor = Color.parseColor("#38BDF8"),
+            edgeColor = Color.parseColor("#2563EB"),
+            haloColor = Color.argb(182, 56, 189, 248),
+            trailR = 37,
+            trailG = 99,
+            trailB = 235,
+            trailCoreR = 147,
+            trailCoreG = 215,
+            trailCoreB = 253
+        ),
+        // Cobre metálico
+        IndependentOrbSpec(
+            periodMs = 7800f,
+            basePhase = 4.55f,
+            semiMajorRatio = 61.5f / 214f,
+            eccentricity = 0.11f,
+            argPeriapsisRad = 2.24f,
+            inclinationDeg = 66.5f,
+            yawDeg = -3.0f,
+            rollDeg = 70.0f,
+            coreColor = Color.parseColor("#FFE8D6"),
+            midColor = Color.parseColor("#C47A48"),
+            edgeColor = Color.parseColor("#7C3F1C"),
+            haloColor = Color.argb(176, 196, 122, 72),
+            trailR = 196,
+            trailG = 122,
+            trailB = 72,
+            trailCoreR = 253,
+            trailCoreG = 186,
+            trailCoreB = 116
+        )
+    )
+
+    var mayaThemeMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                invalidate()
+            }
+        }
+
     private var coreSourceBitmap: Bitmap? = null
     private var coreScaledBitmap: Bitmap? = null
     private var coreGlowBitmap: Bitmap? = null
+    private var mayaPortraitSourceBitmap: Bitmap? = null
+    private var mayaPortraitScaledBitmap: Bitmap? = null
+    private val mayaPortraitRect = RectF()
+    private val mayaClipPath = Path()
+    private val mayaRingPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val mayaBevelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
+    private val mayaCircuitPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
+    private val mayaScanlinePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val orbBitmaps = arrayOfNulls<Bitmap>(3)
     private val trailPuffBitmaps = arrayOfNulls<Bitmap>(3)
+    private val mayaOrbBitmaps = arrayOfNulls<Bitmap>(3)
+    private val mayaTrailPuffBitmaps = arrayOfNulls<Bitmap>(3)
     private val coreRect = RectF()
     private val orbDestRect = RectF()
     private val puffDestRect = RectF()
@@ -175,6 +266,8 @@ class HilmCoreView @JvmOverloads constructor(
     private val trailBuffers = Array(3) { Array(trailSegments + 1) { ProjectedPoint() } }
     private val plasmaColorTable = Array(3) { IntArray(trailSegments) }
     private val filamentColorTable = Array(3) { IntArray(trailSegments) }
+    private val mayaPlasmaColorTable = Array(3) { IntArray(trailSegments) }
+    private val mayaFilamentColorTable = Array(3) { IntArray(trailSegments) }
     private val workAdjX = FloatArray(3)
     private val workAdjY = FloatArray(3)
     private val workAdjZ = FloatArray(3)
@@ -201,10 +294,38 @@ class HilmCoreView @JvmOverloads constructor(
 
     init {
         coreSourceBitmap = BitmapFactory.decodeResource(resources, R.drawable.nucleo_hilm_core)
+        mayaPortraitSourceBitmap = decodeMayaPortraitCrop()
         orbSpecs.forEachIndexed { index, spec ->
             orbBitmaps[index] = createOrbBitmap(spec)
             trailPuffBitmaps[index] = createTrailPuffBitmap(spec)
-            precomputeTrailColors(index, spec)
+            precomputeTrailColors(index, spec, plasmaColorTable, filamentColorTable)
+        }
+        mayaOrbSpecs.forEachIndexed { index, spec ->
+            mayaOrbBitmaps[index] = createOrbBitmap(spec)
+            mayaTrailPuffBitmaps[index] = createTrailPuffBitmap(spec)
+            precomputeTrailColors(index, spec, mayaPlasmaColorTable, mayaFilamentColorTable)
+        }
+    }
+
+    private fun decodeMayaPortraitCrop(): Bitmap? {
+        return try {
+            val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
+            val full = BitmapFactory.decodeResource(
+                resources,
+                R.drawable.wallpaper_maya_holographic_presence,
+                opts
+            ) ?: return null
+            val cropLeft = (full.width * 0.25f).toInt().coerceIn(0, full.width - 2)
+            val cropTop = (full.height * 0.045f).toInt().coerceIn(0, full.height - 2)
+            val cropSpan = (full.width * 0.50f).toInt().coerceIn(
+                2,
+                min(full.width - cropLeft, full.height - cropTop)
+            )
+            val cropped = Bitmap.createBitmap(full, cropLeft, cropTop, cropSpan, cropSpan)
+            if (cropped !== full) full.recycle()
+            cropped
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -223,10 +344,15 @@ class HilmCoreView @JvmOverloads constructor(
         )
     }
 
-    private fun precomputeTrailColors(index: Int, spec: IndependentOrbSpec) {
+    private fun precomputeTrailColors(
+        index: Int,
+        spec: IndependentOrbSpec,
+        targetPlasma: Array<IntArray>,
+        targetFilament: Array<IntArray>
+    ) {
         val tailColor = Color.rgb(spec.trailR, spec.trailG, spec.trailB)
-        val plasma = plasmaColorTable[index]
-        val filament = filamentColorTable[index]
+        val plasma = targetPlasma[index]
+        val filament = targetFilament[index]
         for (i in 0 until trailSegments) {
             val frac = (i + 0.5f) / trailSegments
             plasma[i] = when {
@@ -379,6 +505,13 @@ class HilmCoreView @JvmOverloads constructor(
         val cy = h / 2f
         val half = coreDrawSize / 2f
         coreRect.set(cx - half, cy - half, cx + half, cy + half)
+
+        mayaPortraitSourceBitmap?.let { portraitSrc ->
+            val portraitSize = (coreDrawSize * 0.78f).toInt().coerceAtLeast(16)
+            mayaPortraitScaledBitmap = Bitmap.createScaledBitmap(portraitSrc, portraitSize, portraitSize, true)
+            val pHalf = portraitSize / 2f
+            mayaPortraitRect.set(cx - pHalf, cy - pHalf, cx + pHalf, cy + pHalf)
+        }
     }
 
     private fun computeSingleBaseOrb3D(
@@ -423,8 +556,9 @@ class HilmCoreView @JvmOverloads constructor(
         minDim: Float,
         out: ProjectedPoint
     ) {
+        val specs = if (mayaThemeMode) mayaOrbSpecs else orbSpecs
         for (i in 0..2) {
-            computeSingleBaseOrb3D(orbSpecs[i], elapsedMs, minDim, i)
+            computeSingleBaseOrb3D(specs[i], elapsedMs, minDim, i)
         }
 
         val scaleUnit = minDim / 214f
@@ -474,8 +608,9 @@ class HilmCoreView @JvmOverloads constructor(
         val elapsedF = if (isReducedMotionEnabled()) 0f else simulationTimeMs.toFloat()
         val twoPi = (2.0 * PI).toFloat()
 
+        val activeSpecs = if (mayaThemeMode) mayaOrbSpecs else orbSpecs
         for (idx in 0..2) {
-            val spec = orbSpecs[idx]
+            val spec = activeSpecs[idx]
             val trailWindowMs = (trailArcRad / twoPi) * spec.periodMs
             val buffer = trailBuffers[idx]
             for (s in 0..trailSegments) {
@@ -502,41 +637,45 @@ class HilmCoreView @JvmOverloads constructor(
             drawOrbAndCurvedTrail(canvas, idx, minDim, baseOrbRadius, drawFront = false)
         }
 
-        // Pass 2: Central HILM nucleus with smooth self-luminance breathing pulse
-        coreScaledBitmap?.let { bmp ->
-            bitmapPaint.alpha = 255
-            canvas.drawBitmap(bmp, null, coreRect, bitmapPaint)
+        val pulse = if (isReducedMotionEnabled()) {
+            0f
+        } else {
+            val wave = 0.5f - 0.5f * cos((elapsedF / pulsePeriodMs) * twoPi)
+            wave.pow(1.15f)
+        }
 
-            val pulse = if (isReducedMotionEnabled()) {
-                0f
-            } else {
-                val wave = 0.5f - 0.5f * cos((elapsedF / pulsePeriodMs) * twoPi)
-                wave.pow(1.15f)
-            }
+        // Pass 2: Central HILM nucleus (Maya Holographic Presence or classic HILM core)
+        if (mayaThemeMode) {
+            drawMayaNucleusCore(canvas, cx, cy, minDim, pulse)
+        } else {
+            coreScaledBitmap?.let { bmp ->
+                bitmapPaint.alpha = 255
+                canvas.drawBitmap(bmp, null, coreRect, bitmapPaint)
 
-            val pulseBoost = when {
-                isCharging -> 0.42f
-                batteryLevelPercent <= 15 -> 0.20f
-                else -> 0.34f
-            }
-            val baseGlow = if (isCharging) 0.06f else 0.03f
-            coreGlowPaint.alpha = ((baseGlow + pulseBoost * pulse) * 255f).toInt().coerceIn(0, 255)
-            canvas.drawBitmap(bmp, null, coreRect, coreGlowPaint)
-
-            coreGlowBitmap?.let { glowBmp ->
-                coreGlowPaint.alpha = ((0.02f + (pulseBoost * 0.48f) * pulse) * 255f).toInt().coerceIn(0, 255)
-                canvas.drawBitmap(glowBmp, null, coreRect, coreGlowPaint)
-            }
-
-            // Ultra-subtle ambient telemetry halo only when charging or low battery (<= 15%)
-            if (isCharging || batteryLevelPercent <= 15) {
-                batteryAuraPaint.strokeWidth = max(1.2f, minDim * 0.008f)
-                batteryAuraPaint.color = if (isCharging) {
-                    Color.argb((38 + (35 * pulse).toInt()), 34, 211, 238)
-                } else {
-                    Color.argb((42 + (36 * pulse).toInt()), 245, 158, 11)
+                val pulseBoost = when {
+                    isCharging -> 0.42f
+                    batteryLevelPercent <= 15 -> 0.20f
+                    else -> 0.34f
                 }
-                canvas.drawCircle(cx, cy, coreRect.width() * 0.56f, batteryAuraPaint)
+                val baseGlow = if (isCharging) 0.06f else 0.03f
+                coreGlowPaint.alpha = ((baseGlow + pulseBoost * pulse) * 255f).toInt().coerceIn(0, 255)
+                canvas.drawBitmap(bmp, null, coreRect, coreGlowPaint)
+
+                coreGlowBitmap?.let { glowBmp ->
+                    coreGlowPaint.alpha = ((0.02f + (pulseBoost * 0.48f) * pulse) * 255f).toInt().coerceIn(0, 255)
+                    canvas.drawBitmap(glowBmp, null, coreRect, coreGlowPaint)
+                }
+
+                // Ultra-subtle ambient telemetry halo only when charging or low battery (<= 15%)
+                if (isCharging || batteryLevelPercent <= 15) {
+                    batteryAuraPaint.strokeWidth = max(1.2f, minDim * 0.008f)
+                    batteryAuraPaint.color = if (isCharging) {
+                        Color.argb((38 + (35 * pulse).toInt()), 34, 211, 238)
+                    } else {
+                        Color.argb((42 + (36 * pulse).toInt()), 245, 158, 11)
+                    }
+                    canvas.drawCircle(cx, cy, coreRect.width() * 0.56f, batteryAuraPaint)
+                }
             }
         }
 
@@ -544,6 +683,104 @@ class HilmCoreView @JvmOverloads constructor(
         for (slot in 0..2) {
             val idx = sortedIndices[slot]
             drawOrbAndCurvedTrail(canvas, idx, minDim, baseOrbRadius, drawFront = true)
+        }
+    }
+
+    private fun drawMayaNucleusCore(
+        canvas: Canvas,
+        cx: Float,
+        cy: Float,
+        minDim: Float,
+        pulse: Float
+    ) {
+        val coreR = coreRect.width() * 0.50f
+        if (coreR <= 0f) return
+
+        // Soft holographic presence aura (electric blue + warm gold pulse)
+        mayaRingPaint.shader = RadialGradient(
+            cx,
+            cy,
+            coreR * 1.24f,
+            intArrayOf(
+                Color.argb((72 + (36 * pulse).toInt()).coerceIn(0, 255), 56, 189, 248),
+                Color.argb((42 + (24 * pulse).toInt()).coerceIn(0, 255), 245, 185, 66),
+                Color.TRANSPARENT
+            ),
+            floatArrayOf(0.55f, 0.80f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        canvas.drawCircle(cx, cy, coreR * 1.24f, mayaRingPaint)
+        mayaRingPaint.shader = null
+
+        // Sculpted dark-graphite ceramic outer ring base
+        mayaRingPaint.color = Color.parseColor("#111622")
+        mayaRingPaint.alpha = 238
+        canvas.drawCircle(cx, cy, coreR, mayaRingPaint)
+
+        // Metallic golden-honey & copper chamfered bevel stroke
+        mayaBevelPaint.strokeWidth = max(2.2f, minDim * 0.015f)
+        mayaBevelPaint.shader = SweepGradient(
+            cx,
+            cy,
+            intArrayOf(
+                Color.parseColor("#F5B942"),
+                Color.parseColor("#FFE49E"),
+                Color.parseColor("#C47A48"),
+                Color.parseColor("#38BDF8"),
+                Color.parseColor("#F5B942")
+            ),
+            floatArrayOf(0f, 0.25f, 0.52f, 0.78f, 1f)
+        )
+        canvas.drawCircle(cx, cy, coreR * 0.96f, mayaBevelPaint)
+        mayaBevelPaint.shader = null
+
+        // Fine electric-blue inner technical track + 4 cardinal ticks
+        val trackR = coreR * 0.86f
+        mayaCircuitPaint.color = Color.argb(175, 56, 189, 248)
+        mayaCircuitPaint.strokeWidth = max(1.1f, minDim * 0.006f)
+        canvas.drawCircle(cx, cy, trackR, mayaCircuitPaint)
+
+        val tickLen = coreR * 0.09f
+        mayaCircuitPaint.color = Color.parseColor("#F5B942")
+        canvas.drawLine(cx, cy - coreR * 0.99f, cx, cy - coreR * 0.99f + tickLen, mayaCircuitPaint)
+        canvas.drawLine(cx, cy + coreR * 0.99f - tickLen, cx, cy + coreR * 0.99f, mayaCircuitPaint)
+        canvas.drawLine(cx - coreR * 0.99f, cy, cx - coreR * 0.99f + tickLen, cy, mayaCircuitPaint)
+        canvas.drawLine(cx + coreR * 0.99f - tickLen, cy, cx + coreR * 0.99f, cy, mayaCircuitPaint)
+
+        // Circular clipped Maya Holographic Portrait inside core
+        val portraitR = mayaPortraitRect.width() * 0.50f
+        mayaClipPath.reset()
+        mayaClipPath.addCircle(cx, cy, portraitR, Path.Direction.CW)
+        canvas.save()
+        canvas.clipPath(mayaClipPath)
+        mayaPortraitScaledBitmap?.let { bmp ->
+            bitmapPaint.alpha = 244
+            canvas.drawBitmap(bmp, null, mayaPortraitRect, bitmapPaint)
+        }
+        // Subtle holographic projection scanlines
+        mayaScanlinePaint.color = Color.argb(26, 56, 189, 248)
+        mayaScanlinePaint.strokeWidth = 1f
+        var scanY = mayaPortraitRect.top + 2f
+        val step = max(3f, portraitR * 0.08f)
+        while (scanY < mayaPortraitRect.bottom) {
+            canvas.drawLine(mayaPortraitRect.left, scanY, mayaPortraitRect.right, scanY, mayaScanlinePaint)
+            scanY += step
+        }
+        canvas.restore()
+
+        // Inner portrait rim highlight
+        mayaCircuitPaint.color = Color.argb(185, 255, 228, 158)
+        mayaCircuitPaint.strokeWidth = max(1.1f, minDim * 0.006f)
+        canvas.drawCircle(cx, cy, portraitR, mayaCircuitPaint)
+
+        if (isCharging || batteryLevelPercent <= 15) {
+            batteryAuraPaint.strokeWidth = max(1.2f, minDim * 0.008f)
+            batteryAuraPaint.color = if (isCharging) {
+                Color.argb((48 + (40 * pulse).toInt()), 56, 189, 248)
+            } else {
+                Color.argb((52 + (40 * pulse).toInt()), 196, 122, 72)
+            }
+            canvas.drawCircle(cx, cy, coreR * 1.09f, batteryAuraPaint)
         }
     }
 
@@ -563,7 +800,7 @@ class HilmCoreView @JvmOverloads constructor(
         val comaSpan = 26f * scaleUnit
 
         // Camada 1: Névoa luminosa contínua ao longo de toda a cauda elíptica
-        val puffBmp = trailPuffBitmaps[index]
+        val puffBmp = if (mayaThemeMode) mayaTrailPuffBitmaps[index] else trailPuffBitmaps[index]
         if (puffBmp != null) {
             for (i in trailSegments downTo 1) {
                 val p = buffer[i]
@@ -594,7 +831,7 @@ class HilmCoreView @JvmOverloads constructor(
         }
 
         // Camada 2: Cauda principal contínua com dissipação progressiva ao longo do arco
-        val plasmaColors = plasmaColorTable[index]
+        val plasmaColors = if (mayaThemeMode) mayaPlasmaColorTable[index] else plasmaColorTable[index]
         for (i in trailSegments - 1 downTo 0) {
             val p0 = buffer[i]
             val p1 = buffer[i + 1]
@@ -616,7 +853,7 @@ class HilmCoreView @JvmOverloads constructor(
         }
 
         // Camada 3: Filamento luminoso interno próximo ao ponto (efeito núcleo de cometa)
-        val filamentColors = filamentColorTable[index]
+        val filamentColors = if (mayaThemeMode) mayaFilamentColorTable[index] else filamentColorTable[index]
         for (i in filamentLimit - 1 downTo 0) {
             val p0 = buffer[i]
             val p1 = buffer[i + 1]
@@ -640,7 +877,7 @@ class HilmCoreView @JvmOverloads constructor(
         val isFront = head.z >= 0f
         if (isFront != drawFront) return
 
-        val bmp = orbBitmaps[index] ?: return
+        val bmp = (if (mayaThemeMode) mayaOrbBitmaps[index] else orbBitmaps[index]) ?: return
         val halfDrawSize = baseOrbRadius * 2.5f * head.scale
         orbDestRect.set(
             head.x - halfDrawSize,

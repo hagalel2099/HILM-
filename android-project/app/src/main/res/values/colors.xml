@@ -16,4 +16,11 @@
     <color name="luna_copper">#C47A48</color>
     <color name="luna_amber">#FFB45C</color>
     <color name="luna_white_blue">#D9F7FF</color>
+    <color name="maya_graphite_deep">#0B0E14</color>
+    <color name="maya_graphite_surface">#141923</color>
+    <color name="maya_gold_honey">#F5B942</color>
+    <color name="maya_gold_light">#FFE49E</color>
+    <color name="maya_copper">#C47A48</color>
+    <color name="maya_electric_blue">#2563EB</color>
+    <color name="maya_cyan_holo">#38BDF8</color>
 </resources>

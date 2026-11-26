@@ -26,6 +26,7 @@ import { AppGlyph } from "./AppGlyph";
 
 interface IconPackManagerPanelProps {
   activePackId: IconPackId;
+  activeThemeId?: "default" | "luna-entre-luz-e-sombra" | "maya-holographic-presence";
   isLunaThemeActive?: boolean;
   onSelectIconPack: (packId: IconPackId) => void;
 }
@@ -41,6 +42,7 @@ const SAMPLE_APPS_FOR_HUD = [
 
 export function IconPackManagerPanel({
   activePackId,
+  activeThemeId = "default",
   isLunaThemeActive = false,
   onSelectIconPack,
 }: IconPackManagerPanelProps) {
@@ -111,7 +113,16 @@ export function IconPackManagerPanel({
             Gerenciador de Pacotes de Ícones
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            {isLunaThemeActive ? (
+            {activeThemeId === "maya-holographic-presence" ? (
+              <>
+                Tema Maya ativo usando{" "}
+                <span className="text-[#F5B942] font-medium">
+                  ícones exclusivos em cerâmica tecnológica e dourado-mel
+                </span>
+                . Pacote salvo para o tema padrão:{" "}
+                <span className="text-slate-200 font-medium">{activePack.name}</span>
+              </>
+            ) : isLunaThemeActive || activeThemeId === "luna-entre-luz-e-sombra" ? (
               <>
                 Tema Luna ativo usando{" "}
                 <span className="text-[#00E5FF] font-medium">

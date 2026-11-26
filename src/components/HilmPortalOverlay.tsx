@@ -59,6 +59,21 @@ const LUNA_DIGITAL_PARTICLES = [
   { x: 0, y: -48, color: "#D9F7FF", size: 4 },
 ];
 
+const MAYA_DIGITAL_PARTICLES = [
+  { x: -34, y: -28, color: "#F5B942", size: 4.5 },
+  { x: 32, y: -30, color: "#00E5FF", size: 4 },
+  { x: -46, y: 6, color: "#FFE49E", size: 3.5 },
+  { x: 44, y: 12, color: "#38BDF8", size: 4.5 },
+  { x: -20, y: -44, color: "#C47A48", size: 4 },
+  { x: 22, y: 38, color: "#F5B942", size: 4 },
+  { x: -30, y: 34, color: "#00E5FF", size: 3.5 },
+  { x: 18, y: -42, color: "#FFE49E", size: 3.5 },
+  { x: -50, y: -14, color: "#38BDF8", size: 3.5 },
+  { x: 48, y: -12, color: "#F5B942", size: 4 },
+  { x: 0, y: 46, color: "#C47A48", size: 3.5 },
+  { x: 0, y: -48, color: "#00E5FF", size: 4 },
+];
+
 function getIconSurgeMotion(effect: TransitionEffectId, durSec: number) {
   const iconDur = Math.max(0.16, durSec * 0.78);
   switch (effect) {
@@ -139,7 +154,12 @@ export function HilmPortalOverlay({
   }
 
   const isLunaTheme = themeId === "luna-entre-luz-e-sombra";
-  const particles = isLunaTheme ? LUNA_DIGITAL_PARTICLES : DIGITAL_PARTICLES;
+  const isMayaTheme = themeId === "maya-holographic-presence";
+  const particles = isMayaTheme
+    ? MAYA_DIGITAL_PARTICLES
+    : isLunaTheme
+      ? LUNA_DIGITAL_PARTICLES
+      : DIGITAL_PARTICLES;
 
   const durSec = launch
     ? Math.max(0.18, Math.min(0.6, launch.durationMs / 1000))
@@ -164,8 +184,9 @@ export function HilmPortalOverlay({
               }}
               className="absolute inset-y-0 w-24 -skew-x-12"
               style={{
-                background:
-                  "linear-gradient(90deg, rgba(34,211,238,0) 0%, rgba(34,211,238,0.5) 44%, rgba(251,146,60,0.4) 68%, rgba(251,146,60,0) 100%)",
+                background: isMayaTheme
+                  ? "linear-gradient(90deg, rgba(245,185,66,0) 0%, rgba(245,185,66,0.52) 42%, rgba(0,229,255,0.46) 70%, rgba(0,229,255,0) 100%)"
+                  : "linear-gradient(90deg, rgba(34,211,238,0) 0%, rgba(34,211,238,0.5) 44%, rgba(251,146,60,0.4) 68%, rgba(251,146,60,0) 100%)",
               }}
             />
           )}
@@ -190,9 +211,11 @@ export function HilmPortalOverlay({
                   transition={{ duration: durSec, times: [0, 0.34, 1], ease: [0.16, 1, 0.3, 1] }}
                   className="absolute inset-0 rounded-full"
                   style={{
-                    background: isLunaTheme
-                      ? "radial-gradient(circle, rgba(5, 7, 11, 0.90) 0%, rgba(10, 20, 36, 0.72) 42%, rgba(0, 229, 255, 0.28) 64%, rgba(57, 139, 255, 0.18) 78%, rgba(0, 229, 255, 0) 94%)"
-                      : "radial-gradient(circle, rgba(3, 9, 20, 0.90) 0%, rgba(7, 22, 38, 0.72) 42%, rgba(34, 211, 238, 0.24) 64%, rgba(251, 146, 60, 0.16) 78%, rgba(34, 211, 238, 0) 94%)",
+                    background: isMayaTheme
+                      ? "radial-gradient(circle, rgba(13, 17, 24, 0.92) 0%, rgba(22, 26, 36, 0.72) 40%, rgba(245, 185, 66, 0.30) 62%, rgba(0, 229, 255, 0.22) 78%, rgba(56, 189, 248, 0) 94%)"
+                      : isLunaTheme
+                        ? "radial-gradient(circle, rgba(5, 7, 11, 0.90) 0%, rgba(10, 20, 36, 0.72) 42%, rgba(0, 229, 255, 0.28) 64%, rgba(57, 139, 255, 0.18) 78%, rgba(0, 229, 255, 0) 94%)"
+                        : "radial-gradient(circle, rgba(3, 9, 20, 0.90) 0%, rgba(7, 22, 38, 0.72) 42%, rgba(34, 211, 238, 0.24) 64%, rgba(251, 146, 60, 0.16) 78%, rgba(34, 211, 238, 0) 94%)",
                   }}
                 />
 
@@ -202,12 +225,16 @@ export function HilmPortalOverlay({
                   transition={{ duration: durSec * 0.95, ease: [0.18, 0.88, 0.28, 1] }}
                   className="absolute inset-3 rounded-full"
                   style={{
-                    boxShadow: isLunaTheme
-                      ? "inset 0 0 18px rgba(0, 229, 255, 0.45), 0 0 16px rgba(57, 139, 255, 0.32)"
-                      : "inset 0 0 18px rgba(34, 211, 238, 0.42), 0 0 16px rgba(251, 146, 60, 0.24)",
-                    border: isLunaTheme
-                      ? "1px solid rgba(0, 229, 255, 0.56)"
-                      : "1px solid rgba(34, 211, 238, 0.48)",
+                    boxShadow: isMayaTheme
+                      ? "inset 0 0 18px rgba(245, 185, 66, 0.45), 0 0 18px rgba(0, 229, 255, 0.34)"
+                      : isLunaTheme
+                        ? "inset 0 0 18px rgba(0, 229, 255, 0.45), 0 0 16px rgba(57, 139, 255, 0.32)"
+                        : "inset 0 0 18px rgba(34, 211, 238, 0.42), 0 0 16px rgba(251, 146, 60, 0.24)",
+                    border: isMayaTheme
+                      ? "1px solid rgba(245, 185, 66, 0.62)"
+                      : isLunaTheme
+                        ? "1px solid rgba(0, 229, 255, 0.56)"
+                        : "1px solid rgba(34, 211, 238, 0.48)",
                   }}
                 />
 
@@ -223,7 +250,13 @@ export function HilmPortalOverlay({
                     cy="80"
                     r="66"
                     fill="none"
-                    stroke={isLunaTheme ? "rgba(0, 229, 255, 0.84)" : "rgba(34, 211, 238, 0.78)"}
+                    stroke={
+                      isMayaTheme
+                        ? "rgba(0, 229, 255, 0.86)"
+                        : isLunaTheme
+                          ? "rgba(0, 229, 255, 0.84)"
+                          : "rgba(34, 211, 238, 0.78)"
+                    }
                     strokeWidth="1.6"
                     strokeDasharray="34 14 14 14"
                   />
@@ -232,7 +265,13 @@ export function HilmPortalOverlay({
                     cy="80"
                     r="57"
                     fill="none"
-                    stroke={isLunaTheme ? "rgba(217, 247, 255, 0.5)" : "rgba(165, 243, 252, 0.4)"}
+                    stroke={
+                      isMayaTheme
+                        ? "rgba(255, 228, 158, 0.65)"
+                        : isLunaTheme
+                          ? "rgba(217, 247, 255, 0.5)"
+                          : "rgba(165, 243, 252, 0.4)"
+                    }
                     strokeWidth="0.9"
                     strokeDasharray="10 20"
                   />
@@ -250,7 +289,13 @@ export function HilmPortalOverlay({
                     cy="80"
                     r="46"
                     fill="none"
-                    stroke={isLunaTheme ? "rgba(57, 139, 255, 0.82)" : "rgba(251, 146, 60, 0.78)"}
+                    stroke={
+                      isMayaTheme
+                        ? "rgba(245, 185, 66, 0.88)"
+                        : isLunaTheme
+                          ? "rgba(57, 139, 255, 0.82)"
+                          : "rgba(251, 146, 60, 0.78)"
+                    }
                     strokeWidth="1.6"
                     strokeDasharray="24 18 8 18"
                   />
@@ -259,7 +304,13 @@ export function HilmPortalOverlay({
                     cy="80"
                     r="38"
                     fill="none"
-                    stroke={isLunaTheme ? "rgba(255, 180, 92, 0.45)" : "rgba(245, 158, 11, 0.48)"}
+                    stroke={
+                      isMayaTheme
+                        ? "rgba(196, 122, 72, 0.62)"
+                        : isLunaTheme
+                          ? "rgba(255, 180, 92, 0.45)"
+                          : "rgba(245, 158, 11, 0.48)"
+                    }
                     strokeWidth="1"
                     strokeDasharray="4 10"
                   />
@@ -271,9 +322,11 @@ export function HilmPortalOverlay({
                   transition={{ duration: durSec * 0.72, ease: "easeOut" }}
                   className="absolute left-2 right-2 top-1/2 -translate-y-1/2 h-[2px]"
                   style={{
-                    background: isLunaTheme
-                      ? "linear-gradient(90deg, rgba(0,229,255,0) 0%, rgba(0,229,255,0.7) 35%, rgba(57,139,255,0.7) 65%, rgba(57,139,255,0) 100%)"
-                      : "linear-gradient(90deg, rgba(34,211,238,0) 0%, rgba(34,211,238,0.65) 35%, rgba(251,146,60,0.65) 65%, rgba(251,146,60,0) 100%)",
+                    background: isMayaTheme
+                      ? "linear-gradient(90deg, rgba(245,185,66,0) 0%, rgba(245,185,66,0.8) 32%, rgba(0,229,255,0.78) 68%, rgba(0,229,255,0) 100%)"
+                      : isLunaTheme
+                        ? "linear-gradient(90deg, rgba(0,229,255,0) 0%, rgba(0,229,255,0.7) 35%, rgba(57,139,255,0.7) 65%, rgba(57,139,255,0) 100%)"
+                        : "linear-gradient(90deg, rgba(34,211,238,0) 0%, rgba(34,211,238,0.65) 35%, rgba(251,146,60,0.65) 65%, rgba(251,146,60,0) 100%)",
                   }}
                 />
               </>
@@ -305,8 +358,9 @@ export function HilmPortalOverlay({
                 transition={{ duration: durSec * 0.85, ease: "easeOut" }}
                 className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[3px]"
                 style={{
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(34,211,238,0.9), rgba(251,146,60,0.8), transparent)",
+                  background: isMayaTheme
+                    ? "linear-gradient(90deg, transparent, rgba(245,185,66,0.92), rgba(0,229,255,0.88), transparent)"
+                    : "linear-gradient(90deg, transparent, rgba(34,211,238,0.9), rgba(251,146,60,0.8), transparent)",
                 }}
               />
             )}
@@ -318,8 +372,9 @@ export function HilmPortalOverlay({
                 transition={{ duration: durSec, ease: "easeOut" }}
                 className="absolute inset-0 rounded-full"
                 style={{
-                  background:
-                    "radial-gradient(circle, rgba(34, 211, 238, 0.44) 0%, rgba(168, 85, 247, 0.32) 45%, rgba(251, 146, 60, 0.18) 70%, transparent 92%)",
+                  background: isMayaTheme
+                    ? "radial-gradient(circle, rgba(245, 185, 66, 0.46) 0%, rgba(0, 229, 255, 0.32) 45%, rgba(196, 122, 72, 0.20) 70%, transparent 92%)"
+                    : "radial-gradient(circle, rgba(34, 211, 238, 0.44) 0%, rgba(168, 85, 247, 0.32) 45%, rgba(251, 146, 60, 0.18) 70%, transparent 92%)",
                 }}
               />
             )}
@@ -329,8 +384,14 @@ export function HilmPortalOverlay({
                 initial={{ scale: 0.55, opacity: 0.85, rotateX: 32, rotateY: -22 }}
                 animate={{ scale: 2.4, opacity: 0, rotateX: 0, rotateY: 0 }}
                 transition={{ duration: durSec, ease: [0.18, 0.88, 0.28, 1] }}
-                className="absolute inset-4 rounded-2xl border border-cyan-400/65"
-                style={{ boxShadow: "0 0 18px rgba(34, 211, 238, 0.34)" }}
+                className={`absolute inset-4 rounded-2xl border ${
+                  isMayaTheme ? "border-[#F5B942]/75" : "border-cyan-400/65"
+                }`}
+                style={{
+                  boxShadow: isMayaTheme
+                    ? "0 0 18px rgba(245, 185, 66, 0.36), inset 0 0 14px rgba(0, 229, 255, 0.24)"
+                    : "0 0 18px rgba(34, 211, 238, 0.34)",
+                }}
               />
             )}
 
@@ -346,7 +407,9 @@ export function HilmPortalOverlay({
                 style={{
                   width: `${Math.max(26, launch.origin.size)}px`,
                   height: `${Math.max(26, launch.origin.size)}px`,
-                  filter: "drop-shadow(0 0 8px rgba(34, 211, 238, 0.42))",
+                  filter: isMayaTheme
+                    ? "drop-shadow(0 0 9px rgba(245, 185, 66, 0.55))"
+                    : "drop-shadow(0 0 8px rgba(34, 211, 238, 0.42))",
                 }}
               >
                 <AppGlyph

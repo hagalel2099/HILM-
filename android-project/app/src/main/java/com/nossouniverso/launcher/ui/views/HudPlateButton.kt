@@ -57,21 +57,34 @@ class HudPlateButton @JvmOverloads constructor(
         set(value) {
             if (field != value) {
                 field = value
-                labelView.setTextColor(
-                    ContextCompat.getColor(
-                        context,
-                        if (value) R.color.luna_white_blue else R.color.hud_text_primary
-                    )
-                )
-                labelView.setShadowLayer(
-                    if (value) 5f else 0f,
-                    0f,
-                    1.5f,
-                    Color.parseColor("#E605070B")
-                )
+                updateLabelThemeStyle()
                 invalidate()
             }
         }
+
+    var mayaThemeMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                updateLabelThemeStyle()
+                invalidate()
+            }
+        }
+
+    private fun updateLabelThemeStyle() {
+        val textColorRes = when {
+            lunaThemeMode -> R.color.luna_white_blue
+            mayaThemeMode -> R.color.maya_gold_light
+            else -> R.color.hud_text_primary
+        }
+        labelView.setTextColor(ContextCompat.getColor(context, textColorRes))
+        labelView.setShadowLayer(
+            if (lunaThemeMode || mayaThemeMode) 5f else 0f,
+            0f,
+            1.5f,
+            Color.parseColor("#E605070B")
+        )
+    }
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(8, 14, 24)
@@ -178,6 +191,11 @@ class HudPlateButton @JvmOverloads constructor(
             super.onDraw(canvas)
             return
         }
+        if (mayaThemeMode) {
+            drawMayaCeramicPlate(canvas, w, h)
+            super.onDraw(canvas)
+            return
+        }
 
         val inset = 3f * density
         val chamfer = 11f * density
@@ -252,5 +270,59 @@ class HudPlateButton @JvmOverloads constructor(
         silverStrokePaint.color = if (isSlotEmpty) Color.argb(65, 57, 139, 255) else Color.argb(150, 57, 139, 255)
         silverStrokePaint.strokeWidth = 1.0f * density
         canvas.drawLine(edge, 5f * density, edge + 10f * density, 5f * density, silverStrokePaint)
+    }
+
+    private fun drawMayaCeramicPlate(canvas: Canvas, w: Float, h: Float) {
+        val inset = 3f * density
+        val chamfer = 11f * density
+        val path = Path().apply {
+            moveTo(inset + chamfer, inset)
+            lineTo(w - inset - chamfer, inset)
+            lineTo(w - inset, inset + chamfer)
+            lineTo(w - inset, h - inset - chamfer)
+            lineTo(w - inset - chamfer, h - inset)
+            lineTo(inset + chamfer, h - inset)
+            lineTo(inset, h - inset - chamfer)
+            lineTo(inset, inset + chamfer)
+            close()
+        }
+
+        val alphaRatio = if (isSlotEmpty) {
+            0.62f
+        } else {
+            (panelOpacityPercent / 100f).coerceIn(0.68f, 0.94f)
+        }
+        val baseAlpha = (alphaRatio * 255f).toInt().coerceIn(135, 245)
+        fillPaint.shader = LinearGradient(
+            0f,
+            0f,
+            w,
+            h,
+            Color.argb(baseAlpha, 30, 36, 49),
+            Color.argb(baseAlpha, 14, 18, 26),
+            Shader.TileMode.CLAMP
+        )
+        canvas.drawPath(path, fillPaint)
+        fillPaint.shader = null
+
+        cyanStrokePaint.strokeWidth = (if (isEditModeActive) 1.8f else 1.45f) * density
+        cyanStrokePaint.color = when {
+            isEditModeActive -> Color.parseColor("#C47A48")
+            isSlotEmpty -> Color.argb(135, 245, 185, 66)
+            else -> Color.argb(215, 245, 185, 66)
+        }
+        canvas.drawPath(path, cyanStrokePaint)
+
+        // Copper side chamfer brackets
+        silverStrokePaint.color = Color.parseColor("#C47A48")
+        silverStrokePaint.strokeWidth = 1.3f * density
+        val innerOffset = 1f * density
+        canvas.drawLine(innerOffset, h * 0.30f, innerOffset, h * 0.70f, silverStrokePaint)
+        canvas.drawLine(w - innerOffset, h * 0.30f, w - innerOffset, h * 0.70f, silverStrokePaint)
+
+        // Electric blue micro-circuit accent along lower edge
+        amberAccentPaint.color = Color.parseColor("#38BDF8")
+        amberAccentPaint.strokeWidth = 1.6f * density
+        canvas.drawLine(w * 0.24f, h - inset - 1.2f * density, w * 0.76f, h - inset - 1.2f * density, amberAccentPaint)
     }
 }

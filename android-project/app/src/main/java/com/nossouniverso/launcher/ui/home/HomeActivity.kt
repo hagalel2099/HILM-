@@ -524,29 +524,67 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun applyLauncherTheme() {
-        val isLuna = app.shortcutStorage.getLauncherTheme() == ShortcutStorage.THEME_LUNA
-        homeRoot.setBackgroundColor(if (isLuna) Color.parseColor("#05070B") else Color.TRANSPARENT)
-        imgThemeWallpaper.visibility = if (isLuna) View.VISIBLE else View.GONE
-        scrimLunaTop.visibility = if (isLuna) View.VISIBLE else View.GONE
-        scrimLunaBottom.visibility = if (isLuna) View.VISIBLE else View.GONE
+        val activeTheme = app.shortcutStorage.getLauncherTheme()
+        val isLuna = activeTheme == ShortcutStorage.THEME_LUNA
+        val isMaya = activeTheme == ShortcutStorage.THEME_MAYA
+
+        homeRoot.setBackgroundColor(
+            when {
+                isLuna -> Color.parseColor("#05070B")
+                isMaya -> Color.parseColor("#0B0E14")
+                else -> Color.TRANSPARENT
+            }
+        )
+        if (isLuna || isMaya) {
+            imgThemeWallpaper.setImageResource(
+                if (isMaya) {
+                    R.drawable.wallpaper_maya_holographic_presence
+                } else {
+                    R.drawable.wallpaper_luna_hilm
+                }
+            )
+            imgThemeWallpaper.visibility = View.VISIBLE
+            scrimLunaTop.visibility = View.VISIBLE
+            scrimLunaBottom.visibility = View.VISIBLE
+        } else {
+            imgThemeWallpaper.visibility = View.GONE
+            scrimLunaTop.visibility = View.GONE
+            scrimLunaBottom.visibility = View.GONE
+        }
         btnLunaOrbitalCore.visibility = if (isLuna) View.VISIBLE else View.GONE
 
-        // Keep hilmCoreView bounds INVISIBLE (not GONE) in Luna mode so side drawers stay anchored seamlessly
+        // Keep hilmCoreView INVISIBLE in Luna mode (side-drawer anchor) and VISIBLE in Maya/Default
         hilmCoreView.visibility = if (isLuna) View.INVISIBLE else View.VISIBLE
         hilmCoreView.isClickable = !isLuna
         hilmCoreView.isFocusable = !isLuna
+        hilmCoreView.mayaThemeMode = isMaya
 
         hudFrameView.lunaThemeMode = isLuna
+        hudFrameView.mayaThemeMode = isMaya
         hilmPortalOverlay.lunaThemeMode = isLuna
-        plateViews.values.forEach { it.lunaThemeMode = isLuna }
-        dockViews.values.forEach { it.lunaThemeMode = isLuna }
+        hilmPortalOverlay.mayaThemeMode = isMaya
+        plateViews.values.forEach {
+            it.lunaThemeMode = isLuna
+            it.mayaThemeMode = isMaya
+        }
+        dockViews.values.forEach {
+            it.lunaThemeMode = isLuna
+            it.mayaThemeMode = isMaya
+        }
         dockCenterDrawer.lunaThemeMode = isLuna
+        dockCenterDrawer.mayaThemeMode = isMaya
 
-        if (isLuna) {
-            btnLunaOrbitalCore.setColorFilter(Color.parseColor("#00E5FF"))
-            btnHubControl.setColorFilter(Color.parseColor("#00E5FF"))
-        } else {
-            btnHubControl.clearColorFilter()
+        when {
+            isLuna -> {
+                btnLunaOrbitalCore.setColorFilter(Color.parseColor("#00E5FF"))
+                btnHubControl.setColorFilter(Color.parseColor("#00E5FF"))
+            }
+            isMaya -> {
+                btnHubControl.setColorFilter(Color.parseColor("#F5B942"))
+            }
+            else -> {
+                btnHubControl.clearColorFilter()
+            }
         }
 
         val rootLayout = homeRoot as? ConstraintLayout ?: return

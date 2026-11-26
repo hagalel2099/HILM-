@@ -64,10 +64,20 @@ class HudDockSlotView @JvmOverloads constructor(
             }
         }
 
+    var mayaThemeMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                updateIconPadding()
+                invalidate()
+            }
+        }
+
     private fun updateIconPadding() {
         val padDp = when {
             transparentHudMode || (lunaThemeMode && !isCenterDrawerButton) -> 4.5f
             lunaThemeMode && isCenterDrawerButton -> 8.5f
+            mayaThemeMode && !isCenterDrawerButton -> 6.0f
             else -> 9f
         }
         val pad = (padDp * density).toInt()
@@ -210,6 +220,32 @@ class HudDockSlotView @JvmOverloads constructor(
                 canvas.drawArc(innerRect, 148f, 34f, false, amberPaint)
                 canvas.drawArc(innerRect, 328f, 34f, false, amberPaint)
             }
+            super.onDraw(canvas)
+            return
+        }
+
+        if (mayaThemeMode) {
+            val bgAlphaRatio = if (isCenterDrawerButton) 0.94f else (panelOpacityPercent / 100f).coerceAtLeast(0.72f)
+            bgPaint.color = Color.rgb(19, 23, 32)
+            bgPaint.alpha = (bgAlphaRatio * 255f).toInt().coerceIn(0, 255)
+            canvas.drawCircle(cx, cy, r, bgPaint)
+
+            cyanPaint.strokeWidth = 1.75f * density
+            cyanPaint.color = if (isEditModeActive && !isCenterDrawerButton) {
+                Color.parseColor("#C47A48")
+            } else {
+                Color.parseColor("#F5B942")
+            }
+            canvas.drawArc(outerRect, 20f, 140f, false, cyanPaint)
+            canvas.drawArc(outerRect, 200f, 140f, false, cyanPaint)
+
+            val innerR = r * 0.84f
+            val innerRect = RectF(cx - innerR, cy - innerR, cx + innerR, cy + innerR)
+            amberPaint.color = if (isCenterDrawerButton) Color.parseColor("#C47A48") else Color.parseColor("#38BDF8")
+            amberPaint.strokeWidth = 1.45f * density
+            canvas.drawArc(innerRect, 145f, 40f, false, amberPaint)
+            canvas.drawArc(innerRect, 325f, 40f, false, amberPaint)
+
             super.onDraw(canvas)
             return
         }

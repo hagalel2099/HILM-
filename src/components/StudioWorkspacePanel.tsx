@@ -254,15 +254,16 @@ export function StudioWorkspacePanel({
                   <span>Tema Exclusivo do Launcher</span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Alterne instantaneamente entre a HUD padrão do Nosso Universo e o Tema Luna — Entre Luz e Sombra.
+                  Alterne instantaneamente entre a HUD padrão, o Tema Luna — Entre Luz e Sombra e o Tema Maya — Holographic Presence.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {LAUNCHER_THEMES.map((theme) => {
                   const activeTheme = state.themeId || "default";
                   const selected = activeTheme === theme.id;
                   const isLunaCard = theme.id === "luna-entre-luz-e-sombra";
+                  const isMayaCard = theme.id === "maya-holographic-presence";
                   return (
                     <button
                       key={theme.id}
@@ -270,9 +271,11 @@ export function StudioWorkspacePanel({
                       onClick={() => onSelectTheme(theme.id)}
                       className={`p-3.5 rounded-xl text-left border transition-colors cursor-pointer ${
                         selected
-                          ? isLunaCard
-                            ? "bg-[#00E5FF]/10 border-[#00E5FF]/70 shadow-[0_0_20px_rgba(0,229,255,0.12)]"
-                            : "bg-cyan-500/10 border-cyan-400/60"
+                          ? isMayaCard
+                            ? "bg-[#F5B942]/10 border-[#F5B942]/75 shadow-[0_0_20px_rgba(245,185,66,0.14)]"
+                            : isLunaCard
+                              ? "bg-[#00E5FF]/10 border-[#00E5FF]/70 shadow-[0_0_20px_rgba(0,229,255,0.12)]"
+                              : "bg-cyan-500/10 border-cyan-400/60"
                           : "bg-[#0B111C] border-slate-800 hover:border-slate-700"
                       }`}
                     >
@@ -282,7 +285,11 @@ export function StudioWorkspacePanel({
                         </span>
                         <span
                           className={`text-[10px] font-mono-tabular shrink-0 ${
-                            selected ? "text-[#00E5FF]" : "text-slate-400"
+                            selected
+                              ? isMayaCard
+                                ? "text-[#F5B942]"
+                                : "text-[#00E5FF]"
+                              : "text-slate-400"
                           }`}
                         >
                           {selected ? "Ativo" : theme.badge}
@@ -377,6 +384,15 @@ export function StudioWorkspacePanel({
             {/* Section 2: Icon Pack Manager */}
             <IconPackManagerPanel
               activePackId={state.iconPack}
+              activeThemeId={
+                state.themeId === "maya-holographic-presence" ||
+                state.wallpaperId === "maya-holographic-presence"
+                  ? "maya-holographic-presence"
+                  : state.themeId === "luna-entre-luz-e-sombra" ||
+                      state.wallpaperId === "luna-shadow-light"
+                    ? "luna-entre-luz-e-sombra"
+                    : "default"
+              }
               isLunaThemeActive={
                 state.themeId === "luna-entre-luz-e-sombra" ||
                 state.wallpaperId === "luna-shadow-light"

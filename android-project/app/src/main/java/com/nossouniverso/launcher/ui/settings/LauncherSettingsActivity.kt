@@ -154,26 +154,37 @@ class LauncherSettingsActivity : AppCompatActivity() {
         radioLauncherTheme.setOnCheckedChangeListener(null)
         val currentTheme = app.shortcutStorage.getLauncherTheme()
         radioLauncherTheme.check(
-            if (currentTheme == ShortcutStorage.THEME_LUNA) R.id.rbThemeLuna else R.id.rbThemeDefault
+            when (currentTheme) {
+                ShortcutStorage.THEME_LUNA -> R.id.rbThemeLuna
+                ShortcutStorage.THEME_MAYA -> R.id.rbThemeMaya
+                else -> R.id.rbThemeDefault
+            }
         )
         radioLauncherTheme.setOnCheckedChangeListener { _, checkedId ->
-            val targetTheme = if (checkedId == R.id.rbThemeLuna) {
-                ShortcutStorage.THEME_LUNA
-            } else {
-                ShortcutStorage.THEME_DEFAULT
+            val targetTheme = when (checkedId) {
+                R.id.rbThemeLuna -> ShortcutStorage.THEME_LUNA
+                R.id.rbThemeMaya -> ShortcutStorage.THEME_MAYA
+                else -> ShortcutStorage.THEME_DEFAULT
             }
             if (targetTheme == app.shortcutStorage.getLauncherTheme()) return@setOnCheckedChangeListener
 
             app.shortcutStorage.setLauncherTheme(targetTheme)
-            if (targetTheme == ShortcutStorage.THEME_LUNA) {
-                if (app.shortcutStorage.getPanelOpacityPercent() > 50) {
-                    app.shortcutStorage.setPanelOpacityPercent(40)
-                    seekOpacity.progress = 15
+            when (targetTheme) {
+                ShortcutStorage.THEME_LUNA -> {
+                    if (app.shortcutStorage.getPanelOpacityPercent() > 50) {
+                        app.shortcutStorage.setPanelOpacityPercent(40)
+                        seekOpacity.progress = 15
+                    }
                 }
-            } else {
-                if (app.shortcutStorage.getPanelOpacityPercent() <= 45) {
-                    app.shortcutStorage.setPanelOpacityPercent(78)
-                    seekOpacity.progress = 53
+                ShortcutStorage.THEME_MAYA -> {
+                    app.shortcutStorage.setPanelOpacityPercent(62)
+                    seekOpacity.progress = 37
+                }
+                else -> {
+                    if (app.shortcutStorage.getPanelOpacityPercent() <= 45) {
+                        app.shortcutStorage.setPanelOpacityPercent(78)
+                        seekOpacity.progress = 53
+                    }
                 }
             }
             app.iconPackManager.clearCache()
@@ -203,11 +214,13 @@ class LauncherSettingsActivity : AppCompatActivity() {
         val packs = app.iconPackManager.getAvailableIconPacks()
         val currentId = app.shortcutStorage.getSelectedIconPackId()
         val activePack = packs.firstOrNull { it.id == currentId }
-        val isLunaTheme = app.shortcutStorage.getLauncherTheme() == ShortcutStorage.THEME_LUNA
-        txtSettingsActivePack.text = if (isLunaTheme) {
-            "Tema Luna ativo (ícones holográficos exclusivos) · Padrão salvo: ${activePack?.title ?: "HILM Artefatos 3D (Universal)"}"
-        } else {
-            getString(
+        val activeTheme = app.shortcutStorage.getLauncherTheme()
+        txtSettingsActivePack.text = when (activeTheme) {
+            ShortcutStorage.THEME_LUNA ->
+                "Tema Luna ativo (ícones holográficos exclusivos) · Padrão salvo: ${activePack?.title ?: "HILM Artefatos 3D (Universal)"}"
+            ShortcutStorage.THEME_MAYA ->
+                "Tema Maya ativo (cerâmica tecnológica & ouro mel exclusivos) · Padrão salvo: ${activePack?.title ?: "HILM Artefatos 3D (Universal)"}"
+            else -> getString(
                 R.string.active_icon_pack_format,
                 activePack?.title ?: "HILM Artefatos 3D (Universal)"
             )
@@ -233,10 +246,12 @@ class LauncherSettingsActivity : AppCompatActivity() {
             app.shortcutStorage.setSelectedIconPackId(selected)
             app.iconPackManager.clearCache()
             val updated = packs.firstOrNull { it.id == selected }
-            txtSettingsActivePack.text = if (app.shortcutStorage.getLauncherTheme() == ShortcutStorage.THEME_LUNA) {
-                "Tema Luna ativo (ícones holográficos exclusivos) · Padrão salvo: ${updated?.title ?: selected}"
-            } else {
-                getString(
+            txtSettingsActivePack.text = when (app.shortcutStorage.getLauncherTheme()) {
+                ShortcutStorage.THEME_LUNA ->
+                    "Tema Luna ativo (ícones holográficos exclusivos) · Padrão salvo: ${updated?.title ?: selected}"
+                ShortcutStorage.THEME_MAYA ->
+                    "Tema Maya ativo (cerâmica tecnológica & ouro mel exclusivos) · Padrão salvo: ${updated?.title ?: selected}"
+                else -> getString(
                     R.string.active_icon_pack_format,
                     updated?.title ?: selected
                 )

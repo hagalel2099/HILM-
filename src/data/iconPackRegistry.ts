@@ -139,6 +139,10 @@ export function isLunaHolographicIconPack(packId: IconPackId): boolean {
   return packId === "luna-holographic";
 }
 
+export function isMayaCeramicIconPack(packId: IconPackId): boolean {
+  return packId === "maya-ceramic-gold";
+}
+
 export function isLiquidGoldObsidianIconPack(packId: IconPackId): boolean {
   return packId === "liquid-gold-obsidian";
 }
@@ -147,6 +151,7 @@ export function isCardlessIconPack(packId: IconPackId): boolean {
   return (
     isArtifactIconPack(packId) ||
     isLunaHolographicIconPack(packId) ||
+    isMayaCeramicIconPack(packId) ||
     isLiquidGoldObsidianIconPack(packId)
   );
 }

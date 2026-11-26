@@ -49,9 +49,13 @@ function loadInitialState(): LauncherPersistedState {
       themeId:
         parsed.themeId === "luna-entre-luz-e-sombra"
           ? "luna-entre-luz-e-sombra"
-          : "default",
+          : parsed.themeId === "maya-holographic-presence"
+            ? "maya-holographic-presence"
+            : "default",
       iconPack:
-        parsed.iconPack && parsed.iconPack !== "luna-holographic"
+        parsed.iconPack &&
+        parsed.iconPack !== "luna-holographic" &&
+        parsed.iconPack !== "maya-ceramic-gold"
           ? parsed.iconPack
           : DEFAULT_LAUNCHER_STATE.iconPack,
       wallpaperId: parsed.wallpaperId || DEFAULT_LAUNCHER_STATE.wallpaperId,
@@ -174,13 +178,27 @@ export default function App() {
           panelOpacity: 40,
         };
       }
+      if (themeId === "maya-holographic-presence") {
+        return {
+          ...prev,
+          themeId,
+          wallpaperId: "maya-holographic-presence",
+          panelOpacity: 62,
+        };
+      }
       return {
         ...prev,
         themeId: "default",
         wallpaperId:
-          prev.wallpaperId === "luna-shadow-light" ? "ref-horizon" : prev.wallpaperId,
+          prev.wallpaperId === "luna-shadow-light" ||
+          prev.wallpaperId === "maya-holographic-presence"
+            ? "ref-horizon"
+            : prev.wallpaperId,
         iconPack:
-          prev.iconPack === "luna-holographic" ? "hilm-artifacts" : prev.iconPack,
+          prev.iconPack === "luna-holographic" ||
+          prev.iconPack === "maya-ceramic-gold"
+            ? "hilm-artifacts"
+            : prev.iconPack,
         panelOpacity: prev.panelOpacity <= 45 ? 78 : prev.panelOpacity,
       };
     });
@@ -197,7 +215,9 @@ export default function App() {
       themeId:
         wallpaperId === "luna-shadow-light"
           ? "luna-entre-luz-e-sombra"
-          : prev.themeId,
+          : wallpaperId === "maya-holographic-presence"
+            ? "maya-holographic-presence"
+            : prev.themeId,
       customWallpaperUrl:
         wallpaperId === "custom" ? customUrl : prev.customWallpaperUrl,
     }));
@@ -225,13 +245,18 @@ export default function App() {
       themeId:
         imported.themeId === "luna-entre-luz-e-sombra"
           ? "luna-entre-luz-e-sombra"
-          : imported.themeId === "default"
-            ? "default"
-            : prev.themeId,
+          : imported.themeId === "maya-holographic-presence"
+            ? "maya-holographic-presence"
+            : imported.themeId === "default"
+              ? "default"
+              : prev.themeId,
       iconPack:
-        imported.iconPack && imported.iconPack !== "luna-holographic"
+        imported.iconPack &&
+        imported.iconPack !== "luna-holographic" &&
+        imported.iconPack !== "maya-ceramic-gold"
           ? imported.iconPack
-          : prev.iconPack === "luna-holographic"
+          : prev.iconPack === "luna-holographic" ||
+              prev.iconPack === "maya-ceramic-gold"
             ? DEFAULT_LAUNCHER_STATE.iconPack
             : prev.iconPack,
       wallpaperId: imported.wallpaperId || prev.wallpaperId,

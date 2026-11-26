@@ -78,10 +78,11 @@ class AppDrawerBottomSheet(
         if (isLaunchMode && portalOverlay == null) {
             val decor = bottomSheetDialog.window?.decorView as? ViewGroup
             if (decor != null) {
-                val isLuna = ShortcutStorage(requireContext()).getLauncherTheme() == ShortcutStorage.THEME_LUNA
+                val activeTheme = ShortcutStorage(requireContext()).getLauncherTheme()
                 val overlay = HilmPortalOverlayView(requireContext()).apply {
                     elevation = 32f * resources.displayMetrics.density
-                    lunaThemeMode = isLuna
+                    lunaThemeMode = activeTheme == ShortcutStorage.THEME_LUNA
+                    mayaThemeMode = activeTheme == ShortcutStorage.THEME_MAYA
                 }
                 decor.addView(
                     overlay,
@@ -112,8 +113,8 @@ class AppDrawerBottomSheet(
         val recentRecycler = view.findViewById<RecyclerView>(R.id.recyclerRecentApps)
         val recycler = view.findViewById<RecyclerView>(R.id.recyclerApps)
 
-        val isLuna = ShortcutStorage(requireContext()).getLauncherTheme() == ShortcutStorage.THEME_LUNA
-        if (isLuna) {
+        val activeTheme = ShortcutStorage(requireContext()).getLauncherTheme()
+        if (activeTheme == ShortcutStorage.THEME_LUNA) {
             view.setBackgroundColor(Color.parseColor("#F205070B"))
             titleView.setTextColor(ContextCompat.getColor(requireContext(), R.color.luna_white_blue))
             recentHeader.setTextColor(ContextCompat.getColor(requireContext(), R.color.luna_cyan))
@@ -125,6 +126,18 @@ class AppDrawerBottomSheet(
             }
             searchEdit.setTextColor(ContextCompat.getColor(requireContext(), R.color.luna_white_blue))
             searchEdit.setHintTextColor(Color.parseColor("#88D9F7FF"))
+        } else if (activeTheme == ShortcutStorage.THEME_MAYA) {
+            view.setBackgroundColor(Color.parseColor("#F20B0E14"))
+            titleView.setTextColor(ContextCompat.getColor(requireContext(), R.color.maya_gold_light))
+            recentHeader.setTextColor(ContextCompat.getColor(requireContext(), R.color.maya_gold_honey))
+            val strokePx = (resources.displayMetrics.density).toInt().coerceAtLeast(1)
+            searchEdit.background = GradientDrawable().apply {
+                setColor(Color.parseColor("#E6141923"))
+                cornerRadius = 10f * resources.displayMetrics.density
+                setStroke(strokePx, Color.parseColor("#99F5B942"))
+            }
+            searchEdit.setTextColor(ContextCompat.getColor(requireContext(), R.color.maya_gold_light))
+            searchEdit.setHintTextColor(Color.parseColor("#88FFE49E"))
         }
 
         titleView.text = title

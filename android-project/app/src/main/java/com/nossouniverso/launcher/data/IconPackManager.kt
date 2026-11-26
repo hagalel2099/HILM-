@@ -409,10 +409,17 @@ class IconPackManager(
     }
 
     fun resolveAppIcon(packageName: String, activityName: String, fallback: Drawable): Drawable {
-        if (storage.getLauncherTheme() == ShortcutStorage.THEME_LUNA) {
+        val activeTheme = storage.getLauncherTheme()
+        if (activeTheme == ShortcutStorage.THEME_LUNA) {
             return renderUnifiedLunaHolographicIcon(
                 cacheIdentity = "theme_luna:${packageName.lowercase()}/${activityName.lowercase()}",
                 packageName = packageName,
+                fallback = fallback
+            )
+        }
+        if (activeTheme == ShortcutStorage.THEME_MAYA) {
+            return renderUnifiedMayaCeramicIcon(
+                cacheIdentity = "theme_maya:${packageName.lowercase()}/${activityName.lowercase()}",
                 fallback = fallback
             )
         }
@@ -431,6 +438,10 @@ class IconPackManager(
             packId == IconPackInfo.STYLE_LUNA_HOLOGRAPHIC -> renderUnifiedLunaHolographicIcon(
                 cacheIdentity = "${packageName.lowercase()}/${activityName.lowercase()}",
                 packageName = packageName,
+                fallback = fallback
+            )
+            packId == IconPackInfo.STYLE_MAYA_CERAMIC_GOLD -> renderUnifiedMayaCeramicIcon(
+                cacheIdentity = "${packageName.lowercase()}/${activityName.lowercase()}",
                 fallback = fallback
             )
             packId == IconPackInfo.LEGACY_STYLE_HILM_ARTIFACTS -> resolveFromManagedPack(
@@ -3624,6 +3635,344 @@ class IconPackManager(
             // Disk cache write is best-effort
         }
         return BitmapDrawable(context.resources, out)
+    }
+
+    /**
+     * MAYA — Holographic Presence icon language:
+     * Solid, sculptural technological ceramic chassis in matte-satin dark graphite (#131720 / #1E2534),
+     * machined inner chamfer well, brushed golden-honey (#F5B942) & copper (#C47A48) metallic
+     * trim and corner rivets, electric-blue (#2563EB / #38BDF8) fine circuit traces, and a
+     * solid sculpted golden-honey/copper ceramic inlay foreground symbol.
+     * Deliberately NOT translucent glass or liquid metal.
+     */
+    private fun renderUnifiedMayaCeramicIcon(
+        cacheIdentity: String,
+        fallback: Drawable
+    ): Drawable {
+        val size = 192
+        val cacheKey = "maya_ceramic_v1:$cacheIdentity#$size"
+        bitmapCache.get(cacheKey)?.let { cached ->
+            return BitmapDrawable(context.resources, cached)
+        }
+
+        val diskFile = diskCacheFileForKey(cacheKey)
+        if (diskFile.exists()) {
+            try {
+                FileInputStream(diskFile).use { stream ->
+                    BitmapFactory.decodeStream(stream)?.let { decoded ->
+                        bitmapCache.put(cacheKey, decoded)
+                        return BitmapDrawable(context.resources, decoded)
+                    }
+                }
+            } catch (_: Exception) {
+                // Re-render cleanly if disk entry was corrupted
+            }
+        }
+
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+
+        val margin = size * 0.06f
+        val outerRect = RectF(margin, margin, size - margin, size - margin)
+        val outerRadius = size * 0.22f
+        val outerPath = Path().apply {
+            addRoundRect(outerRect, outerRadius, outerRadius, Path.Direction.CW)
+        }
+
+        // 1. Soft elevation shadow underneath solid architectural ceramic block
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(185, 0, 0, 0)
+            maskFilter = BlurMaskFilter(5.5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        val shadowRect = RectF(outerRect).apply { offset(0f, 3.5f) }
+        canvas.drawRoundRect(shadowRect, outerRadius, outerRadius, shadowPaint)
+
+        // 2. Solid opaque matte-satin dark graphite ceramic slab
+        val ceramicPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                outerRect.left,
+                outerRect.top,
+                outerRect.right,
+                outerRect.bottom,
+                intArrayOf(
+                    Color.parseColor("#232A38"),
+                    Color.parseColor("#141923"),
+                    Color.parseColor("#0B0E14")
+                ),
+                floatArrayOf(0f, 0.48f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(outerPath, ceramicPaint)
+
+        // Subtle satin ceramic top-left sheen
+        val satinSheenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                outerRect.left + outerRect.width() * 0.24f,
+                outerRect.top + outerRect.height() * 0.20f,
+                outerRect.width() * 0.70f,
+                intArrayOf(Color.argb(38, 255, 228, 158), Color.TRANSPARENT),
+                floatArrayOf(0f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.save()
+        canvas.clipPath(outerPath)
+        canvas.drawRect(outerRect, satinSheenPaint)
+        canvas.restore()
+
+        // 3. Machined inner recessed well in deep graphite
+        val wellInset = size * 0.135f
+        val wellRect = RectF(wellInset, wellInset, size - wellInset, size - wellInset)
+        val wellRadius = size * 0.155f
+        val wellPath = Path().apply {
+            addRoundRect(wellRect, wellRadius, wellRadius, Path.Direction.CW)
+        }
+        val wellPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                wellRect.left,
+                wellRect.top,
+                wellRect.right,
+                wellRect.bottom,
+                intArrayOf(
+                    Color.parseColor("#0C1018"),
+                    Color.parseColor("#131824"),
+                    Color.parseColor("#1B2230")
+                ),
+                floatArrayOf(0f, 0.55f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(wellPath, wellPaint)
+
+        // Inner well golden-copper chamfer edge
+        val wellBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.0f
+            shader = LinearGradient(
+                wellRect.left,
+                wellRect.top,
+                wellRect.right,
+                wellRect.bottom,
+                intArrayOf(
+                    Color.argb(175, 196, 122, 72),
+                    Color.argb(95, 37, 99, 235),
+                    Color.argb(200, 245, 185, 66)
+                ),
+                floatArrayOf(0f, 0.50f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(wellPath, wellBorderPaint)
+
+        // 4. Sculpted metallic golden-honey outer bezel
+        val outerTrimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 4.2f
+            shader = LinearGradient(
+                outerRect.left,
+                outerRect.top,
+                outerRect.right,
+                outerRect.bottom,
+                intArrayOf(
+                    Color.parseColor("#FFE49E"),
+                    Color.parseColor("#F5B942"),
+                    Color.parseColor("#C47A48"),
+                    Color.parseColor("#F5B942")
+                ),
+                floatArrayOf(0f, 0.35f, 0.72f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(outerPath, outerTrimPaint)
+
+        // 5. Fine electric-blue technological circuit traces + copper rivets on top/bottom ceramic rails
+        val tracePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.2f
+            strokeCap = Paint.Cap.ROUND
+            color = Color.parseColor("#38BDF8")
+        }
+        val topY = margin + (wellInset - margin) * 0.5f
+        val botY = size - margin - (wellInset - margin) * 0.5f
+        val leftX = margin + outerRadius * 0.62f
+        val rightX = size - margin - outerRadius * 0.62f
+        canvas.drawLine(leftX + 12f, topY, size * 0.42f, topY, tracePaint)
+        canvas.drawLine(size * 0.58f, botY, rightX - 12f, botY, tracePaint)
+
+        val rivetPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#C47A48")
+        }
+        val rivetHiPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#FFE49E")
+        }
+        val rivets = arrayOf(
+            leftX to topY,
+            rightX to topY,
+            leftX to botY,
+            rightX to botY
+        )
+        for ((rx, ry) in rivets) {
+            canvas.drawCircle(rx, ry, 2.8f, rivetPaint)
+            canvas.drawCircle(rx - 0.6f, ry - 0.6f, 1.1f, rivetHiPaint)
+        }
+
+        // 6. Sculpted golden-honey & copper ceramic inlay foreground symbol
+        val prepared = prepareForegroundSymbol(fallback, 132)
+        if (prepared.isIsolatedSilhouette) {
+            drawSculptedMayaCeramicSymbol(canvas, prepared.bitmap, size)
+        } else {
+            drawMayaCeramicFramedArtwork(canvas, prepared.bitmap, size)
+        }
+        if (!prepared.bitmap.isRecycled) {
+            prepared.bitmap.recycle()
+        }
+
+        bitmapCache.put(cacheKey, out)
+        try {
+            renderDiskCacheDir.mkdirs()
+            FileOutputStream(diskFile).use { fos ->
+                out.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+        } catch (_: Exception) {
+            // Disk cache write is best-effort
+        }
+        return BitmapDrawable(context.resources, out)
+    }
+
+    private fun drawSculptedMayaCeramicSymbol(
+        canvas: Canvas,
+        symbolBmp: Bitmap,
+        canvasSize: Int
+    ) {
+        val drawSize = (canvasSize * 0.56f).toInt()
+        val offset = (canvasSize - drawSize) / 2f
+        val destRect = RectF(offset, offset, offset + drawSize, offset + drawSize)
+
+        val alphaMask = symbolBmp.extractAlpha()
+
+        // Crisp recessed drop shadow inside graphite ceramic well
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(225, 0, 0, 0)
+            maskFilter = BlurMaskFilter(4.5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left + 2.6f, destRect.top + 3.8f, destRect.right + 2.6f, destRect.bottom + 3.8f),
+            shadowPaint
+        )
+
+        // Subtle electric-blue technical contour bounce beneath gold inlay
+        val blueRim = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(115, 56, 189, 248)
+            maskFilter = BlurMaskFilter(2.5f, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left - 1.2f, destRect.top + 1.2f, destRect.right - 1.2f, destRect.bottom + 1.2f),
+            blueRim
+        )
+
+        // Sculpted golden-honey + copper ceramic inlay preserving internal glyph relief
+        val sculpted = Bitmap.createBitmap(drawSize, drawSize, Bitmap.Config.ARGB_8888)
+        val sCanvas = Canvas(sculpted)
+        val warmBaseMatrix = ColorMatrix(
+            floatArrayOf(
+                0.30f, 0.52f, 0.14f, 0f, 88f,
+                0.24f, 0.44f, 0.10f, 0f, 58f,
+                0.10f, 0.22f, 0.06f, 0f, 16f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
+        val basePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(warmBaseMatrix)
+        }
+        sCanvas.drawBitmap(symbolBmp, null, RectF(0f, 0f, drawSize.toFloat(), drawSize.toFloat()), basePaint)
+
+        val goldInlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+            shader = LinearGradient(
+                0f,
+                0f,
+                drawSize.toFloat(),
+                drawSize.toFloat(),
+                intArrayOf(
+                    Color.argb(180, 255, 228, 158),
+                    Color.argb(165, 245, 185, 66),
+                    Color.argb(175, 196, 122, 72),
+                    Color.argb(165, 245, 185, 66)
+                ),
+                floatArrayOf(0f, 0.32f, 0.72f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        sCanvas.drawRect(0f, 0f, drawSize.toFloat(), drawSize.toFloat(), goldInlayPaint)
+
+        // Top-left crisp machined chamfer highlight
+        val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = Color.argb(150, 255, 228, 158)
+        }
+        canvas.drawBitmap(
+            alphaMask,
+            null,
+            RectF(destRect.left - 0.9f, destRect.top - 0.9f, destRect.right - 0.9f, destRect.bottom - 0.9f),
+            highlightPaint
+        )
+        canvas.drawBitmap(sculpted, null, destRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+
+        sculpted.recycle()
+        alphaMask.recycle()
+    }
+
+    private fun drawMayaCeramicFramedArtwork(
+        canvas: Canvas,
+        artworkBmp: Bitmap,
+        canvasSize: Int
+    ) {
+        val inset = canvasSize * 0.19f
+        val innerRect = RectF(inset, inset, canvasSize - inset, canvasSize - inset)
+        val innerRadius = canvasSize * 0.13f
+        val clipPath = Path().apply {
+            addRoundRect(innerRect, innerRadius, innerRadius, Path.Direction.CW)
+        }
+
+        canvas.save()
+        canvas.clipPath(clipPath)
+        val warmCeramicMatrix = ColorMatrix().apply {
+            setSaturation(0.26f)
+            postConcat(
+                ColorMatrix(
+                    floatArrayOf(
+                        1.14f, 0f, 0f, 0f, 14f,
+                        0f, 0.96f, 0f, 0f, 6f,
+                        0f, 0f, 0.62f, 0f, -6f,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
+            )
+        }
+        val artPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(warmCeramicMatrix)
+        }
+        canvas.drawBitmap(artworkBmp, null, innerRect, artPaint)
+        canvas.restore()
+
+        val innerRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.6f
+            shader = LinearGradient(
+                innerRect.left,
+                innerRect.top,
+                innerRect.right,
+                innerRect.bottom,
+                Color.parseColor("#FFE49E"),
+                Color.parseColor("#C47A48"),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawPath(clipPath, innerRimPaint)
     }
 
     private fun drawLunaOrbitalWisps(

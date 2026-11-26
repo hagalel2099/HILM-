@@ -41,6 +41,7 @@ export function AppDrawerModal({
   const [category, setCategory] = useState<string>("Todos");
   const prefersReducedMotion = Boolean(useReducedMotion());
   const isLunaTheme = themeId === "luna-entre-luz-e-sombra";
+  const isMayaTheme = themeId === "maya-holographic-presence";
   const isCardless = isCardlessIconPack(iconPack);
 
   const categories = useMemo(() => {
@@ -63,9 +64,11 @@ export function AppDrawerModal({
   return (
     <div
       className={`absolute inset-0 z-30 flex flex-col backdrop-blur-md ${
-        isLunaTheme
-          ? "bg-[#05070B]/90 text-[#D9F7FF]"
-          : "bg-[#060A12]/95 text-slate-100"
+        isMayaTheme
+          ? "bg-[#0E1118]/92 text-[#F8FAFC]"
+          : isLunaTheme
+            ? "bg-[#05070B]/90 text-[#D9F7FF]"
+            : "bg-[#060A12]/95 text-slate-100"
       }`}
       role="dialog"
       aria-modal="true"
@@ -73,13 +76,21 @@ export function AppDrawerModal({
     >
       <div
         className={`flex items-center justify-between px-4 pt-9 pb-3 border-b ${
-          isLunaTheme ? "border-[#00E5FF]/25" : "border-cyan-500/20"
+          isMayaTheme
+            ? "border-[#F5B942]/30"
+            : isLunaTheme
+              ? "border-[#00E5FF]/25"
+              : "border-cyan-500/20"
         }`}
       >
         <div className="min-w-0">
           <h3
             className={`font-display text-sm font-semibold tracking-wide truncate ${
-              isLunaTheme ? "text-[#00E5FF]" : "text-cyan-300"
+              isMayaTheme
+                ? "text-[#F5B942]"
+                : isLunaTheme
+                  ? "text-[#00E5FF]"
+                  : "text-cyan-300"
             }`}
           >
             {targetSlot ? `Selecionar para ${SLOT_LABELS[targetSlot]}` : "Aplicativos Instalados"}
@@ -102,7 +113,11 @@ export function AppDrawerModal({
 
       <div
         className={`px-4 py-2.5 space-y-2 border-b ${
-          isLunaTheme ? "border-[#0A1424]" : "border-slate-800/80"
+          isMayaTheme
+            ? "border-[#232936]"
+            : isLunaTheme
+              ? "border-[#0A1424]"
+              : "border-slate-800/80"
         }`}
       >
         <div className="relative flex items-center">
@@ -113,9 +128,11 @@ export function AppDrawerModal({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar aplicativo..."
             className={`w-full h-10 pl-9 pr-3 rounded-lg text-xs placeholder:text-slate-500 focus:outline-none ${
-              isLunaTheme
-                ? "bg-[#0A1424]/75 border border-[#00E5FF]/30 text-[#D9F7FF] focus:border-[#00E5FF]"
-                : "bg-[#0D1422] border border-slate-700/80 text-slate-100 focus:border-cyan-400"
+              isMayaTheme
+                ? "bg-[#151923]/90 border border-[#F5B942]/35 text-slate-100 focus:border-[#F5B942]"
+                : isLunaTheme
+                  ? "bg-[#0A1424]/75 border border-[#00E5FF]/30 text-[#D9F7FF] focus:border-[#00E5FF]"
+                  : "bg-[#0D1422] border border-slate-700/80 text-slate-100 focus:border-cyan-400"
             }`}
           />
         </div>
@@ -128,12 +145,16 @@ export function AppDrawerModal({
               onClick={() => setCategory(cat)}
               className={`px-2.5 py-1 text-[11px] font-medium rounded-md whitespace-nowrap shrink-0 transition-colors ${
                 category === cat
-                  ? isLunaTheme
-                    ? "bg-[#00E5FF]/15 text-[#D9F7FF] border border-[#00E5FF]/55"
-                    : "bg-cyan-500/20 text-cyan-300 border border-cyan-400/50"
-                  : isLunaTheme
-                    ? "bg-[#0A1424]/75 text-slate-300 border border-[#398BFF]/20 hover:text-[#D9F7FF]"
-                    : "bg-slate-900/80 text-slate-400 border border-slate-800 hover:text-slate-200"
+                  ? isMayaTheme
+                    ? "bg-[#F5B942]/18 text-[#FFE49E] border border-[#F5B942]/60"
+                    : isLunaTheme
+                      ? "bg-[#00E5FF]/15 text-[#D9F7FF] border border-[#00E5FF]/55"
+                      : "bg-cyan-500/20 text-cyan-300 border border-cyan-400/50"
+                  : isMayaTheme
+                    ? "bg-[#151923]/80 text-slate-300 border border-[#2563EB]/25 hover:text-[#FFE49E]"
+                    : isLunaTheme
+                      ? "bg-[#0A1424]/75 text-slate-300 border border-[#398BFF]/20 hover:text-[#D9F7FF]"
+                      : "bg-slate-900/80 text-slate-400 border border-slate-800 hover:text-slate-200"
               }`}
             >
               {cat}
@@ -162,9 +183,11 @@ export function AppDrawerModal({
                   animate={itemMotion.animate}
                   transition={itemMotion.transition}
                   className={`group relative flex flex-col items-center p-2 rounded-xl transition-colors ${
-                    isLunaTheme
-                      ? "bg-transparent border border-transparent hover:border-[#00E5FF]/35"
-                      : "bg-[#0B121E]/70 border border-slate-800/70 hover:border-cyan-400/50"
+                    isMayaTheme
+                      ? "bg-transparent border border-transparent hover:border-[#F5B942]/35"
+                      : isLunaTheme
+                        ? "bg-transparent border border-transparent hover:border-[#00E5FF]/35"
+                        : "bg-[#0B121E]/70 border border-slate-800/70 hover:border-cyan-400/50"
                   }`}
                 >
                   <button

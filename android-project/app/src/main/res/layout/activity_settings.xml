@@ -80,6 +80,15 @@
                 android:paddingVertical="10dp"
                 android:text="@string/theme_luna_title"
                 android:textColor="@color/luna_white_blue" />
+
+            <RadioButton
+                android:id="@+id/rbThemeMaya"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="10dp"
+                android:text="@string/theme_maya_title"
+                android:textColor="@color/maya_gold_light" />
         </RadioGroup>
 
         <TextView

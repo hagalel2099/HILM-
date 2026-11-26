@@ -228,6 +228,13 @@ export const LAUNCHER_THEMES = [
       "Papel de parede pessoal e ícones holográficos exclusivos em ciano (#00E5FF) e azul elétrico (#398BFF) ao redor da personagem.",
     badge: "Exclusivo HILM",
   },
+  {
+    id: "maya-holographic-presence" as const,
+    name: "Tema Maya — Holographic Presence",
+    subtitle:
+      "Cerâmica tecnológica em grafite escuro com dourado-mel, cobre, azul elétrico, núcleo Maya e Portal HILM refrativo.",
+    badge: "MAYA — Holographic Presence",
+  },
 ];
 
 export const WALLPAPERS = [
@@ -240,6 +247,11 @@ export const WALLPAPERS = [
     id: "luna-shadow-light" as const,
     name: "Luna — Entre Luz e Sombra",
     description: "Imagem original da Luna em projeção holográfica sem recortes.",
+  },
+  {
+    id: "maya-holographic-presence" as const,
+    name: "MAYA — Holographic Presence",
+    description: "Projeção vertical holográfica da Maya com partículas douradas e ciano.",
   },
   {
     id: "hilm-void" as const,

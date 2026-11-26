@@ -142,7 +142,14 @@ class ShortcutStorage(context: Context) {
         val theme = getLauncherTheme()
         return JSONObject().apply {
             put("schema", "nosso_universo_layout_v1")
-            put("themeId", if (theme == THEME_LUNA) "luna-entre-luz-e-sombra" else "default")
+            put(
+                "themeId",
+                when (theme) {
+                    THEME_LUNA -> "luna-entre-luz-e-sombra"
+                    THEME_MAYA -> "maya-holographic-presence"
+                    else -> "default"
+                }
+            )
             put("launcherTheme", theme)
             put("iconPack", getSelectedIconPackId())
             put("panelOpacity", getPanelOpacityPercent())
@@ -205,6 +212,7 @@ class ShortcutStorage(context: Context) {
             if (importedThemeRaw.isNotBlank()) {
                 val mappedTheme = when (importedThemeRaw.lowercase()) {
                     "luna-entre-luz-e-sombra", "luna_entre_luz_e_sombra", THEME_LUNA -> THEME_LUNA
+                    "maya-holographic-presence", "maya_holographic_presence", THEME_MAYA -> THEME_MAYA
                     else -> THEME_DEFAULT
                 }
                 setLauncherTheme(mappedTheme)
@@ -218,6 +226,7 @@ class ShortcutStorage(context: Context) {
                     "tron-neon", "tron_neon" -> IconPackInfo.STYLE_TRON_NEON
                     "liquid-gold-obsidian", "liquid_gold_obsidian", IconPackInfo.LEGACY_STYLE_LIQUID_GOLD_OBSIDIAN, IconPackInfo.STYLE_LIQUID_GOLD_OBSIDIAN -> IconPackInfo.STYLE_LIQUID_GOLD_OBSIDIAN
                     "luna-holographic", "luna_holographic", IconPackInfo.STYLE_LUNA_HOLOGRAPHIC -> IconPackInfo.STYLE_HILM_ARTIFACTS
+                    "maya-ceramic-gold", "maya_ceramic_gold", IconPackInfo.STYLE_MAYA_CERAMIC_GOLD -> IconPackInfo.STYLE_HILM_ARTIFACTS
                     "titanium-liquid" -> IconPackInfo.ASSET_PACK_PREFIX + "titanium_liquid"
                     "nosso-universo" -> IconPackInfo.STYLE_NOSSO_UNIVERSO
                     "monochrome-hud" -> IconPackInfo.STYLE_MONOCHROME_HUD
@@ -246,14 +255,18 @@ class ShortcutStorage(context: Context) {
 
     fun getLauncherTheme(): String {
         val raw = prefs.getString(KEY_LAUNCHER_THEME, THEME_DEFAULT) ?: THEME_DEFAULT
-        return if (raw == THEME_LUNA || raw == "luna-entre-luz-e-sombra") THEME_LUNA else THEME_DEFAULT
+        return when (raw) {
+            THEME_LUNA, "luna-entre-luz-e-sombra" -> THEME_LUNA
+            THEME_MAYA, "maya-holographic-presence", "maya_holographic_presence" -> THEME_MAYA
+            else -> THEME_DEFAULT
+        }
     }
 
     fun setLauncherTheme(themeId: String) {
-        val clean = if (themeId == THEME_LUNA || themeId == "luna-entre-luz-e-sombra") {
-            THEME_LUNA
-        } else {
-            THEME_DEFAULT
+        val clean = when (themeId) {
+            THEME_LUNA, "luna-entre-luz-e-sombra" -> THEME_LUNA
+            THEME_MAYA, "maya-holographic-presence", "maya_holographic_presence" -> THEME_MAYA
+            else -> THEME_DEFAULT
         }
         prefs.edit().putString(KEY_LAUNCHER_THEME, clean).apply()
     }
@@ -266,7 +279,10 @@ class ShortcutStorage(context: Context) {
             "hilm-artifacts",
             IconPackInfo.STYLE_LUNA_HOLOGRAPHIC,
             "luna-holographic",
-            "luna_holographic" -> IconPackInfo.STYLE_HILM_ARTIFACTS
+            "luna_holographic",
+            IconPackInfo.STYLE_MAYA_CERAMIC_GOLD,
+            "maya-ceramic-gold",
+            "maya_ceramic_gold" -> IconPackInfo.STYLE_HILM_ARTIFACTS
             else -> raw
         }
     }
@@ -275,7 +291,10 @@ class ShortcutStorage(context: Context) {
         val clean = when (id) {
             IconPackInfo.STYLE_LUNA_HOLOGRAPHIC,
             "luna-holographic",
-            "luna_holographic" -> IconPackInfo.STYLE_HILM_ARTIFACTS
+            "luna_holographic",
+            IconPackInfo.STYLE_MAYA_CERAMIC_GOLD,
+            "maya-ceramic-gold",
+            "maya_ceramic_gold" -> IconPackInfo.STYLE_HILM_ARTIFACTS
             else -> id
         }
         prefs.edit().putString(KEY_ICON_PACK, clean).apply()
@@ -315,6 +334,7 @@ class ShortcutStorage(context: Context) {
     companion object {
         const val THEME_DEFAULT = "default"
         const val THEME_LUNA = "luna_entre_luz_e_sombra"
+        const val THEME_MAYA = "maya_holographic_presence"
 
         private const val PREFS_NAME = "nosso_universo_prefs"
         private const val KEY_SLOTS = "shortcut_slots_v1"

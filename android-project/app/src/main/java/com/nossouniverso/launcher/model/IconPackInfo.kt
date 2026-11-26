@@ -39,6 +39,7 @@ data class IconPackInfo(
         const val LEGACY_STYLE_HILM_ARTIFACTS = "builtin_hilm_artifacts"
         const val LEGACY_STYLE_LIQUID_GOLD_OBSIDIAN = "builtin_liquid_gold_obsidian"
         const val STYLE_LUNA_HOLOGRAPHIC = "builtin_luna_holographic"
+        const val STYLE_MAYA_CERAMIC_GOLD = "builtin_maya_ceramic_gold"
         const val STYLE_NOSSO_UNIVERSO = "builtin_nosso_universo"
         const val STYLE_MONOCHROME_HUD = "builtin_monochrome_hud"
         const val STYLE_SYSTEM_DEFAULT = "builtin_system_default"
