@@ -159,8 +159,193 @@
   .hud-breathe-rail,
   .hud-breathe-spectrum,
   .hud-breathe-plate,
-  .hud-breathe-ring {
+  .hud-breathe-ring,
+  .maya-hud-pulse,
+  .maya-hud-pulse-rail,
+  .maya-hud-pulse-ring,
+  .maya-hud-pulse-core,
+  .maya-hud-pulse-beacon,
+  .maya-hud-pulse-trim,
+  .luna-hud-pulse,
+  .luna-hud-border-glow {
     animation: none !important;
   }
+}
+
+/* MAYA — Holographic Presence: Soft Ceramic-Gold, Copper & Electric-Blue HUD Pulse System */
+:root {
+  --maya-gold-rgb: 245, 185, 66;
+  --maya-copper-rgb: 196, 122, 72;
+  --maya-blue-rgb: 56, 189, 248;
+  --maya-pulse-duration: 4.2s;
+}
+
+@keyframes maya-hud-pulse-soft {
+  0%,
+  100% {
+    opacity: 0.42;
+    filter: drop-shadow(0 0 2px rgba(var(--maya-gold-rgb), 0.16));
+  }
+  50% {
+    opacity: 0.94;
+    filter: drop-shadow(0 0 7px rgba(var(--maya-gold-rgb), 0.42))
+      drop-shadow(0 0 12px rgba(var(--maya-blue-rgb), 0.18));
+  }
+}
+
+@keyframes maya-hud-pulse-rail {
+  0%,
+  100% {
+    opacity: 0.72;
+    filter: drop-shadow(0 0 2px rgba(var(--maya-copper-rgb), 0.22));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(var(--maya-gold-rgb), 0.48))
+      drop-shadow(0 0 10px rgba(var(--maya-blue-rgb), 0.22));
+  }
+}
+
+@keyframes maya-hud-pulse-ring {
+  0%,
+  100% {
+    opacity: 0.76;
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px rgba(var(--maya-gold-rgb), 0.18));
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.024);
+    filter: drop-shadow(0 0 6px rgba(var(--maya-gold-rgb), 0.46))
+      drop-shadow(0 0 9px rgba(var(--maya-blue-rgb), 0.26));
+  }
+}
+
+@keyframes maya-hud-pulse-core {
+  0%,
+  100% {
+    opacity: 0.56;
+    transform: scale(0.965);
+    box-shadow:
+      0 0 14px rgba(var(--maya-gold-rgb), 0.18),
+      inset 0 0 12px rgba(var(--maya-copper-rgb), 0.14);
+  }
+  50% {
+    opacity: 0.94;
+    transform: scale(1.032);
+    box-shadow:
+      0 0 26px rgba(var(--maya-gold-rgb), 0.4),
+      0 0 38px rgba(var(--maya-blue-rgb), 0.22),
+      inset 0 0 18px rgba(var(--maya-gold-rgb), 0.24);
+  }
+}
+
+@keyframes maya-hud-pulse-beacon {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(0.94);
+    box-shadow: 0 0 4px rgba(var(--maya-gold-rgb), 0.28);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+    box-shadow:
+      0 0 8px rgba(var(--maya-gold-rgb), 0.65),
+      0 0 12px rgba(var(--maya-blue-rgb), 0.35);
+  }
+}
+
+@keyframes maya-hud-pulse-trim {
+  0%,
+  100% {
+    opacity: 0.46;
+    transform: scaleX(0.94);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scaleX(1);
+  }
+}
+
+.maya-hud-pulse {
+  animation: maya-hud-pulse-soft var(--maya-pulse-duration, 4.2s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: opacity, filter;
+}
+
+.maya-hud-pulse-rail {
+  animation: maya-hud-pulse-rail var(--maya-pulse-duration, 4.2s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: opacity, filter;
+}
+
+.maya-hud-pulse-ring {
+  animation: maya-hud-pulse-ring var(--maya-pulse-duration, 4.2s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: center;
+  will-change: transform, opacity, filter;
+}
+
+.maya-hud-pulse-core {
+  animation: maya-hud-pulse-core 4.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform, opacity, box-shadow;
+}
+
+.maya-hud-pulse-beacon {
+  animation: maya-hud-pulse-beacon 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: center;
+  will-change: transform, opacity, box-shadow;
+}
+
+.maya-hud-pulse-trim {
+  animation: maya-hud-pulse-trim var(--maya-pulse-duration, 4.2s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+/* LUNA — Entre Luz e Sombra: Lightweight Cyan & Violet Holographic HUD Pulse */
+:root {
+  --luna-cyan-rgb: 0, 229, 255;
+  --luna-violet-rgb: 139, 92, 246;
+  --luna-pulse-duration: 5.4s;
+  --luna-border-duration: 6s;
+}
+
+@keyframes luna-hud-pulse {
+  0%,
+  100% {
+    opacity: 0.74;
+    transform: scale(0.992);
+  }
+  50% {
+    opacity: 0.98;
+    transform: scale(1.012);
+  }
+}
+
+@keyframes luna-hud-border-glow {
+  0%,
+  100% {
+    border-color: rgba(var(--luna-cyan-rgb), 0.34);
+    box-shadow:
+      0 0 8px rgba(var(--luna-cyan-rgb), 0.14),
+      inset 0 0 6px rgba(var(--luna-violet-rgb), 0.1);
+  }
+  50% {
+    border-color: rgba(var(--luna-violet-rgb), 0.56);
+    box-shadow:
+      0 0 14px rgba(var(--luna-cyan-rgb), 0.28),
+      0 0 22px rgba(var(--luna-violet-rgb), 0.2),
+      inset 0 0 10px rgba(var(--luna-cyan-rgb), 0.16);
+  }
+}
+
+.luna-hud-pulse {
+  animation: luna-hud-pulse var(--luna-pulse-duration, 5.4s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.luna-hud-border-glow {
+  animation: luna-hud-border-glow var(--luna-border-duration, 6s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: box-shadow, border-color;
 }
 

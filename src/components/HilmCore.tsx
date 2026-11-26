@@ -289,6 +289,7 @@ export function HilmCore({
   const coreImgRef = useRef<HTMLImageElement | null>(null);
   const mayaImgRef = useRef<HTMLImageElement | null>(null);
   const isMayaTheme = themeId === "maya-holographic-presence";
+  const isLunaTheme = themeId === "luna-entre-luz-e-sombra";
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -778,7 +779,13 @@ export function HilmCore({
     >
       <span
         aria-hidden="true"
-        className="hud-breathe-core pointer-events-none absolute w-[132px] h-[132px] rounded-full"
+        className={`${
+          isMayaTheme
+            ? "maya-hud-pulse-core"
+            : isLunaTheme
+              ? "luna-hud-pulse luna-hud-border-glow"
+              : "hud-breathe-core"
+        } pointer-events-none absolute w-[132px] h-[132px] rounded-full`}
         style={
           isMayaTheme
             ? {

@@ -77,7 +77,7 @@ export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgF
         </defs>
 
         {/* Top Ceramic-Gold Chamfered Horizon Rail & Signature */}
-        <g opacity="0.86" filter="url(#mayaHoloGlow)">
+        <g className="maya-hud-pulse-rail" opacity="0.86" filter="url(#mayaHoloGlow)">
           <path d="M 16 44 L 30 37 L 98 37" fill="none" stroke={primaryStroke} strokeWidth="1.25" />
           <path d="M 262 37 L 330 37 L 344 44" fill="none" stroke={primaryStroke} strokeWidth="1.25" />
           <line x1="36" y1="41" x2="62" y2="41" stroke="#38BDF8" strokeWidth="1.15" opacity="0.88" />
@@ -97,7 +97,7 @@ export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgF
         </g>
 
         {/* Sculpted Left & Right Side Drawer Ceramic Rails */}
-        <g opacity="0.78">
+        <g className="maya-hud-pulse-rail" style={{ animationDelay: "-0.75s" }} opacity="0.78">
           <path
             d="M 5 162 L 12 172 L 12 256 L 6 264 L 6 298 L 12 306 L 12 378 L 5 388"
             fill="none"
@@ -122,6 +122,7 @@ export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgF
           y1="714"
           x2="332"
           y2="714"
+          className="maya-hud-pulse"
           stroke="#F5B942"
           strokeWidth="0.8"
           strokeOpacity="0.34"
@@ -155,14 +156,14 @@ export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgF
         </defs>
 
         {/* Subtle Top Holographic Hairline Corners (leaving Luna's crown completely clear) */}
-        <g opacity="0.72" filter="url(#lunaHoloGlow)">
+        <g className="luna-hud-pulse" opacity="0.72" filter="url(#lunaHoloGlow)">
           <path d="M 16 42 L 28 36 L 96 36" fill="none" stroke={primaryStroke} strokeWidth="1.1" />
           <path d="M 264 36 L 332 36 L 344 42" fill="none" stroke={primaryStroke} strokeWidth="1.1" />
           <line x1="36" y1="39" x2="54" y2="39" stroke="#C47A48" strokeWidth="1.1" opacity="0.85" />
         </g>
 
         {/* Minimal Left & Right Holographic Edge Brackets */}
-        <g opacity="0.68">
+        <g className="luna-hud-pulse" style={{ animationDelay: "-1.3s" }} opacity="0.68">
           <path
             d="M 5 170 L 11 178 L 11 258 L 6 264 L 6 296 L 11 302 L 11 372 L 5 380"
             fill="none"
@@ -188,6 +189,8 @@ export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgF
           y1="714"
           x2="332"
           y2="714"
+          className="luna-hud-pulse"
+          style={{ animationDelay: "-2.4s" }}
           stroke={primaryStroke}
           strokeWidth="0.7"
           strokeOpacity="0.28"

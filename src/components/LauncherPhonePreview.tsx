@@ -709,11 +709,31 @@ export function LauncherPhonePreview({
               }}
             />
           )}
-          {isMayaTheme && (
+          {isLunaTheme && (
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-3 bottom-0.5 h-[1.5px] bg-gradient-to-r from-[#C47A48] via-[#38BDF8] to-[#F5B942] opacity-80"
+              className="luna-hud-border-glow luna-hud-pulse pointer-events-none absolute inset-0 rounded-[3px] border border-[#00E5FF]/25"
+              style={{ animationDelay: `${-0.45 * PLATE_SLOTS.indexOf(slotId)}s` }}
             />
+          )}
+          {isMayaTheme && (
+            <>
+              <span
+                aria-hidden="true"
+                className="maya-hud-pulse pointer-events-none absolute inset-0"
+                style={{
+                  animationDelay: `${-0.3 * PLATE_SLOTS.indexOf(slotId)}s`,
+                  clipPath:
+                    "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
+                  boxShadow: "inset 0 0 0 1.4px rgba(245, 185, 66, 0.72)",
+                }}
+              />
+              <span
+                aria-hidden="true"
+                className="maya-hud-pulse-trim pointer-events-none absolute inset-x-3 bottom-0.5 h-[1.5px] bg-gradient-to-r from-[#C47A48] via-[#38BDF8] to-[#F5B942]"
+                style={{ animationDelay: `${-0.3 * PLATE_SLOTS.indexOf(slotId)}s` }}
+              />
+            </>
           )}
           {isEditMode && <GripVertical className="w-3.5 h-3.5 text-amber-400 shrink-0 relative z-10" />}
           {app ? (
@@ -971,7 +991,13 @@ export function LauncherPhonePreview({
         >
           <svg
             viewBox="0 0 48 48"
-            className="hud-breathe-ring absolute inset-0 w-full h-full pointer-events-none"
+            className={`${
+              isLunaTheme
+                ? "luna-hud-pulse"
+                : isMayaTheme
+                  ? "maya-hud-pulse-ring"
+                  : "hud-breathe-ring"
+            } absolute inset-0 w-full h-full pointer-events-none`}
             style={{ animationDelay: "-0.5s" }}
           >
             <circle
@@ -1128,12 +1154,15 @@ export function LauncherPhonePreview({
           whileDrag={prefersReducedMotion ? undefined : { scale: 1.2, zIndex: 25 }}
           transition={hilmSpring}
           className={`relative w-[50px] h-[50px] rounded-full flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+            isLunaTheme ? "border border-[#00E5FF]/30 luna-hud-border-glow " : ""
+          }${
             isSwapSelected ? "ring-2 ring-amber-400" : isDropTarget ? "ring-2 ring-cyan-300" : ""
           }`}
           style={
             isLunaTheme
               ? {
                   backgroundColor: "transparent",
+                  animationDelay: slotId === "dock_1" || slotId === "dock_5" ? "-0.8s" : "-0.4s",
                   boxShadow: isBeingDragged ? "0 0 18px rgba(0, 229, 255, 0.45)" : undefined,
                 }
               : isMayaTheme
@@ -1151,7 +1180,13 @@ export function LauncherPhonePreview({
         >
           <svg
             viewBox="0 0 56 56"
-            className="hud-breathe-ring absolute inset-0 w-full h-full pointer-events-none"
+            className={`${
+              isLunaTheme
+                ? "luna-hud-pulse"
+                : isMayaTheme
+                  ? "maya-hud-pulse-ring"
+                  : "hud-breathe-ring"
+            } absolute inset-0 w-full h-full pointer-events-none`}
             style={{ animationDelay: slotId === "dock_1" || slotId === "dock_5" ? "-0.8s" : "-0.4s" }}
           >
             {isLunaTheme ? (
@@ -1415,9 +1450,9 @@ export function LauncherPhonePreview({
             <span
               className={`w-1.5 h-1.5 rounded-full ${
                 isLunaTheme
-                  ? "bg-[#00E5FF]"
+                  ? "bg-[#00E5FF] luna-hud-pulse"
                   : isMayaTheme
-                    ? "bg-[#F5B942]"
+                    ? "bg-[#F5B942] maya-hud-pulse-beacon"
                     : "bg-cyan-400/90"
               }`}
               aria-hidden="true"
@@ -1474,9 +1509,9 @@ export function LauncherPhonePreview({
                 whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.9 }}
                 transition={hilmSpring}
-                className="pointer-events-auto relative w-10 h-10 rounded-full flex items-center justify-center bg-[#0A1424]/30 backdrop-blur-[2px] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00E5FF]"
+                className="pointer-events-auto relative w-10 h-10 rounded-full flex items-center justify-center bg-[#0A1424]/30 backdrop-blur-[2px] border border-[#00E5FF]/35 luna-hud-border-glow cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00E5FF]"
               >
-                <svg viewBox="0 0 40 40" className="hud-breathe-ring w-full h-full">
+                <svg viewBox="0 0 40 40" className="luna-hud-pulse w-full h-full">
                   <circle
                     cx="20"
                     cy="20"
@@ -1585,7 +1620,16 @@ export function LauncherPhonePreview({
                 transition={hilmSpring}
                 className="w-full h-full flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-full"
               >
-                <svg viewBox="0 0 44 44" className="hud-breathe-ring w-full h-full">
+                <svg
+                  viewBox="0 0 44 44"
+                  className={`${
+                    isLunaTheme
+                      ? "luna-hud-pulse"
+                      : isMayaTheme
+                        ? "maya-hud-pulse-ring"
+                        : "hud-breathe-ring"
+                  } w-full h-full`}
+                >
                   <polygon
                     points="22,3 37,12 37,32 22,41 7,32 7,12"
                     fill={
@@ -1638,13 +1682,22 @@ export function LauncherPhonePreview({
             transition={hilmSpring}
             className={`relative w-[62px] h-[62px] rounded-full flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
               isLunaTheme
-                ? "bg-[#0A1424]/30 backdrop-blur-[2px]"
+                ? "bg-[#0A1424]/30 backdrop-blur-[2px] border border-[#00E5FF]/35 luna-hud-border-glow"
                 : isMayaTheme
                   ? "bg-[#131720]/94"
                   : "bg-[#070D17]/90"
             }`}
           >
-            <svg viewBox="0 0 68 68" className="hud-breathe-ring w-full h-full">
+            <svg
+              viewBox="0 0 68 68"
+              className={`${
+                isLunaTheme
+                  ? "luna-hud-pulse"
+                  : isMayaTheme
+                    ? "maya-hud-pulse-ring"
+                    : "hud-breathe-ring"
+              } w-full h-full`}
+            >
               {isLunaTheme ? (
                 <>
                   <circle
