@@ -7,6 +7,14 @@ import type {
 } from "../types/launcher";
 import { ICON_PACK_REGISTRY } from "./iconPackRegistry";
 
+export const TOP_DRAWER_SLOT_IDS: SlotId[] = [
+  "top_1",
+  "top_2",
+  "top_3",
+  "top_4",
+  "top_5",
+];
+
 export const LEFT_DRAWER_SLOT_IDS: SlotId[] = [
   "left_1",
   "left_2",
@@ -24,27 +32,25 @@ export const RIGHT_DRAWER_SLOT_IDS: SlotId[] = [
 ];
 
 export const SLOT_IDS: SlotId[] = [
-  "plate_top_left",
-  "plate_top_right",
-  "plate_bottom_left",
-  "plate_bottom_right",
   "dock_1",
   "dock_2",
   "dock_4",
   "dock_5",
+  ...TOP_DRAWER_SLOT_IDS,
   ...LEFT_DRAWER_SLOT_IDS,
   ...RIGHT_DRAWER_SLOT_IDS,
 ];
 
 export const SLOT_LABELS: Record<SlotId, string> = {
-  plate_top_left: "Painel Superior Esquerdo",
-  plate_top_right: "Painel Superior Direito",
-  plate_bottom_left: "Painel Inferior Esquerdo",
-  plate_bottom_right: "Painel Inferior Direito",
   dock_1: "Dock Posição 1",
   dock_2: "Dock Posição 2",
   dock_4: "Dock Posição 4",
   dock_5: "Dock Posição 5",
+  top_1: "Gaveta Superior 1",
+  top_2: "Gaveta Superior 2",
+  top_3: "Gaveta Superior 3",
+  top_4: "Gaveta Superior 4",
+  top_5: "Gaveta Superior 5",
   left_1: "Gaveta Esquerda 1",
   left_2: "Gaveta Esquerda 2",
   left_3: "Gaveta Esquerda 3",
@@ -309,14 +315,15 @@ export const TRANSITION_EFFECTS: {
 
 export const DEFAULT_LAUNCHER_STATE: LauncherPersistedState = {
   slots: {
-    plate_top_left: { slotId: "plate_top_left", packageName: "com.whatsapp" },
-    plate_top_right: { slotId: "plate_top_right", packageName: "com.google.android.youtube" },
-    plate_bottom_left: { slotId: "plate_bottom_left", packageName: "com.instagram.android" },
-    plate_bottom_right: { slotId: "plate_bottom_right", packageName: "com.spotify.music" },
     dock_1: { slotId: "dock_1", packageName: "com.android.camera2" },
     dock_2: { slotId: "dock_2", packageName: "com.android.messaging" },
     dock_4: { slotId: "dock_4", packageName: "com.android.dialer" },
     dock_5: { slotId: "dock_5", packageName: "com.android.chrome" },
+    top_1: { slotId: "top_1", packageName: "com.whatsapp" },
+    top_2: { slotId: "top_2", packageName: "com.google.android.youtube" },
+    top_3: { slotId: "top_3", packageName: "com.instagram.android" },
+    top_4: { slotId: "top_4", packageName: "com.spotify.music" },
+    top_5: { slotId: "top_5", packageName: null },
     left_1: { slotId: "left_1", packageName: "com.google.android.apps.maps" },
     left_2: { slotId: "left_2", packageName: "com.android.calendar" },
     left_3: { slotId: "left_3", packageName: "com.nossouniverso.notes" },

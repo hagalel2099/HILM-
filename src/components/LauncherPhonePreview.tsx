@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Circle,
   Download,
-  GripVertical,
   ImagePlus,
   Loader2,
   Pencil,
@@ -33,6 +32,7 @@ import {
   LEFT_DRAWER_SLOT_IDS,
   RIGHT_DRAWER_SLOT_IDS,
   SLOT_LABELS,
+  TOP_DRAWER_SLOT_IDS,
 } from "../data/launcherCatalog";
 import { usesExpandedGlyphScale } from "../data/iconPackRegistry";
 import { AppGlyph } from "./AppGlyph";
@@ -62,13 +62,6 @@ interface LauncherPhonePreviewProps {
   onLaunchApp: (app: InstalledAppItem) => void;
 }
 
-const PLATE_SLOTS: SlotId[] = [
-  "plate_top_left",
-  "plate_top_right",
-  "plate_bottom_left",
-  "plate_bottom_right",
-];
-
 const SIDE_DOCK_LEFT: SlotId[] = ["dock_1", "dock_2"];
 const SIDE_DOCK_RIGHT: SlotId[] = ["dock_4", "dock_5"];
 
@@ -88,6 +81,7 @@ export function LauncherPhonePreview({
   const [drawerTargetSlot, setDrawerTargetSlot] = useState<SlotId | null>(null);
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
+  const [topDrawerOpen, setTopDrawerOpen] = useState(false);
   const [selectedSwapSource, setSelectedSwapSource] = useState<SlotId | null>(null);
   const [draggedSlot, setDraggedSlot] = useState<SlotId | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<SlotId | null>(null);
@@ -184,6 +178,11 @@ export function LauncherPhonePreview({
   );
   const rightDrawerMotion = getHilmSurfaceMotion(
     "right-drawer",
+    state.transition,
+    prefersReducedMotion
+  );
+  const topDrawerMotion = getHilmSurfaceMotion(
+    "top-drawer",
     state.transition,
     prefersReducedMotion
   );
@@ -570,329 +569,6 @@ export function LauncherPhonePreview({
     reader.readAsDataURL(file);
   };
 
-  const renderPlateSlot = (slotId: SlotId) => {
-    const slot = state.slots[slotId];
-    const app = slot?.packageName ? appMap.get(slot.packageName) : undefined;
-    const isSwapSelected = selectedSwapSource === slotId;
-    const isBeingDragged = draggedSlot === slotId;
-    const isDropTarget = dragOverSlot === slotId && draggedSlot !== null && draggedSlot !== slotId;
-
-    const plateState = prefersReducedMotion
-      ? "rest"
-      : isBeingDragged
-        ? "dragging"
-        : isDropTarget
-          ? "dropTarget"
-          : isSwapSelected
-            ? "selected"
-            : "rest";
-
-    return (
-      <div
-        key={slotId}
-        draggable={isEditMode}
-        onDragStart={() => setDraggedSlot(slotId)}
-        onDragOver={(e) => {
-          if (isEditMode) {
-            e.preventDefault();
-            if (dragOverSlot !== slotId) setDragOverSlot(slotId);
-          }
-        }}
-        onDragLeave={() => {
-          if (dragOverSlot === slotId) setDragOverSlot(null);
-        }}
-        onDrop={() => {
-          if (isEditMode && draggedSlot && draggedSlot !== slotId) {
-            onSwapSlots(draggedSlot, slotId);
-          }
-          setDraggedSlot(null);
-          setDragOverSlot(null);
-        }}
-        onDragEnd={() => {
-          setDraggedSlot(null);
-          setDragOverSlot(null);
-        }}
-        className="relative group"
-      >
-        <motion.button
-          type="button"
-          onClick={(e) => {
-            const glyphEl = e.currentTarget.querySelector<HTMLElement>("[data-portal-glyph]");
-            handleSlotTap(slotId, glyphEl ?? e.currentTarget);
-          }}
-          aria-label={app ? `Abrir ${app.label}` : `Adicionar atalho em ${SLOT_LABELS[slotId]}`}
-          drag={!isEditMode && !prefersReducedMotion}
-          dragSnapToOrigin
-          dragElastic={0.18}
-          dragMomentum={false}
-          dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }}
-          onDragStart={() => {
-            if (!isEditMode) {
-              pointerDraggedSlotRef.current = slotId;
-              setDraggedSlot(slotId);
-            }
-          }}
-          onDragEnd={() => {
-            if (!isEditMode) {
-              setDraggedSlot(null);
-              window.setTimeout(() => {
-                if (pointerDraggedSlotRef.current === slotId) {
-                  pointerDraggedSlotRef.current = null;
-                }
-              }, 80);
-            }
-          }}
-          variants={{
-            rest: { scale: 1 },
-            hover: { scale: prefersReducedMotion ? 1 : 1.04 },
-            tap: { scale: prefersReducedMotion ? 1 : 0.91 },
-            dragging: { scale: prefersReducedMotion ? 1 : 1.09 },
-            dropTarget: { scale: prefersReducedMotion ? 1 : 1.06 },
-            selected: { scale: prefersReducedMotion ? 1 : 1.04 },
-          }}
-          initial="rest"
-          animate={plateState}
-          whileHover="hover"
-          whileTap="tap"
-          whileDrag={prefersReducedMotion ? undefined : { scale: 1.1, zIndex: 25 }}
-          transition={hilmSpring}
-          className={`relative w-full h-[44px] px-3 flex items-center justify-center gap-2 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
-            isSwapSelected ? "ring-2 ring-amber-400" : isDropTarget ? "ring-2 ring-cyan-300" : ""
-          }`}
-          style={
-            isLunaTheme
-              ? {
-                  backgroundColor: "transparent",
-                  borderBottom: isEditMode
-                    ? "1.5px solid rgba(255, 180, 92, 0.85)"
-                    : "1px solid rgba(0, 229, 255, 0.34)",
-                  backgroundImage:
-                    "linear-gradient(180deg, rgba(10, 20, 36, 0.08) 0%, rgba(10, 20, 36, 0.28) 100%)",
-                  boxShadow: isBeingDragged
-                    ? "0 6px 16px rgba(0, 229, 255, 0.28)"
-                    : undefined,
-                }
-              : isMayaTheme
-                ? {
-                    backgroundColor: `rgba(19, 23, 32, ${Math.max(0.68, state.panelOpacity / 100)})`,
-                    backgroundImage:
-                      "linear-gradient(145deg, rgba(35, 42, 58, 0.55) 0%, rgba(15, 19, 27, 0.92) 100%)",
-                    clipPath:
-                      "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
-                    boxShadow: isBeingDragged
-                      ? "inset 0 0 0 1.8px rgba(245, 185, 66, 0.95), 0 0 16px rgba(245, 185, 66, 0.35)"
-                      : isEditMode
-                        ? "inset 0 0 0 1.6px rgba(196, 122, 72, 0.95)"
-                        : "inset 0 0 0 1.3px rgba(245, 185, 66, 0.68), inset 0 -2px 0 rgba(56, 189, 248, 0.55)",
-                  }
-                : {
-                    backgroundColor: `rgba(8, 14, 24, ${Math.max(0.45, state.panelOpacity / 100)})`,
-                    clipPath:
-                      "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
-                    boxShadow: isBeingDragged
-                      ? "inset 0 0 0 1.8px rgba(34, 211, 238, 0.95), 0 0 16px rgba(34, 211, 238, 0.35)"
-                      : isEditMode
-                        ? "inset 0 0 0 1.5px rgba(245, 158, 11, 0.85)"
-                        : "inset 0 0 0 1.2px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.55)",
-                  }
-          }
-        >
-          {!isLunaTheme && !isMayaTheme && (
-            <span
-              aria-hidden="true"
-              className="hud-breathe-plate pointer-events-none absolute inset-0"
-              style={{
-                animationDelay: `${-0.3 * PLATE_SLOTS.indexOf(slotId)}s`,
-                clipPath:
-                  "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
-                boxShadow: "inset 0 0 0 1.4px rgba(var(--hilm-breath-rgb, 34, 211, 238), 0.82)",
-              }}
-            />
-          )}
-          {isLunaTheme && (
-            <span
-              aria-hidden="true"
-              className="luna-hud-border-glow luna-hud-pulse pointer-events-none absolute inset-0 rounded-[3px] border border-[#00E5FF]/25"
-              style={{ animationDelay: `${-0.45 * PLATE_SLOTS.indexOf(slotId)}s` }}
-            />
-          )}
-          {isMayaTheme && (
-            <>
-              <span
-                aria-hidden="true"
-                className="maya-hud-pulse pointer-events-none absolute inset-0"
-                style={{
-                  animationDelay: `${-0.3 * PLATE_SLOTS.indexOf(slotId)}s`,
-                  clipPath:
-                    "polygon(10px 0%, calc(100% - 10px) 0%, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0% calc(100% - 10px), 0% 10px)",
-                  boxShadow: "inset 0 0 0 1.4px rgba(245, 185, 66, 0.72)",
-                }}
-              />
-              <span
-                aria-hidden="true"
-                className="maya-hud-pulse-trim pointer-events-none absolute inset-x-3 bottom-0.5 h-[1.5px] bg-gradient-to-r from-[#C47A48] via-[#38BDF8] to-[#F5B942]"
-                style={{ animationDelay: `${-0.3 * PLATE_SLOTS.indexOf(slotId)}s` }}
-              />
-            </>
-          )}
-          {isEditMode && <GripVertical className="w-3.5 h-3.5 text-amber-400 shrink-0 relative z-10" />}
-          {app ? (
-            <>
-              <motion.span
-                key={`plate-glyph-${slotId}-${effectiveIconPack}-${state.transition.effect}-${state.transition.enabled}-${app.packageName}`}
-                initial={
-                  getHilmIconItemMotion(
-                    state.transition,
-                    PLATE_SLOTS.indexOf(slotId),
-                    prefersReducedMotion
-                  ).initial
-                }
-                animate={
-                  plateState === "rest"
-                    ? getHilmIconItemMotion(
-                        state.transition,
-                        PLATE_SLOTS.indexOf(slotId),
-                        prefersReducedMotion
-                      ).animate
-                    : plateState
-                }
-                variants={{
-                  rest: { scale: 1 },
-                  hover: { scale: prefersReducedMotion ? 1 : 1.12 },
-                  tap: { scale: prefersReducedMotion ? 1 : 0.84 },
-                  dragging: { scale: prefersReducedMotion ? 1 : 1.24 },
-                  dropTarget: { scale: prefersReducedMotion ? 1 : 1.15 },
-                  selected: { scale: prefersReducedMotion ? 1 : 1.1 },
-                }}
-                transition={
-                  plateState === "rest"
-                    ? getHilmIconItemMotion(
-                        state.transition,
-                        PLATE_SLOTS.indexOf(slotId),
-                        prefersReducedMotion
-                      ).transition
-                    : hilmSpring
-                }
-                data-portal-glyph="true"
-                className="inline-flex items-center justify-center shrink-0"
-              >
-                <AppGlyph
-                  app={app}
-                  iconPack={effectiveIconPack}
-                  customIconDataUrl={slot.customIconDataUrl}
-                  sizeClass={
-                    isMayaTheme
-                      ? "w-7 h-7 shrink-0"
-                      : usesExpandedGlyphScale(effectiveIconPack)
-                        ? "w-6 h-6 shrink-0"
-                        : "w-4 h-4 shrink-0"
-                  }
-                />
-              </motion.span>
-              <span
-                className={`font-display text-[11px] font-semibold tracking-wider uppercase truncate ${
-                  isLunaTheme
-                    ? "text-[#D9F7FF] drop-shadow-[0_1px_4px_rgba(5,7,11,0.95)]"
-                    : isMayaTheme
-                      ? "text-[#FFE49E] drop-shadow-[0_1px_4px_rgba(11,14,20,0.95)]"
-                      : "text-slate-100"
-                }`}
-              >
-                {slot.customLabel || app.label}
-              </span>
-            </>
-          ) : (
-            <motion.span
-              variants={{
-                rest: { scale: 1 },
-                hover: { scale: prefersReducedMotion ? 1 : 1.08 },
-                tap: { scale: prefersReducedMotion ? 1 : 0.88 },
-                dragging: { scale: prefersReducedMotion ? 1 : 1.14 },
-                dropTarget: { scale: prefersReducedMotion ? 1 : 1.1 },
-                selected: { scale: prefersReducedMotion ? 1 : 1.06 },
-              }}
-              transition={hilmSpring}
-              className="flex items-center gap-1 font-display text-[11px] tracking-wider uppercase text-cyan-300/75"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Atalho</span>
-            </motion.span>
-          )}
-        </motion.button>
-
-        {isEditMode && (
-          <div className="absolute -top-2.5 right-0 flex items-center gap-1 z-10">
-            {app && (
-              <>
-                <motion.button
-                  type="button"
-                  whileHover={prefersReducedMotion ? undefined : { scale: 1.12 }}
-                  whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
-                  transition={hilmSpring}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setRenameDraft(slot?.customLabel || app.label);
-                    setRenameModalSlot(slotId);
-                  }}
-                  title="Renomear atalho"
-                  aria-label="Renomear atalho"
-                  className="w-6 h-6 rounded-full bg-slate-900 border border-slate-400/70 text-slate-200 flex items-center justify-center hover:bg-slate-800 cursor-pointer"
-                >
-                  <Tag className="w-3 h-3" />
-                </motion.button>
-                <motion.button
-                  type="button"
-                  whileHover={prefersReducedMotion ? undefined : { scale: 1.12 }}
-                  whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
-                  transition={hilmSpring}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCustomIconPick(slotId);
-                  }}
-                  title="Usar imagem própria como ícone"
-                  aria-label="Usar imagem própria como ícone"
-                  className="w-6 h-6 rounded-full bg-slate-900 border border-cyan-400/70 text-cyan-300 flex items-center justify-center hover:bg-slate-800 cursor-pointer"
-                >
-                  <ImagePlus className="w-3 h-3" />
-                </motion.button>
-                <motion.button
-                  type="button"
-                  whileHover={prefersReducedMotion ? undefined : { scale: 1.12 }}
-                  whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
-                  transition={hilmSpring}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveSlot(slotId);
-                  }}
-                  title="Remover atalho da tela inicial"
-                  aria-label="Remover atalho da tela inicial"
-                  className="w-6 h-6 rounded-full bg-slate-900 border border-rose-400/80 text-rose-300 flex items-center justify-center hover:bg-rose-950 cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                </motion.button>
-              </>
-            )}
-            <motion.button
-              type="button"
-              whileHover={prefersReducedMotion ? undefined : { scale: 1.12 }}
-              whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
-              transition={hilmSpring}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenDrawerForSlot(slotId);
-              }}
-              title="Trocar aplicativo"
-              aria-label="Trocar aplicativo"
-              className="w-6 h-6 rounded-full bg-slate-900 border border-amber-400/80 text-amber-300 flex items-center justify-center hover:bg-slate-800 cursor-pointer"
-            >
-              <Pencil className="w-3 h-3" />
-            </motion.button>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const renderSideDrawerSlot = (slotId: SlotId, drawerIndex = 0) => {
     const slot = state.slots[slotId];
     const app = slot?.packageName ? appMap.get(slot.packageName) : undefined;
@@ -998,7 +674,11 @@ export function LauncherPhonePreview({
                   ? "maya-hud-pulse-ring"
                   : "hud-breathe-ring"
             } absolute inset-0 w-full h-full pointer-events-none`}
-            style={{ animationDelay: "-0.5s" }}
+            style={{
+              animationDelay: slotId.startsWith("top_")
+                ? `${(-0.5 - drawerIndex * 0.22).toFixed(2)}s`
+                : "-0.5s",
+            }}
           >
             <circle
               cx="24"
@@ -1537,7 +1217,7 @@ export function LauncherPhonePreview({
             </div>
           </div>
         ) : (
-          <div className="relative z-10 flex-1 flex items-center justify-center pt-5">
+          <div className="relative z-10 flex-1 flex items-center justify-center pb-16">
             <HilmCore
               status={coreStatus}
               themeId={activeThemeId}
@@ -1545,6 +1225,49 @@ export function LauncherPhonePreview({
             />
           </div>
         )}
+
+        {/* Transparent Hit-Zone directly over the Top V-Arrow & 3-Dots HUD Indicator */}
+        <button
+          type="button"
+          onClick={() => setTopDrawerOpen((v) => !v)}
+          aria-label={topDrawerOpen ? "Recolher gaveta superior" : "Abrir gaveta superior"}
+          title={topDrawerOpen ? "Recolher gaveta superior" : "Abrir gaveta superior (5 atalhos)"}
+          className="absolute left-1/2 -translate-x-1/2 top-[29px] w-[78px] h-[34px] z-30 bg-transparent border-0 cursor-pointer focus-visible:outline-none"
+        />
+
+        {/* Retractable Top 5-Slot Drawer (slides smoothly top-to-bottom beneath the V indicator) */}
+        <div className="pointer-events-none absolute inset-x-0 top-[54px] z-30 flex justify-center overflow-hidden pt-[9px] pb-[14px] px-2">
+          <AnimatePresence>
+            {topDrawerOpen && (
+              <motion.aside
+                key={`top-side-drawer-${state.transition.effect}`}
+                aria-label="Gaveta superior"
+                initial={topDrawerMotion.initial}
+                animate={topDrawerMotion.animate}
+                exit={topDrawerMotion.exit}
+                transition={topDrawerMotion.transition}
+                style={{
+                  transformOrigin: "center top",
+                  ...(isLunaTheme
+                    ? {
+                        background:
+                          "linear-gradient(180deg, rgba(16, 26, 46, 0.56) 0%, rgba(10, 17, 31, 0.64) 100%)",
+                        boxShadow:
+                          "0 0 12px rgba(0, 229, 255, 0.14), inset 0 0 12px rgba(139, 92, 246, 0.14)",
+                      }
+                    : {}),
+                }}
+                className={
+                  isLunaTheme
+                    ? "luna-hud-border-glow pointer-events-auto px-2.5 py-1.5 rounded-2xl border border-[#00E5FF]/35 backdrop-blur-[4px] flex flex-row items-center gap-1.5"
+                    : "pointer-events-auto bg-transparent flex flex-row items-center gap-1.5"
+                }
+              >
+                {TOP_DRAWER_SLOT_IDS.map((slotId, idx) => renderSideDrawerSlot(slotId, idx))}
+              </motion.aside>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Transparent Hit-Zone directly over the Existing HUD Side Rails */}
         <button
@@ -1627,75 +1350,7 @@ export function LauncherPhonePreview({
           )}
         </AnimatePresence>
 
-        {/* 3. Lower 2x2 HUD Shortcut Plates + Central Hub Edit Toggle */}
-        <div className="relative z-20 px-6 pb-4">
-          <div className="relative grid grid-cols-2 gap-x-10 gap-y-4 items-center">
-            {PLATE_SLOTS.map((slotId) => renderPlateSlot(slotId))}
-
-            {/* Central Hexagonal Hub Node (Edit Mode / Manage Shortcuts) */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11">
-              <motion.button
-                type="button"
-                onClick={() => {
-                  setSelectedSwapSource(null);
-                  onToggleEditMode(!isEditMode);
-                }}
-                title={isEditMode ? "Concluir edição de atalhos" : "Editar e reorganizar atalhos"}
-                aria-label={isEditMode ? "Concluir edição de atalhos" : "Editar e reorganizar atalhos"}
-                animate={{ scale: !prefersReducedMotion && isEditMode ? 1.08 : 1 }}
-                whileHover={prefersReducedMotion ? undefined : { scale: 1.14 }}
-                whileTap={prefersReducedMotion ? undefined : { scale: 0.86 }}
-                transition={hilmSpring}
-                className="w-full h-full flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-full"
-              >
-                <svg
-                  viewBox="0 0 44 44"
-                  className={`${
-                    isLunaTheme
-                      ? "luna-hud-pulse"
-                      : isMayaTheme
-                        ? "maya-hud-pulse-ring"
-                        : "hud-breathe-ring"
-                  } w-full h-full`}
-                >
-                  <polygon
-                    points="22,3 37,12 37,32 22,41 7,32 7,12"
-                    fill={
-                      isLunaTheme
-                        ? "rgba(10, 20, 36, 0.36)"
-                        : isMayaTheme
-                          ? "rgba(19, 23, 32, 0.94)"
-                          : "rgba(8, 14, 24, 0.9)"
-                    }
-                    stroke={statusPrimaryStroke}
-                    strokeWidth={isLunaTheme ? "1.1" : "1.6"}
-                  />
-                  <polygon
-                    points="22,9 32,15 32,29 22,35 12,29 12,15"
-                    fill="none"
-                    stroke={isLunaTheme ? "#398BFF" : isMayaTheme ? "#38BDF8" : "#94A3B8"}
-                    strokeOpacity={isLunaTheme ? "0.7" : isMayaTheme ? "0.8" : "1"}
-                    strokeWidth="1"
-                  />
-                  <circle
-                    cx="22"
-                    cy="22"
-                    r={isLunaTheme ? "3.2" : "4"}
-                    fill={
-                      isLunaTheme
-                        ? "#D9F7FF"
-                        : isMayaTheme
-                          ? "#FFE49E"
-                          : statusPrimaryStroke
-                    }
-                  />
-                </svg>
-              </motion.button>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. Bottom 5-Slot Circular HUD Dock */}
+        {/* 3. Bottom 5-Slot Circular HUD Dock */}
         <div className="relative z-20 px-3 pb-2 flex items-center justify-around">
           {SIDE_DOCK_LEFT.map((slotId) => renderDockSlot(slotId))}
 
@@ -1833,9 +1488,10 @@ export function LauncherPhonePreview({
               else if (showRecents) setShowRecents(false);
               else if (showCoreUpdatePopover && updatePhase !== "checking" && updatePhase !== "downloading") {
                 setShowCoreUpdatePopover(false);
-              } else if (leftDrawerOpen || rightDrawerOpen) {
+              } else if (leftDrawerOpen || rightDrawerOpen || topDrawerOpen) {
                 setLeftDrawerOpen(false);
                 setRightDrawerOpen(false);
+                setTopDrawerOpen(false);
               } else if (isEditMode) onToggleEditMode(false);
             }}
             aria-label="Voltar"
@@ -1854,6 +1510,7 @@ export function LauncherPhonePreview({
               setShowRecents(false);
               setLeftDrawerOpen(false);
               setRightDrawerOpen(false);
+              setTopDrawerOpen(false);
               if (updatePhase !== "checking" && updatePhase !== "downloading") {
                 setShowCoreUpdatePopover(false);
               }
@@ -1964,19 +1621,16 @@ export function LauncherPhonePreview({
                 onPinToSlot={(app) => {
                   const emptySlot = (
                     [
-                      "plate_top_left",
-                      "plate_top_right",
-                      "plate_bottom_left",
-                      "plate_bottom_right",
                       "dock_1",
                       "dock_2",
                       "dock_4",
                       "dock_5",
+                      ...TOP_DRAWER_SLOT_IDS,
                       ...LEFT_DRAWER_SLOT_IDS,
                       ...RIGHT_DRAWER_SLOT_IDS,
                     ] as SlotId[]
                   ).find((id) => !state.slots[id]?.packageName);
-                  const target = emptySlot || "plate_top_left";
+                  const target = emptySlot || "dock_1";
                   onAssignSlot(target, app.packageName);
                   setDrawerOpen(false);
                 }}
@@ -1995,10 +1649,10 @@ export function LauncherPhonePreview({
               transition={popoverMotion.transition}
               className={`absolute inset-x-6 z-30 rounded-xl px-3.5 py-2.5 backdrop-blur-md shadow-2xl shadow-black/80 ${
                 isLunaTheme
-                  ? "bottom-[170px] bg-[#05070B]/92 border border-[#00E5FF]/55"
+                  ? "bottom-[126px] bg-[#05070B]/92 border border-[#00E5FF]/55"
                   : isMayaTheme
-                    ? "top-[382px] bg-[#10141E]/95 border border-[#F5B942]/65"
-                    : "top-[382px] bg-[#070C15]/95 border border-cyan-400/50"
+                    ? "top-[394px] bg-[#10141E]/95 border border-[#F5B942]/65"
+                    : "top-[394px] bg-[#070C15]/95 border border-cyan-400/50"
               }`}
             >
             <div className="flex items-center justify-between gap-2">

@@ -33,6 +33,7 @@
     <string name="export_backup_json">Exportar Backup (.JSON)</string>
     <string name="import_backup_json">Importar Backup (.JSON)</string>
     <string name="recent_apps_header">Recentes</string>
+    <string name="top_drawer_toggle_desc">Gaveta superior</string>
     <string name="left_drawer_toggle_desc">Gaveta lateral esquerda</string>
     <string name="right_drawer_toggle_desc">Gaveta lateral direita</string>
     <string name="transitions_section">Transições Visuais HILM</string>

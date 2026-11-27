@@ -55,7 +55,6 @@ import com.nossouniverso.launcher.ui.views.HilmPortalOverlayView
 import com.nossouniverso.launcher.ui.views.HilmTransitionAnimator
 import com.nossouniverso.launcher.ui.views.HudDockSlotView
 import com.nossouniverso.launcher.ui.views.HudFrameView
-import com.nossouniverso.launcher.ui.views.HudPlateButton
 import com.nossouniverso.launcher.updater.ApkDownloadResult
 import com.nossouniverso.launcher.updater.LauncherUpdateManager
 import com.nossouniverso.launcher.updater.UpdateCheckResult
@@ -80,10 +79,11 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var hilmCoreView: HilmCoreView
     private lateinit var editModeBar: LinearLayout
     private lateinit var btnFinishEdit: TextView
-    private lateinit var btnHubControl: ImageButton
 
+    private lateinit var btnTopDrawerHandle: View
     private lateinit var btnLeftDrawerHandle: View
     private lateinit var btnRightDrawerHandle: View
+    private lateinit var topSideDrawer: LinearLayout
     private lateinit var leftSideDrawer: LinearLayout
     private lateinit var rightSideDrawer: LinearLayout
 
@@ -95,17 +95,19 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var updateManager: LauncherUpdateManager
     private lateinit var hilmPortalOverlay: HilmPortalOverlayView
 
-    private val plateViews = mutableMapOf<SlotPosition, HudPlateButton>()
     private val dockViews = mutableMapOf<SlotPosition, HudDockSlotView>()
     private lateinit var dockCenterDrawer: HudDockSlotView
 
     private var installedApps: List<AppInfo> = emptyList()
     private var slots: Map<SlotPosition, ShortcutSlot> = emptyMap()
     private var isEditMode = false
+    private var isTopDrawerOpen = false
     private var isLeftDrawerOpen = false
     private var isRightDrawerOpen = false
     private var hudButtonPulseAnimator: ValueAnimator? = null
     private var lunaOrbitalDrawable: GradientDrawable? = null
+    private var lunaTopDrawerHaloDrawable: GradientDrawable? = null
+    private var lunaTopDrawerPanelDrawable: GradientDrawable? = null
     private var isPortalLaunching = false
     private var lastTransitionConfig: HilmTransitionConfig? = null
     private var pendingIconTransitionReplay = false
@@ -268,7 +270,6 @@ class HomeActivity : AppCompatActivity() {
 
         val opacityPercent = app.shortcutStorage.getPanelOpacityPercent()
         hudFrameView.panelOpacityPercent = opacityPercent
-        plateViews.values.forEach { it.panelOpacityPercent = opacityPercent }
         dockViews.values.forEach { it.panelOpacityPercent = opacityPercent }
         applyLauncherTheme()
         reloadAppsAndRender()
@@ -280,6 +281,16 @@ class HomeActivity : AppCompatActivity() {
         hudButtonPulseAnimator = null
         if (::hilmPortalOverlay.isInitialized) {
             hilmPortalOverlay.cancelPortal()
+        }
+        if (::topSideDrawer.isInitialized) HilmTransitionAnimator.cancelRunning(topSideDrawer)
+        listOf(
+            SlotPosition.TOP_1,
+            SlotPosition.TOP_2,
+            SlotPosition.TOP_3,
+            SlotPosition.TOP_4,
+            SlotPosition.TOP_5
+        ).forEach { pos ->
+            dockViews[pos]?.getPortalOriginView()?.let { HilmTransitionAnimator.cancelRunning(it) }
         }
         if (::leftSideDrawer.isInitialized) HilmTransitionAnimator.cancelRunning(leftSideDrawer)
         if (::rightSideDrawer.isInitialized) HilmTransitionAnimator.cancelRunning(rightSideDrawer)
@@ -398,10 +409,11 @@ class HomeActivity : AppCompatActivity() {
         hilmCoreView = findViewById(R.id.hilmCoreView)
         editModeBar = findViewById(R.id.editModeBar)
         btnFinishEdit = findViewById(R.id.btnFinishEdit)
-        btnHubControl = findViewById(R.id.btnHubControl)
 
+        btnTopDrawerHandle = findViewById(R.id.btnTopDrawerHandle)
         btnLeftDrawerHandle = findViewById(R.id.btnLeftDrawerHandle)
         btnRightDrawerHandle = findViewById(R.id.btnRightDrawerHandle)
+        topSideDrawer = findViewById(R.id.topSideDrawer)
         leftSideDrawer = findViewById(R.id.leftSideDrawer)
         rightSideDrawer = findViewById(R.id.rightSideDrawer)
 
@@ -411,19 +423,6 @@ class HomeActivity : AppCompatActivity() {
         progressUpdateDownload = findViewById(R.id.progressUpdateDownload)
         btnUpdateAction = findViewById(R.id.btnUpdateAction)
         hilmPortalOverlay = findViewById(R.id.hilmPortalOverlay)
-
-        plateViews[SlotPosition.PLATE_TOP_LEFT] = findViewById<HudPlateButton>(R.id.plateTopLeft).apply {
-            pulsePhaseOffsetFraction = 0f
-        }
-        plateViews[SlotPosition.PLATE_TOP_RIGHT] = findViewById<HudPlateButton>(R.id.plateTopRight).apply {
-            pulsePhaseOffsetFraction = 0.14f
-        }
-        plateViews[SlotPosition.PLATE_BOTTOM_LEFT] = findViewById<HudPlateButton>(R.id.plateBottomLeft).apply {
-            pulsePhaseOffsetFraction = 0.28f
-        }
-        plateViews[SlotPosition.PLATE_BOTTOM_RIGHT] = findViewById<HudPlateButton>(R.id.plateBottomRight).apply {
-            pulsePhaseOffsetFraction = 0.42f
-        }
 
         dockViews[SlotPosition.DOCK_1] = findViewById<HudDockSlotView>(R.id.dock1).apply {
             pulsePhaseOffsetFraction = 0.20f
@@ -439,6 +438,20 @@ class HomeActivity : AppCompatActivity() {
         }
         dockViews[SlotPosition.DOCK_5] = findViewById<HudDockSlotView>(R.id.dock5).apply {
             pulsePhaseOffsetFraction = 0.20f
+        }
+
+        val topWingSlots = listOf(
+            SlotPosition.TOP_1 to R.id.topSlot1,
+            SlotPosition.TOP_2 to R.id.topSlot2,
+            SlotPosition.TOP_3 to R.id.topSlot3,
+            SlotPosition.TOP_4 to R.id.topSlot4,
+            SlotPosition.TOP_5 to R.id.topSlot5
+        )
+        topWingSlots.forEachIndexed { idx, (pos, viewId) ->
+            val slotView = findViewById<HudDockSlotView>(viewId)
+            slotView.transparentHudMode = true
+            slotView.pulsePhaseOffsetFraction = idx * 0.14f
+            dockViews[pos] = slotView
         }
 
         val leftWingSlots = listOf(
@@ -473,6 +486,11 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        btnTopDrawerHandle.setOnClickListener {
+            hideUpdatePopover()
+            setTopDrawerOpen(open = !isTopDrawerOpen)
+        }
+
         btnLeftDrawerHandle.setOnClickListener {
             hideUpdatePopover()
             setSideDrawerOpen(isLeft = true, open = !isLeftDrawerOpen)
@@ -489,16 +507,6 @@ class HomeActivity : AppCompatActivity() {
         }
 
         dockCenterDrawer.setOnLongClickListener {
-            openSettingsScreen()
-            true
-        }
-
-        btnHubControl.setOnClickListener {
-            hideUpdatePopover()
-            toggleEditMode(!isEditMode)
-        }
-
-        btnHubControl.setOnLongClickListener {
             openSettingsScreen()
             true
         }
@@ -541,7 +549,7 @@ class HomeActivity : AppCompatActivity() {
             handleUpdateActionTap()
         }
 
-        val allSlotViews: Map<SlotPosition, View> = plateViews + dockViews
+        val allSlotViews: Map<SlotPosition, View> = dockViews
         allSlotViews.forEach { (position, view) ->
             view.setOnClickListener { handleSlotTap(position) }
             view.setOnLongClickListener {
@@ -597,10 +605,6 @@ class HomeActivity : AppCompatActivity() {
         hudFrameView.mayaThemeMode = isMaya
         hilmPortalOverlay.lunaThemeMode = isLuna
         hilmPortalOverlay.mayaThemeMode = isMaya
-        plateViews.values.forEach {
-            it.lunaThemeMode = isLuna
-            it.mayaThemeMode = isMaya
-        }
         dockViews.values.forEach {
             it.lunaThemeMode = isLuna
             it.mayaThemeMode = isMaya
@@ -608,19 +612,10 @@ class HomeActivity : AppCompatActivity() {
         dockCenterDrawer.lunaThemeMode = isLuna
         dockCenterDrawer.mayaThemeMode = isMaya
 
-        when {
-            isLuna -> {
-                btnLunaOrbitalCore.setColorFilter(Color.parseColor("#00E5FF"))
-                btnHubControl.setColorFilter(Color.parseColor("#00E5FF"))
-            }
-            isMaya -> {
-                btnHubControl.setColorFilter(Color.parseColor("#F5B942"))
-            }
-            else -> {
-                btnHubControl.clearColorFilter()
-            }
+        if (isLuna) {
+            btnLunaOrbitalCore.setColorFilter(Color.parseColor("#00E5FF"))
         }
-        updateThemeButtonPulse(isLuna = isLuna, isMaya = isMaya)
+        updateThemeButtonPulse(isLuna = isLuna)
         applyLunaSideDrawerBackdrop(isLuna = isLuna)
 
         val rootLayout = homeRoot as? ConstraintLayout ?: return
@@ -633,7 +628,7 @@ class HomeActivity : AppCompatActivity() {
             constraints.connect(
                 R.id.coreUpdatePopover,
                 ConstraintSet.BOTTOM,
-                R.id.platesContainer,
+                R.id.dockContainer,
                 ConstraintSet.TOP,
                 marginPx.toInt()
             )
@@ -649,6 +644,30 @@ class HomeActivity : AppCompatActivity() {
         constraints.applyTo(rootLayout)
     }
 
+    private fun buildLunaDrawerBackdropDrawable(density: Float): LayerDrawable {
+        val outerHalo = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 23f * density
+            setColor(Color.TRANSPARENT)
+            setStroke((2.4f * density).toInt().coerceAtLeast(1), Color.argb(46, 139, 92, 246))
+        }
+        val panel = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                Color.argb(144, 16, 26, 46),
+                Color.argb(164, 10, 17, 31)
+            )
+        ).apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 21.5f * density
+            setStroke((1.15f * density).toInt().coerceAtLeast(1), Color.argb(122, 0, 229, 255))
+        }
+        return LayerDrawable(arrayOf(outerHalo, panel)).apply {
+            val inset = (1.5f * density).toInt().coerceAtLeast(1)
+            setLayerInset(1, inset, inset, inset, inset)
+        }
+    }
+
     private fun applyLunaSideDrawerBackdrop(isLuna: Boolean) {
         val density = resources.displayMetrics.density
         val padH = if (isLuna) (6f * density).toInt() else 0
@@ -658,27 +677,7 @@ class HomeActivity : AppCompatActivity() {
         val drawers = listOf(leftSideDrawer to true, rightSideDrawer to false)
         for ((drawer, isLeft) in drawers) {
             if (isLuna) {
-                val outerHalo = GradientDrawable().apply {
-                    shape = GradientDrawable.RECTANGLE
-                    cornerRadius = 23f * density
-                    setColor(Color.TRANSPARENT)
-                    setStroke((2.4f * density).toInt().coerceAtLeast(1), Color.argb(46, 139, 92, 246))
-                }
-                val panel = GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(
-                        Color.argb(144, 16, 26, 46),
-                        Color.argb(164, 10, 17, 31)
-                    )
-                ).apply {
-                    shape = GradientDrawable.RECTANGLE
-                    cornerRadius = 21.5f * density
-                    setStroke((1.15f * density).toInt().coerceAtLeast(1), Color.argb(122, 0, 229, 255))
-                }
-                val layered = LayerDrawable(arrayOf(outerHalo, panel))
-                val inset = (1.5f * density).toInt().coerceAtLeast(1)
-                layered.setLayerInset(1, inset, inset, inset, inset)
-                drawer.background = layered
+                drawer.background = buildLunaDrawerBackdropDrawable(density)
                 drawer.setPadding(padH, padV, padH, padV)
             } else {
                 drawer.setBackgroundColor(Color.TRANSPARENT)
@@ -695,9 +694,42 @@ class HomeActivity : AppCompatActivity() {
                 drawer.layoutParams = lp
             }
         }
+
+        if (isLuna) {
+            val outerHalo = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 23f * density
+                setColor(Color.TRANSPARENT)
+                setStroke((2.4f * density).toInt().coerceAtLeast(1), Color.argb(46, 139, 92, 246))
+            }
+            val panel = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    Color.argb(144, 16, 26, 46),
+                    Color.argb(164, 10, 17, 31)
+                )
+            ).apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 21.5f * density
+                setStroke((1.15f * density).toInt().coerceAtLeast(1), Color.argb(122, 0, 229, 255))
+            }
+            lunaTopDrawerHaloDrawable = outerHalo
+            lunaTopDrawerPanelDrawable = panel
+            val layered = LayerDrawable(arrayOf(outerHalo, panel)).apply {
+                val inset = (1.5f * density).toInt().coerceAtLeast(1)
+                setLayerInset(1, inset, inset, inset, inset)
+            }
+            topSideDrawer.background = layered
+            topSideDrawer.setPadding(padV, padH, padV, padH)
+        } else {
+            lunaTopDrawerHaloDrawable = null
+            lunaTopDrawerPanelDrawable = null
+            topSideDrawer.setBackgroundColor(Color.TRANSPARENT)
+            topSideDrawer.setPadding(0, 0, 0, 0)
+        }
     }
 
-    private fun updateThemeButtonPulse(isLuna: Boolean, isMaya: Boolean) {
+    private fun updateThemeButtonPulse(isLuna: Boolean) {
         val animScale = try {
             Settings.Global.getFloat(
                 contentResolver,
@@ -717,20 +749,18 @@ class HomeActivity : AppCompatActivity() {
         hudButtonPulseAnimator?.cancel()
         hudButtonPulseAnimator = null
 
-        btnHubControl.scaleX = 1f
-        btnHubControl.scaleY = 1f
-        btnHubControl.alpha = 1f
         btnLunaOrbitalCore.scaleX = 1f
         btnLunaOrbitalCore.scaleY = 1f
         btnLunaOrbitalCore.alpha = 1f
 
-        if ((!isLuna && !isMaya) || reducedMotion) {
+        if (!isLuna || reducedMotion) {
             return
         }
 
         val density = resources.displayMetrics.density
         val strokePx = (1.2f * density).toInt().coerceAtLeast(1)
-        val periodMs = if (isLuna) 5400L else 4200L
+        val haloStrokePx = (2.4f * density).toInt().coerceAtLeast(1)
+        val periodMs = 5400L
 
         hudButtonPulseAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = periodMs
@@ -740,27 +770,22 @@ class HomeActivity : AppCompatActivity() {
             addUpdateListener { anim ->
                 val phase = anim.animatedValue as Float
                 val wave = 0.5f - 0.5f * cos(phase * (2f * PI.toFloat()))
-                if (isLuna) {
-                    val orbScale = 0.985f + 0.039f * wave
-                    btnLunaOrbitalCore.scaleX = orbScale
-                    btnLunaOrbitalCore.scaleY = orbScale
-                    btnLunaOrbitalCore.alpha = 0.80f + 0.20f * wave
+                val orbScale = 0.985f + 0.039f * wave
+                btnLunaOrbitalCore.scaleX = orbScale
+                btnLunaOrbitalCore.scaleY = orbScale
+                btnLunaOrbitalCore.alpha = 0.80f + 0.20f * wave
 
-                    val strokeAlpha = (110 + (95 * wave).toInt()).coerceIn(0, 255)
-                    val r = (0 + (139 * wave * 0.65f)).toInt()
-                    val g = (229 + ((92 - 229) * wave * 0.65f)).toInt()
-                    val b = (255 + ((246 - 255) * wave * 0.65f)).toInt()
-                    lunaOrbitalDrawable?.setStroke(strokePx, Color.argb(strokeAlpha, r, g, b))
+                val strokeAlpha = (110 + (95 * wave).toInt()).coerceIn(0, 255)
+                val r = (0 + (139 * wave * 0.65f)).toInt()
+                val g = (229 + ((92 - 229) * wave * 0.65f)).toInt()
+                val b = (255 + ((246 - 255) * wave * 0.65f)).toInt()
+                lunaOrbitalDrawable?.setStroke(strokePx, Color.argb(strokeAlpha, r, g, b))
 
-                    val hubScale = 0.99f + 0.025f * wave
-                    btnHubControl.scaleX = hubScale
-                    btnHubControl.scaleY = hubScale
-                    btnHubControl.alpha = 0.78f + 0.22f * wave
-                } else {
-                    val hubScale = 0.986f + 0.038f * wave
-                    btnHubControl.scaleX = hubScale
-                    btnHubControl.scaleY = hubScale
-                    btnHubControl.alpha = 0.84f + 0.16f * wave
+                if (isTopDrawerOpen) {
+                    val panelStrokeAlpha = (92 + (84 * wave).toInt()).coerceIn(0, 255)
+                    val haloAlpha = (36 + (48 * wave).toInt()).coerceIn(0, 255)
+                    lunaTopDrawerPanelDrawable?.setStroke(strokePx, Color.argb(panelStrokeAlpha, r, g, b))
+                    lunaTopDrawerHaloDrawable?.setStroke(haloStrokePx, Color.argb(haloAlpha, 139, 92, 246))
                 }
             }
             start()
@@ -773,6 +798,44 @@ class HomeActivity : AppCompatActivity() {
             this,
             app.shortcutStorage.getTransitionConfig()
         )
+    }
+
+    private fun setTopDrawerOpen(open: Boolean, animate: Boolean = true) {
+        isTopDrawerOpen = open
+        val baseConfig = app.shortcutStorage.getTransitionConfig()
+        val effectiveConfig = if (animate) baseConfig else baseConfig.copy(enabled = false)
+        val topPositions = listOf(
+            SlotPosition.TOP_1,
+            SlotPosition.TOP_2,
+            SlotPosition.TOP_3,
+            SlotPosition.TOP_4,
+            SlotPosition.TOP_5
+        )
+        HilmTransitionAnimator.animateTopDrawer(
+            drawer = topSideDrawer,
+            open = open,
+            config = effectiveConfig
+        )
+        if (open && animate) {
+            topPositions.forEachIndexed { idx, pos ->
+                dockViews[pos]?.getPortalOriginView()?.let { iconView ->
+                    HilmTransitionAnimator.animateIconEntrance(iconView, idx, effectiveConfig)
+                }
+            }
+        } else if (!open) {
+            topPositions.forEach { pos ->
+                dockViews[pos]?.getPortalOriginView()?.let { iconView ->
+                    HilmTransitionAnimator.cancelRunning(iconView)
+                    iconView.alpha = 1f
+                    iconView.scaleX = 1f
+                    iconView.scaleY = 1f
+                    iconView.translationX = 0f
+                    iconView.translationY = 0f
+                    iconView.rotation = 0f
+                    iconView.clipBounds = null
+                }
+            }
+        }
     }
 
     private fun setSideDrawerOpen(isLeft: Boolean, open: Boolean, animate: Boolean = true) {
@@ -869,15 +932,12 @@ class HomeActivity : AppCompatActivity() {
         if (isPortalLaunching) return
         isPortalLaunching = true
 
-        val plateView = plateViews[position]
         val dockView = dockViews[position]
-        val originView: View? = plateView?.getPortalOriginView() ?: dockView?.getPortalOriginView()
-        val originDrawable = plateView?.getPortalIconDrawable()
-            ?: dockView?.getPortalIconDrawable()
+        val originView: View? = dockView?.getPortalOriginView()
+        val originDrawable = dockView?.getPortalIconDrawable()
             ?: app.iconPackManager.resolveCustomUriDrawable(slot.customIconUri)
 
         val transitionConfig = app.shortcutStorage.getTransitionConfig()
-        plateView?.triggerPortalLaunchReaction(transitionConfig)
         dockView?.triggerPortalLaunchReaction(transitionConfig)
         hilmPortalOverlay.playLaunchTransition(
             originView = originView,
@@ -1015,7 +1075,7 @@ class HomeActivity : AppCompatActivity() {
             },
             onPinShortcut = { selectedApp ->
                 val firstEmpty = SlotPosition.values().firstOrNull { pos ->
-                    slots[pos]?.isEmpty != false
+                    !pos.isPlate && (slots[pos]?.isEmpty != false)
                 }
                 if (firstEmpty != null) {
                     slots = app.shortcutStorage.assignSlot(
@@ -1024,12 +1084,13 @@ class HomeActivity : AppCompatActivity() {
                         activityName = selectedApp.activityName
                     )
                     renderAllSlots()
+                    if (firstEmpty.isTopDrawer) setTopDrawerOpen(open = true)
                     if (firstEmpty.isLeftDrawer) setSideDrawerOpen(isLeft = true, open = true)
                     if (firstEmpty.isRightDrawer) setSideDrawerOpen(isLeft = false, open = true)
                 } else {
                     Toast.makeText(
                         this,
-                        "Todos os 18 atalhos estão ocupados. Segure um espaço para substituir.",
+                        "Todos os 19 atalhos estão ocupados. Segure um espaço para substituir.",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -1047,7 +1108,6 @@ class HomeActivity : AppCompatActivity() {
             config = app.shortcutStorage.getTransitionConfig(),
             fromTop = true
         )
-        plateViews.values.forEach { it.isEditModeActive = active }
         dockViews.values.forEach { it.isEditModeActive = active }
     }
 
@@ -1071,9 +1131,6 @@ class HomeActivity : AppCompatActivity() {
 
     private fun animateHomeIcons(config: HilmTransitionConfig) {
         var index = 0
-        plateViews.values.forEach { plate ->
-            HilmTransitionAnimator.animateIconEntrance(plate.getPortalOriginView(), index++, config)
-        }
         listOf(
             SlotPosition.DOCK_1,
             SlotPosition.DOCK_2,
@@ -1090,21 +1147,6 @@ class HomeActivity : AppCompatActivity() {
     private fun renderAllSlots() {
         val appByComponent = installedApps.associateBy { "${it.packageName}/${it.activityName}" }
         val appByPackage = installedApps.associateBy { it.packageName }
-
-        plateViews.forEach { (position, view) ->
-            val slot = slots[position]
-            val resolved = resolveAppForSlot(slot, appByComponent, appByPackage)
-            if (slot != null && resolved != null) {
-                val customDrawable = app.iconPackManager.resolveCustomUriDrawable(slot.customIconUri)
-                view.bindShortcut(
-                    label = slot.customLabel ?: resolved.label,
-                    icon = customDrawable ?: resolved.icon,
-                    empty = false
-                )
-            } else {
-                view.bindShortcut(label = getString(R.string.slot_empty), icon = null, empty = true)
-            }
-        }
 
         dockViews.forEach { (position, view) ->
             val slot = slots[position]
@@ -1496,9 +1538,10 @@ class HomeActivity : AppCompatActivity() {
                     updateState != UpdateUiState.DOWNLOADING
                 ) {
                     hideUpdatePopover()
-                } else if (isLeftDrawerOpen || isRightDrawerOpen) {
+                } else if (isLeftDrawerOpen || isRightDrawerOpen || isTopDrawerOpen) {
                     if (isLeftDrawerOpen) setSideDrawerOpen(isLeft = true, open = false)
                     if (isRightDrawerOpen) setSideDrawerOpen(isLeft = false, open = false)
+                    if (isTopDrawerOpen) setTopDrawerOpen(open = false)
                 } else if (isEditMode) {
                     toggleEditMode(false)
                 }

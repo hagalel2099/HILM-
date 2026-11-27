@@ -536,6 +536,247 @@ object HilmTransitionAnimator {
         }
     }
 
+    fun animateTopDrawer(
+        drawer: View,
+        open: Boolean,
+        config: HilmTransitionConfig
+    ) {
+        cancelRunning(drawer)
+        val clean = config.sanitized()
+        val density = drawer.resources.displayMetrics.density
+        val slideOffset = -64f * density
+
+        if (!shouldAnimate(drawer.context, clean)) {
+            resetVisualState(drawer)
+            drawer.visibility = if (open) View.VISIBLE else View.GONE
+            drawer.alpha = if (open) 1f else 0f
+            return
+        }
+
+        val duration = clean.durationMs.toLong()
+        val exitDuration = (clean.durationMs * 0.82f).toLong().coerceAtLeast(140L)
+
+        if (drawer.width <= 0 || drawer.height <= 0) {
+            val unspec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            drawer.measure(unspec, unspec)
+        }
+        val measuredW = if (drawer.width > 0) drawer.width else drawer.measuredWidth.coerceAtLeast((260 * density).toInt())
+        val measuredH = if (drawer.height > 0) drawer.height else drawer.measuredHeight.coerceAtLeast((56 * density).toInt())
+        drawer.pivotX = measuredW / 2f
+        drawer.pivotY = 0f
+        drawer.cameraDistance = 14f * maxOf(measuredH, (120 * density).toInt()) * density
+
+        if (open) {
+            drawer.visibility = View.VISIBLE
+            resetVisualState(drawer)
+
+            when (clean.effect) {
+                HilmTransitionEffect.PORTAL -> {
+                    drawer.alpha = 0f
+                    drawer.translationY = slideOffset * 0.75f
+                    drawer.scaleX = 0.84f
+                    drawer.scaleY = 0.80f
+                    drawer.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(duration)
+                        .setInterpolator(OvershootInterpolator(0.65f))
+                        .start()
+                }
+                HilmTransitionEffect.DIGITAL_DISINTEGRATION -> {
+                    drawer.alpha = 0f
+                    drawer.translationY = slideOffset * 0.48f
+                    drawer.scaleX = 1.04f
+                    drawer.scaleY = 0.88f
+                    drawer.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(duration)
+                        .setInterpolator(quintOut)
+                        .start()
+                }
+                HilmTransitionEffect.LIGHT_SWEEP -> {
+                    drawer.alpha = 0.25f
+                    drawer.translationY = slideOffset * 0.50f
+                    val anim = ValueAnimator.ofFloat(0f, 1f).apply {
+                        this.duration = duration
+                        interpolator = quintOut
+                        addUpdateListener { a ->
+                            val t = a.animatedValue as Float
+                            drawer.alpha = 0.25f + 0.75f * t
+                            drawer.translationY = slideOffset * 0.50f * (1f - t)
+                            val activeW = if (drawer.width > 0) drawer.width else measuredW
+                            val activeH = if (drawer.height > 0) drawer.height else measuredH
+                            val span = (activeH * t).toInt().coerceIn(1, activeH)
+                            clipRect.set(0, 0, activeW, span)
+                            drawer.clipBounds = clipRect
+                        }
+                        addListener(object : AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: Animator) {
+                                activeValueAnimators.remove(drawer)
+                                drawer.clipBounds = null
+                                drawer.alpha = 1f
+                                drawer.translationY = 0f
+                            }
+
+                            override fun onAnimationCancel(animation: Animator) {
+                                activeValueAnimators.remove(drawer)
+                                drawer.clipBounds = null
+                            }
+                        })
+                        start()
+                    }
+                    activeValueAnimators[drawer] = anim
+                }
+                HilmTransitionEffect.DIMENSIONAL_SLIDE -> {
+                    drawer.alpha = 0f
+                    drawer.translationY = slideOffset
+                    drawer.rotationX = -24f
+                    drawer.scaleX = 0.90f
+                    drawer.scaleY = 0.86f
+                    drawer.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .rotationX(0f)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(duration)
+                        .setInterpolator(quintOut)
+                        .start()
+                }
+                HilmTransitionEffect.ENERGY_DISSOLVE -> {
+                    drawer.alpha = 0f
+                    drawer.translationY = slideOffset * 0.55f
+                    drawer.scaleX = 0.95f
+                    drawer.scaleY = 0.92f
+                    drawer.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(duration)
+                        .setInterpolator(smoothInOut)
+                        .start()
+                }
+                HilmTransitionEffect.CLASSIC -> {
+                    drawer.alpha = 0f
+                    drawer.translationY = slideOffset * 0.65f
+                    drawer.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .setDuration(duration.coerceAtMost(260L))
+                        .setInterpolator(DecelerateInterpolator())
+                        .start()
+                }
+            }
+        } else {
+            if (drawer.visibility != View.VISIBLE) {
+                resetVisualState(drawer)
+                drawer.visibility = View.GONE
+                return
+            }
+            val onGone = {
+                drawer.visibility = View.GONE
+                resetVisualState(drawer)
+            }
+
+            when (clean.effect) {
+                HilmTransitionEffect.PORTAL -> {
+                    drawer.animate()
+                        .alpha(0f)
+                        .translationY(slideOffset * 0.68f)
+                        .scaleX(0.84f)
+                        .scaleY(0.80f)
+                        .setDuration(exitDuration)
+                        .setInterpolator(DecelerateInterpolator(1.3f))
+                        .withEndAction(onGone)
+                        .start()
+                }
+                HilmTransitionEffect.DIGITAL_DISINTEGRATION -> {
+                    drawer.animate()
+                        .alpha(0f)
+                        .translationY(slideOffset * 0.40f)
+                        .scaleX(1.04f)
+                        .scaleY(0.88f)
+                        .setDuration(exitDuration)
+                        .setInterpolator(DecelerateInterpolator())
+                        .withEndAction(onGone)
+                        .start()
+                }
+                HilmTransitionEffect.LIGHT_SWEEP -> {
+                    val anim = ValueAnimator.ofFloat(1f, 0f).apply {
+                        this.duration = exitDuration
+                        interpolator = DecelerateInterpolator(1.2f)
+                        addUpdateListener { a ->
+                            val t = a.animatedValue as Float
+                            drawer.alpha = t
+                            drawer.translationY = slideOffset * 0.42f * (1f - t)
+                            val activeW = if (drawer.width > 0) drawer.width else measuredW
+                            val activeH = if (drawer.height > 0) drawer.height else measuredH
+                            val span = (activeH * t).toInt().coerceIn(1, activeH)
+                            clipRect.set(0, 0, activeW, span)
+                            drawer.clipBounds = clipRect
+                        }
+                        addListener(object : AnimatorListenerAdapter() {
+                            private var cancelled = false
+
+                            override fun onAnimationCancel(animation: Animator) {
+                                cancelled = true
+                                activeValueAnimators.remove(drawer)
+                                drawer.clipBounds = null
+                            }
+
+                            override fun onAnimationEnd(animation: Animator) {
+                                activeValueAnimators.remove(drawer)
+                                if (!cancelled) {
+                                    onGone()
+                                }
+                            }
+                        })
+                        start()
+                    }
+                    activeValueAnimators[drawer] = anim
+                }
+                HilmTransitionEffect.DIMENSIONAL_SLIDE -> {
+                    drawer.animate()
+                        .alpha(0f)
+                        .translationY(slideOffset * 0.95f)
+                        .rotationX(-22f)
+                        .scaleX(0.90f)
+                        .scaleY(0.86f)
+                        .setDuration(exitDuration)
+                        .setInterpolator(DecelerateInterpolator(1.3f))
+                        .withEndAction(onGone)
+                        .start()
+                }
+                HilmTransitionEffect.ENERGY_DISSOLVE -> {
+                    drawer.animate()
+                        .alpha(0f)
+                        .translationY(slideOffset * 0.45f)
+                        .scaleX(0.95f)
+                        .scaleY(0.92f)
+                        .setDuration(exitDuration)
+                        .setInterpolator(smoothInOut)
+                        .withEndAction(onGone)
+                        .start()
+                }
+                HilmTransitionEffect.CLASSIC -> {
+                    drawer.animate()
+                        .alpha(0f)
+                        .translationY(slideOffset * 0.58f)
+                        .setDuration(exitDuration.coerceAtMost(200L))
+                        .setInterpolator(DecelerateInterpolator())
+                        .withEndAction(onGone)
+                        .start()
+                }
+            }
+        }
+    }
+
     fun animatePanelVisibility(
         panel: View,
         show: Boolean,

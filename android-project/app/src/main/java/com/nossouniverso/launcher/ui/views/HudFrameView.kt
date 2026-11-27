@@ -216,7 +216,7 @@ class HudFrameView @JvmOverloads constructor(
     }
 
     private fun drawMayaCeramicFrame(canvas: Canvas, w: Float, h: Float) {
-        val topY = paddingTop + 14f * density
+        val topY = paddingTop + 6f * density
         val margin = 16f * density
         val cx = w / 2f
 
@@ -224,35 +224,46 @@ class HudFrameView @JvmOverloads constructor(
         val sideWave = wave(0.18f)
         val horizonWave = wave(0.32f)
 
-        // Sculpted golden-honey upper rail with soft ceramic-gold pulse aura
-        val topPath = Path().apply {
+        // Sculpted golden-honey upper rail split cleanly around signature with soft ceramic-gold pulse aura
+        val gapHalf = 96f * density
+        val leftTopPath = Path().apply {
             moveTo(margin, topY + 6f * density)
-            lineTo(margin + 18f * density, topY)
-            lineTo(w - margin - 18f * density, topY)
+            lineTo(margin + 14f * density, topY)
+            lineTo((cx - gapHalf).coerceAtLeast(margin + 24f * density), topY)
+        }
+        val rightTopPath = Path().apply {
+            moveTo((cx + gapHalf).coerceAtMost(w - margin - 24f * density), topY)
+            lineTo(w - margin - 14f * density, topY)
             lineTo(w - margin, topY + 6f * density)
         }
         glowStrokePaint.color = Color.parseColor("#F5B942")
         glowStrokePaint.strokeWidth = 4.4f * density
         glowStrokePaint.alpha = (22 + (46 * topWave).toInt()).coerceIn(0, 255)
-        canvas.drawPath(topPath, glowStrokePaint)
+        canvas.drawPath(leftTopPath, glowStrokePaint)
+        canvas.drawPath(rightTopPath, glowStrokePaint)
 
         amberPaint.color = Color.parseColor("#F5B942")
         amberPaint.strokeWidth = 1.6f * density
         amberPaint.alpha = (168 + (80 * topWave).toInt()).coerceIn(0, 255)
-        canvas.drawPath(topPath, amberPaint)
+        canvas.drawPath(leftTopPath, amberPaint)
+        canvas.drawPath(rightTopPath, amberPaint)
 
         // Copper shoulder bevel ticks
         silverPaint.color = Color.parseColor("#C47A48")
         silverPaint.strokeWidth = 1.6f * density
         silverPaint.alpha = (158 + (78 * topWave).toInt()).coerceIn(0, 255)
-        canvas.drawLine(margin + 28f * density, topY + 4.5f * density, margin + 52f * density, topY + 4.5f * density, silverPaint)
-        canvas.drawLine(w - margin - 52f * density, topY + 4.5f * density, w - margin - 28f * density, topY + 4.5f * density, silverPaint)
+        canvas.drawLine(margin + 22f * density, topY + 4.5f * density, margin + 44f * density, topY + 4.5f * density, silverPaint)
+        canvas.drawLine(w - margin - 44f * density, topY + 4.5f * density, w - margin - 22f * density, topY + 4.5f * density, silverPaint)
 
-        // Electric blue center reticle chevron with subtle halo
+        mayaSignaturePaint.textSize = 7.4f * density
+        mayaSignaturePaint.alpha = (166 + (74 * topWave).toInt()).coerceIn(0, 255)
+        canvas.drawText("MAYA — HOLOGRAPHIC PRESENCE", cx, topY + 4.5f * density, mayaSignaturePaint)
+
+        // Electric blue center reticle chevron with subtle halo + 3 indicator dots
         val chevron = Path().apply {
-            moveTo(cx - 14f * density, topY + 7f * density)
-            lineTo(cx, topY + 14f * density)
-            lineTo(cx + 14f * density, topY + 7f * density)
+            moveTo(cx - 14f * density, topY + 11f * density)
+            lineTo(cx, topY + 18.5f * density)
+            lineTo(cx + 14f * density, topY + 11f * density)
         }
         glowStrokePaint.color = Color.parseColor("#38BDF8")
         glowStrokePaint.strokeWidth = 3.8f * density
@@ -261,12 +272,19 @@ class HudFrameView @JvmOverloads constructor(
 
         electricBluePaint.color = Color.parseColor("#38BDF8")
         electricBluePaint.strokeWidth = 1.5f * density
-        electricBluePaint.alpha = (165 + (82 * topWave).toInt()).coerceIn(0, 255)
+        electricBluePaint.alpha = (168 + (82 * topWave).toInt()).coerceIn(0, 255)
         canvas.drawPath(chevron, electricBluePaint)
 
-        mayaSignaturePaint.textSize = 8.2f * density
-        mayaSignaturePaint.alpha = (160 + (75 * topWave).toInt()).coerceIn(0, 255)
-        canvas.drawText("MAYA — HOLOGRAPHIC PRESENCE", cx, topY + 25f * density, mayaSignaturePaint)
+        val dotR = 1.7f * density
+        val dotGap = 6.5f * density
+        val dotY = topY + 24.5f * density
+        cyanFillPaint.color = Color.parseColor("#F5B942")
+        cyanFillPaint.alpha = (165 + (75 * topWave).toInt()).coerceIn(0, 255)
+        canvas.drawCircle(cx - dotGap, dotY, dotR, cyanFillPaint)
+        canvas.drawCircle(cx + dotGap, dotY, dotR, cyanFillPaint)
+        cyanFillPaint.color = Color.parseColor("#38BDF8")
+        cyanFillPaint.alpha = (175 + (75 * topWave).toInt()).coerceIn(0, 255)
+        canvas.drawCircle(cx, dotY, dotR, cyanFillPaint)
 
         // Ceramic side drawer rails (graphite copper + golden-honey + electric blue core)
         val top = h * 0.24f
@@ -316,9 +334,10 @@ class HudFrameView @JvmOverloads constructor(
 
     private fun drawLunaHoloFrame(canvas: Canvas, w: Float, h: Float) {
         val margin = 12f * density
-        val topY = paddingTop + 10f * density
+        val topY = paddingTop + 5f * density
         val bottomY = h - paddingBottom - 8f * density
         val cornerLen = 22f * density
+        val cx = w / 2f
 
         val cornerWave = wave(0f)
         val railWave = wave(0.24f)
@@ -328,7 +347,7 @@ class HudFrameView @JvmOverloads constructor(
         val lunaViolet = Color.parseColor("#8B5CF6")
         val lunaBlue = Color.parseColor("#398BFF")
 
-        // Subtle holographic cyan-to-violet upper corner ticks leaving center halo completely unobstructed
+        // Subtle holographic cyan-to-violet upper corner ticks & centered top-drawer V-indicator
         val cornerColor = lerpColor(lunaCyan, lunaViolet, cornerWave * 0.45f)
         glowStrokePaint.color = cornerColor
         glowStrokePaint.strokeWidth = 3.2f * density
@@ -338,13 +357,32 @@ class HudFrameView @JvmOverloads constructor(
         canvas.drawLine(w - margin - cornerLen, topY, w - margin, topY, glowStrokePaint)
         canvas.drawLine(w - margin, topY, w - margin, topY + cornerLen * 0.45f, glowStrokePaint)
 
+        val lunaChevron = Path().apply {
+            moveTo(cx - 13f * density, topY + 6f * density)
+            lineTo(cx, topY + 13.5f * density)
+            lineTo(cx + 13f * density, topY + 6f * density)
+        }
+        canvas.drawPath(lunaChevron, glowStrokePaint)
+
         cyanPaint.color = cornerColor
         cyanPaint.strokeWidth = 1.2f * density
-        cyanPaint.alpha = (118 + (82 * cornerWave).toInt()).coerceIn(0, 255)
+        cyanPaint.alpha = (128 + (84 * cornerWave).toInt()).coerceIn(0, 255)
         canvas.drawLine(margin, topY + cornerLen * 0.45f, margin, topY, cyanPaint)
         canvas.drawLine(margin, topY, margin + cornerLen, topY, cyanPaint)
         canvas.drawLine(w - margin - cornerLen, topY, w - margin, topY, cyanPaint)
         canvas.drawLine(w - margin, topY, w - margin, topY + cornerLen * 0.45f, cyanPaint)
+        canvas.drawPath(lunaChevron, cyanPaint)
+
+        val dotR = 1.6f * density
+        val dotGap = 6.5f * density
+        val dotY = topY + 20f * density
+        cyanFillPaint.color = cornerColor
+        cyanFillPaint.alpha = (130 + (82 * cornerWave).toInt()).coerceIn(0, 255)
+        canvas.drawCircle(cx - dotGap, dotY, dotR, cyanFillPaint)
+        canvas.drawCircle(cx + dotGap, dotY, dotR, cyanFillPaint)
+        cyanFillPaint.color = lunaViolet
+        cyanFillPaint.alpha = (145 + (80 * cornerWave).toInt()).coerceIn(0, 255)
+        canvas.drawCircle(cx, dotY, dotR, cyanFillPaint)
 
         // Slim side-drawer handle indicators (subtle electric blue-violet & restrained copper glint)
         val midY = h * 0.40f
@@ -376,7 +414,7 @@ class HudFrameView @JvmOverloads constructor(
     }
 
     private fun drawTopOrnamentalHeader(canvas: Canvas, w: Float) {
-        val topY = paddingTop + 14f * density
+        val topY = paddingTop + 6f * density
         val margin = 18f * density
 
         cyanPaint.color = Color.parseColor("#22D3EE")
@@ -408,7 +446,8 @@ class HudFrameView @JvmOverloads constructor(
         canvas.drawPath(chevron, cyanPaint)
 
         // Three centered indicator dots
-        drawThreeDots(canvas, cx, topY + 23f * density)
+        cyanFillPaint.color = Color.parseColor("#22D3EE")
+        drawThreeDots(canvas, cx, topY + 21f * density)
     }
 
     private fun drawSideRails(canvas: Canvas, w: Float, h: Float) {

@@ -9,6 +9,11 @@ enum class SlotPosition(val id: String, val isPlate: Boolean) {
     DOCK_2("dock_2", false),
     DOCK_4("dock_4", false),
     DOCK_5("dock_5", false),
+    TOP_1("top_1", false),
+    TOP_2("top_2", false),
+    TOP_3("top_3", false),
+    TOP_4("top_4", false),
+    TOP_5("top_5", false),
     LEFT_1("left_1", false),
     LEFT_2("left_2", false),
     LEFT_3("left_3", false),
@@ -19,6 +24,9 @@ enum class SlotPosition(val id: String, val isPlate: Boolean) {
     RIGHT_3("right_3", false),
     RIGHT_4("right_4", false),
     RIGHT_5("right_5", false);
+
+    val isTopDrawer: Boolean
+        get() = name.startsWith("TOP_")
 
     val isLeftDrawer: Boolean
         get() = name.startsWith("LEFT_")

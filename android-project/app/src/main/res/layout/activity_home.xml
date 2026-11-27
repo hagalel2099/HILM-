@@ -203,76 +203,6 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Lower 2x2 HUD Shortcut Plates + Central Hub Control -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/platesContainer"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="26dp"
-        android:layout_marginBottom="24dp"
-        app:layout_constraintBottom_toTopOf="@id/dockContainer"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <com.nossouniverso.launcher.ui.views.HudPlateButton
-            android:id="@+id/plateTopLeft"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_marginEnd="28dp"
-            app:layout_constraintEnd_toStartOf="@id/centerVerticalGuide"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <com.nossouniverso.launcher.ui.views.HudPlateButton
-            android:id="@+id/plateTopRight"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_marginStart="28dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/centerVerticalGuide"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <com.nossouniverso.launcher.ui.views.HudPlateButton
-            android:id="@+id/plateBottomLeft"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_marginTop="20dp"
-            android:layout_marginEnd="28dp"
-            app:layout_constraintEnd_toStartOf="@id/centerVerticalGuide"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/plateTopLeft" />
-
-        <com.nossouniverso.launcher.ui.views.HudPlateButton
-            android:id="@+id/plateBottomRight"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_marginStart="28dp"
-            android:layout_marginTop="20dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/centerVerticalGuide"
-            app:layout_constraintTop_toBottomOf="@id/plateTopRight" />
-
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/centerVerticalGuide"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            app:layout_constraintGuide_percent="0.5" />
-
-        <ImageButton
-            android:id="@+id/btnHubControl"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="@android:color/transparent"
-            android:contentDescription="@string/settings_title"
-            android:padding="8dp"
-            android:src="@drawable/ic_launcher_foreground"
-            app:layout_constraintBottom_toBottomOf="@id/plateBottomLeft"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@id/plateTopLeft" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
     <!-- Bottom 5-Slot Circular HUD Dock -->
     <LinearLayout
         android:id="@+id/dockContainer"
@@ -315,6 +245,67 @@
             android:layout_width="54dp"
             android:layout_height="54dp"
             android:layout_marginHorizontal="6dp" />
+    </LinearLayout>
+
+    <!-- Transparent Hit-Zone over Top Center V-Arrow & 3-Dots Indicator -->
+    <View
+        android:id="@+id/btnTopDrawerHandle"
+        android:layout_width="88dp"
+        android:layout_height="38dp"
+        android:layout_marginTop="4dp"
+        android:background="@android:color/transparent"
+        android:clickable="true"
+        android:contentDescription="@string/top_drawer_toggle_desc"
+        android:focusable="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Top 5-Slot Transparent Drawer (slides top-to-bottom beneath V indicator) -->
+    <LinearLayout
+        android:id="@+id/topSideDrawer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:background="@android:color/transparent"
+        android:clickable="true"
+        android:elevation="6dp"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.nossouniverso.launcher.ui.views.HudDockSlotView
+            android:id="@+id/topSlot1"
+            android:layout_width="48dp"
+            android:layout_height="48dp" />
+
+        <com.nossouniverso.launcher.ui.views.HudDockSlotView
+            android:id="@+id/topSlot2"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="5dp" />
+
+        <com.nossouniverso.launcher.ui.views.HudDockSlotView
+            android:id="@+id/topSlot3"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="5dp" />
+
+        <com.nossouniverso.launcher.ui.views.HudDockSlotView
+            android:id="@+id/topSlot4"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="5dp" />
+
+        <com.nossouniverso.launcher.ui.views.HudDockSlotView
+            android:id="@+id/topSlot5"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="5dp" />
     </LinearLayout>
 
     <!-- Transparent Hit-Zone over Left Existing HUD Rail -->

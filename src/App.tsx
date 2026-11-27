@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
-import { DEFAULT_LAUNCHER_STATE, TRANSITION_EFFECTS } from "./data/launcherCatalog";
+import { DEFAULT_LAUNCHER_STATE, SLOT_IDS, TRANSITION_EFFECTS } from "./data/launcherCatalog";
 import type {
   IconPackId,
   InstalledAppItem,
   LauncherPersistedState,
   LauncherThemeId,
+  ShortcutSlotConfig,
   SlotId,
   TransitionConfig,
   TransitionEffectId,
@@ -39,13 +40,58 @@ function normalizeTransitionConfig(
   return { enabled, effect, durationMs };
 }
 
+function normalizeSlots(
+  rawSlots?: Record<string, Partial<ShortcutSlotConfig> | undefined> | null,
+  fallbackSlots: Record<SlotId, ShortcutSlotConfig> = DEFAULT_LAUNCHER_STATE.slots
+): Record<SlotId, ShortcutSlotConfig> {
+  const result = { ...fallbackSlots } as Record<SlotId, ShortcutSlotConfig>;
+  if (!rawSlots || typeof rawSlots !== "object") return result;
+
+  const hasAnyTopSlot = (["top_1", "top_2", "top_3", "top_4", "top_5"] as SlotId[]).some(
+    (id) => rawSlots[id] !== undefined
+  );
+  if (!hasAnyTopSlot) {
+    const legacyPlateMap: Array<[string, SlotId]> = [
+      ["plate_top_left", "top_1"],
+      ["plate_top_right", "top_2"],
+      ["plate_bottom_left", "top_3"],
+      ["plate_bottom_right", "top_4"],
+    ];
+    for (const [legacyKey, targetKey] of legacyPlateMap) {
+      const legacy = rawSlots[legacyKey];
+      if (legacy && typeof legacy === "object") {
+        result[targetKey] = {
+          slotId: targetKey,
+          packageName: legacy.packageName ?? null,
+          customLabel: legacy.customLabel,
+          customIconDataUrl: legacy.customIconDataUrl,
+        };
+      }
+    }
+  }
+
+  for (const id of SLOT_IDS) {
+    const entry = rawSlots[id];
+    if (entry && typeof entry === "object") {
+      result[id] = {
+        slotId: id,
+        packageName: entry.packageName ?? null,
+        customLabel: entry.customLabel,
+        customIconDataUrl: entry.customIconDataUrl,
+      };
+    }
+  }
+
+  return result;
+}
+
 function loadInitialState(): LauncherPersistedState {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_LAUNCHER_STATE;
     const parsed = JSON.parse(raw) as Partial<LauncherPersistedState>;
     return {
-      slots: { ...DEFAULT_LAUNCHER_STATE.slots, ...(parsed.slots || {}) },
+      slots: normalizeSlots(parsed.slots as Record<string, Partial<ShortcutSlotConfig> | undefined>),
       themeId:
         parsed.themeId === "luna-entre-luz-e-sombra"
           ? "luna-entre-luz-e-sombra"
@@ -241,7 +287,10 @@ export default function App() {
 
   const handleImportState = (imported: Partial<LauncherPersistedState>) => {
     setState((prev) => ({
-      slots: { ...DEFAULT_LAUNCHER_STATE.slots, ...(imported.slots || prev.slots) },
+      slots: normalizeSlots(
+        (imported.slots || prev.slots) as Record<string, Partial<ShortcutSlotConfig> | undefined>,
+        prev.slots
+      ),
       themeId:
         imported.themeId === "luna-entre-luz-e-sombra"
           ? "luna-entre-luz-e-sombra"

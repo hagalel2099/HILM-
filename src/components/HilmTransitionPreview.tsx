@@ -7,6 +7,7 @@ import { TRANSITION_EFFECTS } from "../data/launcherCatalog";
 export type HilmSurfaceKind =
   | "left-drawer"
   | "right-drawer"
+  | "top-drawer"
   | "app-drawer"
   | "recents"
   | "popover";
@@ -28,20 +29,31 @@ export function getHilmSurfaceMotion(
   const dur = Math.max(0.16, Math.min(0.65, config.durationMs / 1000));
   const isLeft = surface === "left-drawer";
   const isRight = surface === "right-drawer";
+  const isTop = surface === "top-drawer";
   const isHorizontal = isLeft || isRight;
   const sideOffset = isLeft ? -74 : isRight ? 74 : 0;
-  const verticalOffset = surface === "app-drawer" ? 42 : surface === "recents" ? 30 : -12;
+  const verticalOffset = isTop
+    ? -64
+    : surface === "app-drawer"
+      ? 42
+      : surface === "recents"
+        ? 30
+        : -12;
 
   switch (config.effect) {
     case "portal":
       return {
         initial: isHorizontal
           ? { x: sideOffset * 0.65, scale: 0.72, opacity: 0 }
-          : { scale: 0.84, opacity: 0 },
+          : isTop
+            ? { y: -48, scale: 0.8, opacity: 0 }
+            : { scale: 0.84, opacity: 0 },
         animate: { x: 0, y: 0, scale: 1, opacity: 1 },
         exit: isHorizontal
           ? { x: sideOffset * 0.55, scale: 0.76, opacity: 0 }
-          : { scale: 0.88, opacity: 0 },
+          : isTop
+            ? { y: -40, scale: 0.84, opacity: 0 }
+            : { scale: 0.88, opacity: 0 },
         transition: { duration: dur, ease: [0.16, 1, 0.3, 1] as const },
       };
 
@@ -49,11 +61,15 @@ export function getHilmSurfaceMotion(
       return {
         initial: isHorizontal
           ? { x: sideOffset * 0.35, scale: 0.92, opacity: 0, filter: "blur(3px)" }
-          : { scale: 0.95, opacity: 0, filter: "blur(4px)" },
+          : isTop
+            ? { y: -32, scale: 0.92, opacity: 0, filter: "blur(3px)" }
+            : { scale: 0.95, opacity: 0, filter: "blur(4px)" },
         animate: { x: 0, y: 0, scale: 1, opacity: 1, filter: "blur(0px)" },
         exit: isHorizontal
           ? { x: sideOffset * 0.4, scale: 1.04, opacity: 0, filter: "blur(4px)" }
-          : { scale: 1.03, opacity: 0, filter: "blur(5px)" },
+          : isTop
+            ? { y: -28, scale: 1.04, opacity: 0, filter: "blur(4px)" }
+            : { scale: 1.03, opacity: 0, filter: "blur(5px)" },
         transition: { duration: dur, ease: [0.22, 1, 0.36, 1] as const },
       };
 
@@ -65,14 +81,18 @@ export function getHilmSurfaceMotion(
               opacity: 0.35,
               x: isLeft ? -14 : 14,
             }
-          : { clipPath: "inset(0 0 100% 0)", opacity: 0.35, y: -8 },
+          : isTop
+            ? { clipPath: "inset(0 0 100% 0)", opacity: 0.35, y: -34 }
+            : { clipPath: "inset(0 0 100% 0)", opacity: 0.35, y: -8 },
         animate: { clipPath: "inset(0 0 0 0)", opacity: 1, x: 0, y: 0 },
         exit: isHorizontal
           ? {
               clipPath: isLeft ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)",
               opacity: 0,
             }
-          : { clipPath: "inset(100% 0 0 0)", opacity: 0 },
+          : isTop
+            ? { clipPath: "inset(0 0 100% 0)", opacity: 0, y: -28 }
+            : { clipPath: "inset(100% 0 0 0)", opacity: 0 },
         transition: { duration: dur, ease: [0.2, 0.9, 0.25, 1] as const },
       };
 
@@ -87,8 +107,8 @@ export function getHilmSurfaceMotion(
             }
           : {
               y: verticalOffset,
-              rotateX: surface === "popover" ? -12 : 10,
-              scale: 0.9,
+              rotateX: isTop ? -24 : surface === "popover" ? -12 : 10,
+              scale: isTop ? 0.88 : 0.9,
               opacity: 0,
             },
         animate: { x: 0, y: 0, rotateX: 0, rotateY: 0, scale: 1, opacity: 1 },
@@ -100,9 +120,9 @@ export function getHilmSurfaceMotion(
               opacity: 0,
             }
           : {
-              y: verticalOffset * 0.8,
-              rotateX: surface === "popover" ? 8 : -8,
-              scale: 0.92,
+              y: verticalOffset * 0.85,
+              rotateX: isTop ? -20 : surface === "popover" ? 8 : -8,
+              scale: isTop ? 0.88 : 0.92,
               opacity: 0,
             },
         transition: { duration: dur, ease: [0.18, 0.88, 0.28, 1] as const },
@@ -110,18 +130,22 @@ export function getHilmSurfaceMotion(
 
     case "energy-dissolve":
       return {
-        initial: { opacity: 0, scale: 0.965 },
-        animate: { opacity: 1, scale: 1 },
-        exit: { opacity: 0, scale: 1.02 },
+        initial: isTop ? { opacity: 0, y: -36, scale: 0.95 } : { opacity: 0, scale: 0.965 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        exit: isTop ? { opacity: 0, y: -30, scale: 1.02 } : { opacity: 0, scale: 1.02 },
         transition: { duration: dur * 1.05, ease: [0.4, 0, 0.2, 1] as const },
       };
 
     case "classic":
     default:
       return {
-        initial: isHorizontal ? { x: sideOffset * 0.85, opacity: 0 } : { y: verticalOffset * 0.55, opacity: 0 },
+        initial: isHorizontal
+          ? { x: sideOffset * 0.85, opacity: 0 }
+          : { y: verticalOffset * (isTop ? 0.72 : 0.55), opacity: 0 },
         animate: { x: 0, y: 0, opacity: 1 },
-        exit: isHorizontal ? { x: sideOffset * 0.85, opacity: 0 } : { y: verticalOffset * 0.55, opacity: 0 },
+        exit: isHorizontal
+          ? { x: sideOffset * 0.85, opacity: 0 }
+          : { y: verticalOffset * (isTop ? 0.72 : 0.55), opacity: 0 },
         transition: { duration: Math.min(dur, 0.28), ease: "easeOut" as const },
       };
   }

@@ -76,15 +76,15 @@ export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgF
           </linearGradient>
         </defs>
 
-        {/* Top Ceramic-Gold Chamfered Horizon Rail & Signature */}
+        {/* Top Ceramic-Gold Chamfered Horizon Rail, Signature & Top Drawer Indicator */}
         <g className="maya-hud-pulse-rail" opacity="0.86" filter="url(#mayaHoloGlow)">
-          <path d="M 16 44 L 30 37 L 98 37" fill="none" stroke={primaryStroke} strokeWidth="1.25" />
-          <path d="M 262 37 L 330 37 L 344 44" fill="none" stroke={primaryStroke} strokeWidth="1.25" />
-          <line x1="36" y1="41" x2="62" y2="41" stroke="#38BDF8" strokeWidth="1.15" opacity="0.88" />
-          <line x1="298" y1="41" x2="324" y2="41" stroke="#C47A48" strokeWidth="1.15" opacity="0.88" />
+          <path d="M 16 37 L 30 30 L 98 30" fill="none" stroke={primaryStroke} strokeWidth="1.25" />
+          <path d="M 262 30 L 330 30 L 344 37" fill="none" stroke={primaryStroke} strokeWidth="1.25" />
+          <line x1="36" y1="34" x2="62" y2="34" stroke="#38BDF8" strokeWidth="1.15" opacity="0.88" />
+          <line x1="298" y1="34" x2="324" y2="34" stroke="#C47A48" strokeWidth="1.15" opacity="0.88" />
           <text
             x="180"
-            y="40.5"
+            y="33.5"
             textAnchor="middle"
             fill="#FFE49E"
             fontSize="6.7"
@@ -94,6 +94,15 @@ export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgF
           >
             MAYA — HOLOGRAPHIC PRESENCE
           </text>
+          <path
+            d="M 165 39 L 180 48 L 195 39"
+            fill="none"
+            stroke="#38BDF8"
+            strokeWidth="1.45"
+          />
+          <circle cx="173" cy="54" r="1.45" fill="#F5B942" />
+          <circle cx="180" cy="54" r="1.45" fill="#38BDF8" />
+          <circle cx="187" cy="54" r="1.45" fill="#F5B942" />
         </g>
 
         {/* Sculpted Left & Right Side Drawer Ceramic Rails */}
@@ -155,11 +164,20 @@ export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgF
           </linearGradient>
         </defs>
 
-        {/* Subtle Top Holographic Hairline Corners (leaving Luna's crown completely clear) */}
-        <g className="luna-hud-pulse" opacity="0.72" filter="url(#lunaHoloGlow)">
-          <path d="M 16 42 L 28 36 L 96 36" fill="none" stroke={primaryStroke} strokeWidth="1.1" />
-          <path d="M 264 36 L 332 36 L 344 42" fill="none" stroke={primaryStroke} strokeWidth="1.1" />
-          <line x1="36" y1="39" x2="54" y2="39" stroke="#C47A48" strokeWidth="1.1" opacity="0.85" />
+        {/* Subtle Top Holographic Hairline Corners & Top Drawer Indicator */}
+        <g className="luna-hud-pulse" opacity="0.76" filter="url(#lunaHoloGlow)">
+          <path d="M 16 35 L 28 29 L 96 29" fill="none" stroke={primaryStroke} strokeWidth="1.1" />
+          <path d="M 264 29 L 332 29 L 344 35" fill="none" stroke={primaryStroke} strokeWidth="1.1" />
+          <line x1="36" y1="32" x2="54" y2="32" stroke="#C47A48" strokeWidth="1.1" opacity="0.85" />
+          <path
+            d="M 166 35 L 180 43 L 194 35"
+            fill="none"
+            stroke={primaryStroke}
+            strokeWidth="1.25"
+          />
+          <circle cx="173.5" cy="49" r="1.35" fill={primaryStroke} />
+          <circle cx="180" cy="49" r="1.35" fill="#8B5CF6" />
+          <circle cx="186.5" cy="49" r="1.35" fill={primaryStroke} />
         </g>
 
         {/* Minimal Left & Right Holographic Edge Brackets */}
@@ -217,26 +235,26 @@ export function HudSvgFrame({ status = "nominal", themeId = "default" }: HudSvgF
         </filter>
       </defs>
 
-      {/* Top HUD Ornamental Rail (below Android Status Bar, clock removed) */}
+      {/* Top HUD Ornamental Rail (below Android Status Bar, shifted cleanly upward) */}
       <g className="hud-breathe-rail" style={{ transition: "stroke 300ms ease" }}>
         <path
-          d="M 18 46 L 36 39 L 324 39 L 342 46"
+          d="M 18 39 L 36 32 L 324 32 L 342 39"
           fill="none"
           stroke={primaryStroke}
           strokeWidth="1.5"
           filter="url(#cyanGlow)"
         />
-        <line x1="46" y1="43" x2="72" y2="43" stroke="#F59E0B" strokeWidth="1.6" />
-        <line x1="288" y1="43" x2="314" y2="43" stroke="#F59E0B" strokeWidth="1.6" />
+        <line x1="46" y1="36" x2="72" y2="36" stroke="#F59E0B" strokeWidth="1.6" />
+        <line x1="288" y1="36" x2="314" y2="36" stroke="#F59E0B" strokeWidth="1.6" />
         <path
-          d="M 164 44 L 180 54 L 196 44"
+          d="M 164 37 L 180 47 L 196 37"
           fill="none"
           stroke={primaryStroke}
           strokeWidth="1.5"
         />
-        <circle cx="173" cy="61" r="1.6" fill={primaryStroke} />
-        <circle cx="180" cy="61" r="1.6" fill={primaryStroke} />
-        <circle cx="187" cy="61" r="1.6" fill={primaryStroke} />
+        <circle cx="173" cy="53" r="1.6" fill={primaryStroke} />
+        <circle cx="180" cy="53" r="1.6" fill={primaryStroke} />
+        <circle cx="187" cy="53" r="1.6" fill={primaryStroke} />
       </g>
 
       {/* Left Vertical HUD Rail */}
