@@ -1573,8 +1573,22 @@ export function LauncherPhonePreview({
               animate={leftDrawerMotion.animate}
               exit={leftDrawerMotion.exit}
               transition={leftDrawerMotion.transition}
-              style={{ transformOrigin: "left center" }}
-              className="absolute left-[42px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
+              style={{
+                transformOrigin: "left center",
+                ...(isLunaTheme
+                  ? {
+                      background:
+                        "linear-gradient(180deg, rgba(16, 26, 46, 0.56) 0%, rgba(10, 17, 31, 0.64) 100%)",
+                      boxShadow:
+                        "0 0 14px rgba(0, 229, 255, 0.14), inset 0 0 12px rgba(139, 92, 246, 0.14)",
+                    }
+                  : {}),
+              }}
+              className={
+                isLunaTheme
+                  ? "luna-hud-border-glow absolute left-[36px] top-[16.5%] z-30 w-[60px] py-2 rounded-2xl border border-[#00E5FF]/35 backdrop-blur-[4px] flex flex-col items-center gap-1.5"
+                  : "absolute left-[42px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
+              }
             >
               {LEFT_DRAWER_SLOT_IDS.map((slotId, idx) => renderSideDrawerSlot(slotId, idx))}
             </motion.aside>
@@ -1591,8 +1605,22 @@ export function LauncherPhonePreview({
               animate={rightDrawerMotion.animate}
               exit={rightDrawerMotion.exit}
               transition={rightDrawerMotion.transition}
-              style={{ transformOrigin: "right center" }}
-              className="absolute right-[42px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
+              style={{
+                transformOrigin: "right center",
+                ...(isLunaTheme
+                  ? {
+                      background:
+                        "linear-gradient(180deg, rgba(16, 26, 46, 0.56) 0%, rgba(10, 17, 31, 0.64) 100%)",
+                      boxShadow:
+                        "0 0 14px rgba(0, 229, 255, 0.14), inset 0 0 12px rgba(139, 92, 246, 0.14)",
+                    }
+                  : {}),
+              }}
+              className={
+                isLunaTheme
+                  ? "luna-hud-border-glow absolute right-[36px] top-[16.5%] z-30 w-[60px] py-2 rounded-2xl border border-[#00E5FF]/35 backdrop-blur-[4px] flex flex-col items-center gap-1.5"
+                  : "absolute right-[42px] top-[17.5%] z-30 w-[48px] bg-transparent flex flex-col items-center gap-1.5"
+              }
             >
               {RIGHT_DRAWER_SLOT_IDS.map((slotId, idx) => renderSideDrawerSlot(slotId, idx))}
             </motion.aside>

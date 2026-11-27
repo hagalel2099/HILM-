@@ -12,6 +12,7 @@ import android.content.pm.PackageInstaller
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -620,6 +621,7 @@ class HomeActivity : AppCompatActivity() {
             }
         }
         updateThemeButtonPulse(isLuna = isLuna, isMaya = isMaya)
+        applyLunaSideDrawerBackdrop(isLuna = isLuna)
 
         val rootLayout = homeRoot as? ConstraintLayout ?: return
         val marginPx = (if (isLuna) 14f else 4f) * resources.displayMetrics.density
@@ -645,6 +647,54 @@ class HomeActivity : AppCompatActivity() {
             )
         }
         constraints.applyTo(rootLayout)
+    }
+
+    private fun applyLunaSideDrawerBackdrop(isLuna: Boolean) {
+        val density = resources.displayMetrics.density
+        val padH = if (isLuna) (6f * density).toInt() else 0
+        val padV = if (isLuna) (8f * density).toInt() else 0
+        val marginPx = ((if (isLuna) 36f else 42f) * density).toInt()
+
+        val drawers = listOf(leftSideDrawer to true, rightSideDrawer to false)
+        for ((drawer, isLeft) in drawers) {
+            if (isLuna) {
+                val outerHalo = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = 23f * density
+                    setColor(Color.TRANSPARENT)
+                    setStroke((2.4f * density).toInt().coerceAtLeast(1), Color.argb(46, 139, 92, 246))
+                }
+                val panel = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(
+                        Color.argb(144, 16, 26, 46),
+                        Color.argb(164, 10, 17, 31)
+                    )
+                ).apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = 21.5f * density
+                    setStroke((1.15f * density).toInt().coerceAtLeast(1), Color.argb(122, 0, 229, 255))
+                }
+                val layered = LayerDrawable(arrayOf(outerHalo, panel))
+                val inset = (1.5f * density).toInt().coerceAtLeast(1)
+                layered.setLayerInset(1, inset, inset, inset, inset)
+                drawer.background = layered
+                drawer.setPadding(padH, padV, padH, padV)
+            } else {
+                drawer.setBackgroundColor(Color.TRANSPARENT)
+                drawer.setPadding(0, 0, 0, 0)
+            }
+
+            val lp = drawer.layoutParams as? ConstraintLayout.LayoutParams
+            if (lp != null) {
+                if (isLeft) {
+                    lp.marginStart = marginPx
+                } else {
+                    lp.marginEnd = marginPx
+                }
+                drawer.layoutParams = lp
+            }
+        }
     }
 
     private fun updateThemeButtonPulse(isLuna: Boolean, isMaya: Boolean) {
