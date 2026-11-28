@@ -260,6 +260,7 @@ class HilmCoreView @JvmOverloads constructor(
     private var isCharging: Boolean = false
 
     private val pulsePeriodMs = 4600f
+    private val breathPeriodMs = 4000f
     private val trailSegments = 126
     private val trailArcRad = 2.65f
     private val filamentLimit = (trailSegments * 0.68f).toInt()
@@ -277,6 +278,7 @@ class HilmCoreView @JvmOverloads constructor(
     private var lastFrameTimeMs: Double = -1.0
     private var simulationTimeMs: Double = 0.0
     private var isLoopRunning: Boolean = false
+    private var isHostResumed: Boolean = true
 
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
@@ -450,8 +452,33 @@ class HilmCoreView @JvmOverloads constructor(
         }
     }
 
+    fun setHostResumed(resumed: Boolean) {
+        isHostResumed = resumed
+        syncOrbitLoopState()
+    }
+
+    private fun shouldRunOrbitLoop(): Boolean {
+        return isHostResumed &&
+            isAttachedToWindow &&
+            windowVisibility == VISIBLE &&
+            visibility == VISIBLE &&
+            isShown &&
+            !isReducedMotionEnabled()
+    }
+
+    private fun syncOrbitLoopState() {
+        if (shouldRunOrbitLoop()) {
+            startOrbitLoop()
+        } else {
+            stopOrbitLoop()
+            if (isAttachedToWindow && isReducedMotionEnabled()) {
+                invalidate()
+            }
+        }
+    }
+
     private fun startOrbitLoop() {
-        if (isLoopRunning || isReducedMotionEnabled()) return
+        if (isLoopRunning || !shouldRunOrbitLoop()) return
         isLoopRunning = true
         lastFrameTimeMs = -1.0
         Choreographer.getInstance().postFrameCallback(frameCallback)
@@ -466,18 +493,17 @@ class HilmCoreView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (windowVisibility == VISIBLE) {
-            startOrbitLoop()
-        }
+        syncOrbitLoopState()
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
-        if (visibility == VISIBLE && isAttachedToWindow) {
-            startOrbitLoop()
-        } else {
-            stopOrbitLoop()
-        }
+        syncOrbitLoopState()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        syncOrbitLoopState()
     }
 
     override fun onDetachedFromWindow() {
@@ -637,10 +663,12 @@ class HilmCoreView @JvmOverloads constructor(
             drawOrbAndCurvedTrail(canvas, idx, minDim, baseOrbRadius, drawFront = false)
         }
 
+        val isOriginalTheme = !mayaThemeMode
         val pulse = if (isReducedMotionEnabled()) {
             0f
         } else {
-            val wave = 0.5f - 0.5f * cos((elapsedF / pulsePeriodMs) * twoPi)
+            val activePeriodMs = if (isOriginalTheme) breathPeriodMs else pulsePeriodMs
+            val wave = 0.5f - 0.5f * cos((elapsedF / activePeriodMs) * twoPi)
             wave.pow(1.15f)
         }
 
@@ -649,20 +677,24 @@ class HilmCoreView @JvmOverloads constructor(
             drawMayaNucleusCore(canvas, cx, cy, minDim, pulse)
         } else {
             coreScaledBitmap?.let { bmp ->
+                val breathScale = 1f + 0.042f * pulse
+                canvas.save()
+                canvas.scale(breathScale, breathScale, cx, cy)
+
                 bitmapPaint.alpha = 255
                 canvas.drawBitmap(bmp, null, coreRect, bitmapPaint)
 
                 val pulseBoost = when {
-                    isCharging -> 0.42f
-                    batteryLevelPercent <= 15 -> 0.20f
-                    else -> 0.34f
+                    isCharging -> 0.44f
+                    batteryLevelPercent <= 15 -> 0.24f
+                    else -> 0.38f
                 }
                 val baseGlow = if (isCharging) 0.06f else 0.03f
                 coreGlowPaint.alpha = ((baseGlow + pulseBoost * pulse) * 255f).toInt().coerceIn(0, 255)
                 canvas.drawBitmap(bmp, null, coreRect, coreGlowPaint)
 
                 coreGlowBitmap?.let { glowBmp ->
-                    coreGlowPaint.alpha = ((0.02f + (pulseBoost * 0.48f) * pulse) * 255f).toInt().coerceIn(0, 255)
+                    coreGlowPaint.alpha = ((0.03f + (pulseBoost * 0.58f) * pulse) * 255f).toInt().coerceIn(0, 255)
                     canvas.drawBitmap(glowBmp, null, coreRect, coreGlowPaint)
                 }
 
@@ -676,6 +708,8 @@ class HilmCoreView @JvmOverloads constructor(
                     }
                     canvas.drawCircle(cx, cy, coreRect.width() * 0.56f, batteryAuraPaint)
                 }
+
+                canvas.restore()
             }
         }
 

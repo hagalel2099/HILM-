@@ -272,7 +272,17 @@ class HomeActivity : AppCompatActivity() {
         hudFrameView.panelOpacityPercent = opacityPercent
         dockViews.values.forEach { it.panelOpacityPercent = opacityPercent }
         applyLauncherTheme()
+        if (::hilmCoreView.isInitialized) {
+            hilmCoreView.setHostResumed(true)
+        }
         reloadAppsAndRender()
+    }
+
+    override fun onPause() {
+        if (::hilmCoreView.isInitialized) {
+            hilmCoreView.setHostResumed(false)
+        }
+        super.onPause()
     }
 
     override fun onStop() {

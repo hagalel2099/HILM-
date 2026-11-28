@@ -53,6 +53,9 @@ import { HudSvgFrame } from "./HudSvgFrame";
 interface LauncherPhonePreviewProps {
   state: LauncherPersistedState;
   isEditMode: boolean;
+  isCoreAnimationPaused?: boolean;
+  topDrawerOpen?: boolean;
+  onTopDrawerOpenChange?: (open: boolean) => void;
   onToggleEditMode: (active: boolean) => void;
   onAssignSlot: (slotId: SlotId, packageName: string) => void;
   onRemoveSlot: (slotId: SlotId) => void;
@@ -68,6 +71,9 @@ const SIDE_DOCK_RIGHT: SlotId[] = ["dock_4", "dock_5"];
 export function LauncherPhonePreview({
   state,
   isEditMode,
+  isCoreAnimationPaused = false,
+  topDrawerOpen: controlledTopDrawerOpen,
+  onTopDrawerOpenChange,
   onToggleEditMode,
   onAssignSlot,
   onRemoveSlot,
@@ -81,7 +87,15 @@ export function LauncherPhonePreview({
   const [drawerTargetSlot, setDrawerTargetSlot] = useState<SlotId | null>(null);
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
-  const [topDrawerOpen, setTopDrawerOpen] = useState(false);
+  const [internalTopDrawerOpen, setInternalTopDrawerOpen] = useState(false);
+  const topDrawerOpen = controlledTopDrawerOpen ?? internalTopDrawerOpen;
+  const setTopDrawerOpen = (next: boolean | ((prev: boolean) => boolean)) => {
+    const resolved = typeof next === "function" ? next(topDrawerOpen) : next;
+    if (controlledTopDrawerOpen === undefined) {
+      setInternalTopDrawerOpen(resolved);
+    }
+    onTopDrawerOpenChange?.(resolved);
+  };
   const [selectedSwapSource, setSelectedSwapSource] = useState<SlotId | null>(null);
   const [draggedSlot, setDraggedSlot] = useState<SlotId | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<SlotId | null>(null);
@@ -1221,6 +1235,7 @@ export function LauncherPhonePreview({
             <HilmCore
               status={coreStatus}
               themeId={activeThemeId}
+              isPaused={isCoreAnimationPaused}
               onClick={handleToggleCoreUpdatePopover}
             />
           </div>

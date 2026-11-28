@@ -120,9 +120,47 @@ function loadInitialState(): LauncherPersistedState {
   }
 }
 
+export function useLifecycleAnimation(isTopDrawerOpen: boolean) {
+  const [isAppInFocus, setIsAppInFocus] = useState<boolean>(() => {
+    if (typeof document === "undefined") return true;
+    return document.visibilityState === "visible";
+  });
+
+  useEffect(() => {
+    const syncLifecycleFocus = () => {
+      setIsAppInFocus(document.visibilityState === "visible");
+    };
+    const handleWindowFocus = () => {
+      setIsAppInFocus(document.visibilityState === "visible");
+    };
+    const handleWindowBlur = () => {
+      setIsAppInFocus(false);
+    };
+
+    document.addEventListener("visibilitychange", syncLifecycleFocus);
+    window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.removeEventListener("visibilitychange", syncLifecycleFocus);
+      window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, []);
+
+  const isCoreAnimationPaused = !isAppInFocus || isTopDrawerOpen;
+  return {
+    isAppInFocus,
+    isCoreAnimationPaused,
+    isCoreAnimationActive: !isCoreAnimationPaused,
+  };
+}
+
 export default function App() {
   const [state, setState] = useState<LauncherPersistedState>(loadInitialState);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isTopDrawerOpen, setIsTopDrawerOpen] = useState(false);
+  const { isCoreAnimationPaused } = useLifecycleAnimation(isTopDrawerOpen);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("personalizacao");
   const [mobileSection, setMobileSection] = useState<"launcher" | WorkspaceTab>(
     "launcher"
@@ -283,6 +321,7 @@ export default function App() {
   const handleResetState = () => {
     setState(DEFAULT_LAUNCHER_STATE);
     setIsEditMode(false);
+    setIsTopDrawerOpen(false);
   };
 
   const handleImportState = (imported: Partial<LauncherPersistedState>) => {
@@ -441,6 +480,9 @@ export default function App() {
           <LauncherPhonePreview
             state={state}
             isEditMode={isEditMode}
+            isCoreAnimationPaused={isCoreAnimationPaused}
+            topDrawerOpen={isTopDrawerOpen}
+            onTopDrawerOpenChange={setIsTopDrawerOpen}
             onToggleEditMode={setIsEditMode}
             onAssignSlot={handleAssignSlot}
             onRemoveSlot={handleRemoveSlot}

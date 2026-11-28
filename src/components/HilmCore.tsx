@@ -6,6 +6,7 @@ export type HilmCoreStatus = "nominal" | "syncing" | "alert" | "resolved";
 interface HilmCoreProps {
   status?: HilmCoreStatus;
   themeId?: LauncherThemeId;
+  isPaused?: boolean;
   onClick?: () => void;
 }
 
@@ -283,13 +284,21 @@ function sampleSingleOrbTrail(
 export function HilmCore({
   status = "nominal",
   themeId = "default",
+  isPaused = false,
   onClick,
 }: HilmCoreProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const coreImgRef = useRef<HTMLImageElement | null>(null);
   const mayaImgRef = useRef<HTMLImageElement | null>(null);
+  const isPausedRef = useRef(isPaused);
+  const syncAnimationLoopRef = useRef<(() => void) | null>(null);
   const isMayaTheme = themeId === "maya-holographic-presence";
   const isLunaTheme = themeId === "luna-entre-luz-e-sombra";
+
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+    syncAnimationLoopRef.current?.();
+  }, [isPaused]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -348,14 +357,30 @@ export function HilmCore({
     let simulationTimeMs = 0;
 
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const handleMotionChange = (e: MediaQueryListEvent) => {
-      reduceMotion = e.matches;
-      lastFrameTimestamp = null;
-      if (!reduceMotion) {
+    const syncLoop = () => {
+      if (reduceMotion || document.hidden || isPausedRef.current) {
+        if (rafId !== 0) {
+          window.cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+        lastFrameTimestamp = null;
+      } else if (rafId === 0) {
+        lastFrameTimestamp = null;
         rafId = window.requestAnimationFrame(renderFrame);
       }
     };
+    syncAnimationLoopRef.current = syncLoop;
+
+    const handleMotionChange = (e: MediaQueryListEvent) => {
+      reduceMotion = e.matches;
+      syncLoop();
+    };
     mediaQuery.addEventListener("change", handleMotionChange);
+
+    const handleVisibilityChange = () => {
+      syncLoop();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     const puffSprites = orbSpecs.map((orb) => {
       const sprite = document.createElement("canvas");
@@ -698,15 +723,23 @@ export function HilmCore({
         drawOrbHeadPass(item.orb, item.head, false);
       }
 
+      const activePeriodMs = isMayaTheme ? PULSE_PERIOD_MS : 4000;
       const pulseWave =
-        0.5 - 0.5 * Math.cos((elapsed / PULSE_PERIOD_MS) * Math.PI * 2);
+        0.5 - 0.5 * Math.cos((elapsed / activePeriodMs) * Math.PI * 2);
       const pulse = reduceMotion ? 0 : Math.pow(pulseWave, 1.15);
 
       if (isMayaTheme) {
         drawMayaNucleusCore(cx, cy, pulse);
       } else if (imgLoaded && coreImgRef.current) {
+        const breathScale = 1 + 0.042 * pulse;
         const coreX = cx - CORE_DRAW_SIZE / 2;
         const coreY = cy - CORE_DRAW_SIZE / 2;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(breathScale, breathScale);
+        ctx.translate(-cx, -cy);
+
         ctx.drawImage(
           coreImgRef.current,
           coreX,
@@ -717,7 +750,7 @@ export function HilmCore({
 
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
-        ctx.globalAlpha = 0.03 + 0.34 * pulse;
+        ctx.globalAlpha = 0.03 + 0.38 * pulse;
         ctx.drawImage(
           coreImgRef.current,
           coreX,
@@ -726,7 +759,7 @@ export function HilmCore({
           CORE_DRAW_SIZE
         );
         if (coreGlowCanvas) {
-          ctx.globalAlpha = 0.02 + 0.16 * pulse;
+          ctx.globalAlpha = 0.03 + 0.22 * pulse;
           ctx.drawImage(
             coreGlowCanvas,
             coreX,
@@ -735,6 +768,7 @@ export function HilmCore({
             CORE_DRAW_SIZE
           );
         }
+        ctx.restore();
         ctx.restore();
       } else {
         ctx.beginPath();
@@ -748,16 +782,22 @@ export function HilmCore({
         drawOrbHeadPass(item.orb, item.head, true);
       }
 
-      if (!reduceMotion) {
+      if (!reduceMotion && !document.hidden && !isPausedRef.current) {
         rafId = window.requestAnimationFrame(renderFrame);
+      } else {
+        rafId = 0;
       }
     };
 
-    rafId = window.requestAnimationFrame(renderFrame);
+    if (!document.hidden && !isPausedRef.current) {
+      rafId = window.requestAnimationFrame(renderFrame);
+    }
 
     return () => {
+      syncAnimationLoopRef.current = null;
       window.cancelAnimationFrame(rafId);
       mediaQuery.removeEventListener("change", handleMotionChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [isMayaTheme]);
 
@@ -785,7 +825,7 @@ export function HilmCore({
             : isLunaTheme
               ? "luna-hud-pulse luna-hud-border-glow"
               : "hud-breathe-core"
-        } pointer-events-none absolute w-[132px] h-[132px] rounded-full`}
+        }${isPaused ? " hud-breathe-paused" : ""} pointer-events-none absolute w-[132px] h-[132px] rounded-full`}
         style={
           isMayaTheme
             ? {
